@@ -2,6 +2,8 @@ package net.shadowmage.ancientwarfare.npc.faction;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.ai.EntityAITarget;
+import net.minecraft.entity.ai.EntityAITasks;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.World;
@@ -75,10 +77,21 @@ public class FactionRelations {
 	}
 
 	private static void clearTargetsOfFaction(NpcFaction npc, String targetFaction) {
-		if (isOfFaction(npc.getAttackTarget(), targetFaction)) {
+		boolean attackTargetOfFaction = isOfFaction(npc.getAttackTarget(), targetFaction);
+		boolean revengeTargetOfFaction = isOfFaction(npc.getRevengeTarget(), targetFaction);
+		if (attackTargetOfFaction || revengeTargetOfFaction) {
+			// a running EntityAITarget keeps its own copy of the target and sets it again on the next tick
+			// (EntityAITarget.shouldContinueExecuting), resetTask clears that copy as well
+			for (EntityAITasks.EntityAITaskEntry entry : npc.targetTasks.taskEntries) {
+				if (entry.using && entry.action instanceof EntityAITarget) {
+					entry.action.resetTask();
+				}
+			}
+		}
+		if (attackTargetOfFaction) {
 			npc.setAttackTarget(null);
 		}
-		if (isOfFaction(npc.getRevengeTarget(), targetFaction)) {
+		if (revengeTargetOfFaction) {
 			npc.setRevengeTarget(null);
 		}
 	}
