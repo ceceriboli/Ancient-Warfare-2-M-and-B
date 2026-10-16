@@ -14,6 +14,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int expelStandingPenalty = 50;
 	public static int leaderJoinRange = 8;
 	public static int leaderDirectionsRange = 64;
+	public static double leaderDirectionsChance = 0.25;
 	public static boolean announceRelationChanges = true;
 	public static boolean announceMembershipChanges = true;
 
@@ -46,6 +47,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		leaderJoinRange = config.get(serverOptions, "leader_join_range", leaderJoinRange, "Leader range to join\nDefault=" + leaderJoinRange + "\n" + "Maximum distance in blocks from a leader of the faction to pledge allegiance to it.", 1, 256).getInt();
 
 		leaderDirectionsRange = config.get(serverOptions, "leader_directions_range", leaderDirectionsRange, "Leader directions range\nDefault=" + leaderDirectionsRange + "\n" + "Friendly faction npcs tell the player where their leader is, if a leader is within this many blocks.\n" + "0 disables the directions.", 0, 512).getInt();
+
+		leaderDirectionsChance = config.get(serverOptions, "leader_directions_chance", leaderDirectionsChance, "Leader directions chance\nDefault=" + leaderDirectionsChance + "\n" + "Chance (0.0 to 1.0) that a friendly faction npc tells the player where their leader is when spoken to.\n" + "0 never, 1 every time.", 0.0D, 1.0D).getDouble();
 
 		announceRelationChanges = config.get(serverOptions, "announce_relation_changes", announceRelationChanges, "Announce relation changes\nDefault=" + announceRelationChanges + "\n" + "If true, all players are told in chat when two factions go to war, make peace or form an alliance.").getBoolean();
 

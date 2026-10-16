@@ -136,7 +136,7 @@ public class FactionMembership {
 				player.sendMessage(clickable(new TextComponentTranslation("command.aw.membership.click.renounce"), TextFormatting.RED,
 						"/awmembership leave", new TextComponentTranslation("command.aw.membership.click.renounce.hover", AWDiplomacyStatics.leaveStandingPenalty, factionName(npcFaction))));
 			}
-		} else if (AWDiplomacyStatics.leaderDirectionsRange > 0) {
+		} else if (AWDiplomacyStatics.leaderDirectionsRange > 0 && npc.world.rand.nextDouble() < AWDiplomacyStatics.leaderDirectionsChance) {
 			findNearestLeader(npc.world, npc, npcFaction, AWDiplomacyStatics.leaderDirectionsRange).ifPresent(leader -> {
 				ITextComponent message = new TextComponentTranslation("command.aw.membership.leader_location",
 						(int) Math.floor(leader.posX), (int) Math.floor(leader.posY), (int) Math.floor(leader.posZ));
