@@ -23,6 +23,7 @@ import net.shadowmage.ancientwarfare.core.network.PacketBase;
 import net.shadowmage.ancientwarfare.core.registry.RegistryLoader;
 import net.shadowmage.ancientwarfare.npc.command.CommandDebugAI;
 import net.shadowmage.ancientwarfare.npc.command.CommandFaction;
+import net.shadowmage.ancientwarfare.npc.command.CommandFactionRelation;
 import net.shadowmage.ancientwarfare.npc.command.CommandTeams;
 import net.shadowmage.ancientwarfare.npc.compat.EpicSiegeCompat;
 import net.shadowmage.ancientwarfare.npc.compat.TwilightForestCompat;
@@ -164,6 +165,7 @@ public class AncientWarfareNPC {
 		evt.registerServerCommand(new CommandFaction());
 		evt.registerServerCommand(new CommandTeams());
 		evt.registerServerCommand(new CommandDebugAI());
+		evt.registerServerCommand(new CommandFactionRelation());
 	}
 
 	@SubscribeEvent

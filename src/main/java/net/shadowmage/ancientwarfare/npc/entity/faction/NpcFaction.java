@@ -44,6 +44,7 @@ import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
 import net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned;
 import net.shadowmage.ancientwarfare.npc.entity.faction.attributes.AdditionalAttributes;
 import net.shadowmage.ancientwarfare.npc.entity.faction.attributes.IAdditionalAttribute;
+import net.shadowmage.ancientwarfare.npc.faction.FactionRelations;
 import net.shadowmage.ancientwarfare.npc.faction.FactionTracker;
 import net.shadowmage.ancientwarfare.npc.init.AWNPCSounds;
 import net.shadowmage.ancientwarfare.npc.item.ItemCommandBaton;
@@ -287,7 +288,7 @@ public abstract class NpcFaction extends NpcBase {
 			return revengePlayers.containsKey(playerName) || FactionTracker.INSTANCE.isHostileToPlayer(world, playerUUID, playerName, getFaction());
 		} else if (e instanceof NpcFaction) {
 			NpcFaction npc = (NpcFaction) e;
-			return !npc.getFaction().equals(factionName) && FactionRegistry.getFaction(getFaction()).isHostileTowards(npc.getFaction());
+			return !npc.getFaction().equals(factionName) && FactionRelations.isHostile(world, getFaction(), npc.getFaction());
 		} else {
 			return FactionRegistry.getFaction(factionName).isTarget(e) || AIHelper.isAdditionalEntityToTarget(e);
 		}
