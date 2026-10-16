@@ -71,6 +71,8 @@ public final class NetworkHandler implements IGuiHandler {
 	public static final int PACKET_SHOW_BBS = 35;
 	public static final int PACKET_ITEM_MOUSE_SCROLL = 36;
 
+	public static final int PACKET_FACTION_DIPLOMACY = 37;
+
 	public static final int GUI_CRAFTING = 0;
 	public static final int GUI_SCANNER = 1;
 	public static final int GUI_BUILDER = 2;

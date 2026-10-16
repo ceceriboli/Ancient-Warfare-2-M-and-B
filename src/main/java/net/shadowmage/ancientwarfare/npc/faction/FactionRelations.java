@@ -9,6 +9,7 @@ import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.shadowmage.ancientwarfare.core.gamedata.AWGameData;
+import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.gamedata.FactionRelationData;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
@@ -22,18 +23,19 @@ public class FactionRelations {
 	private FactionRelations() {}
 
 	public static boolean isHostile(World world, String faction, String otherFaction) {
-		if (!world.isRemote) {
-			FactionRelation relation = getData(world).get(faction, otherFaction);
-			if (relation != null) {
-				return relation.isHostile();
-			}
+		FactionRelation relation = getSetRelation(world, faction, otherFaction);
+		if (relation != null) {
+			return relation.isHostile();
 		}
 		return FactionRegistry.getFaction(faction).isHostileTowards(otherFaction);
 	}
 
+	/**
+	 * @return the relation set in this world, or null if the pair uses the faction registry. On the client, the copy sent by the server.
+	 */
 	@Nullable
 	public static FactionRelation getSetRelation(World world, String faction, String otherFaction) {
-		return getData(world).get(faction, otherFaction);
+		return world.isRemote ? ClientFactionDiplomacy.getRelation(faction, otherFaction) : getData(world).get(faction, otherFaction);
 	}
 
 	/**
@@ -53,8 +55,11 @@ public class FactionRelations {
 			clearTargetsIfNotHostile(world, faction, otherFaction);
 		}
 
-		String messageKey = relation == null ? "command.aw.relation.announce.reset" : "command.aw.relation.announce." + relation.getName();
-		server.getPlayerList().sendMessage(new TextComponentTranslation(messageKey, faction, otherFaction));
+		if (AWDiplomacyStatics.announceRelationChanges) {
+			String messageKey = relation == null ? "command.aw.relation.announce.reset" : "command.aw.relation.announce." + relation.getName();
+			server.getPlayerList().sendMessage(new TextComponentTranslation(messageKey, faction, otherFaction));
+		}
+		FactionMembership.sendDiplomacyToAll(server);
 	}
 
 	private static void clearTargetsIfNotHostile(World world, String faction, String otherFaction) {

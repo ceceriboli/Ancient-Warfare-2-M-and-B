@@ -52,25 +52,27 @@ public class FactionRelationData extends WorldSavedData {
 		return new String[] {key.substring(0, separator), key.substring(separator + 1)};
 	}
 
-	private static String getKey(String factionA, String factionB) {
+	public static String getKey(String factionA, String factionB) {
 		return factionA.compareTo(factionB) <= 0 ? factionA + KEY_SEPARATOR + factionB : factionB + KEY_SEPARATOR + factionA;
 	}
 
-	@Override
-	public void readFromNBT(NBTTagCompound tag) {
-		relations.clear();
+	/**
+	 * Reads relations written by {@link #writeRelations}, also used to send the relations to clients.
+	 */
+	public static Map<String, FactionRelation> readRelations(NBTTagCompound tag) {
+		Map<String, FactionRelation> ret = new TreeMap<>();
 		NBTTagList relationList = tag.getTagList("relations", Constants.NBT.TAG_COMPOUND);
 		for (int i = 0; i < relationList.tagCount(); i++) {
 			NBTTagCompound relationTag = relationList.getCompoundTagAt(i);
 			FactionRelation relation = FactionRelation.fromName(relationTag.getString("relation"));
 			if (relation != null) {
-				relations.put(getKey(relationTag.getString("factionA"), relationTag.getString("factionB")), relation);
+				ret.put(getKey(relationTag.getString("factionA"), relationTag.getString("factionB")), relation);
 			}
 		}
+		return ret;
 	}
 
-	@Override
-	public NBTTagCompound writeToNBT(NBTTagCompound tag) {
+	public static void writeRelations(NBTTagCompound tag, Map<String, FactionRelation> relations) {
 		NBTTagList relationList = new NBTTagList();
 		for (Map.Entry<String, FactionRelation> entry : relations.entrySet()) {
 			String[] factions = splitKey(entry.getKey());
@@ -81,6 +83,17 @@ public class FactionRelationData extends WorldSavedData {
 			relationList.appendTag(relationTag);
 		}
 		tag.setTag("relations", relationList);
+	}
+
+	@Override
+	public void readFromNBT(NBTTagCompound tag) {
+		relations.clear();
+		relations.putAll(readRelations(tag));
+	}
+
+	@Override
+	public NBTTagCompound writeToNBT(NBTTagCompound tag) {
+		writeRelations(tag, relations);
 		return tag;
 	}
 }

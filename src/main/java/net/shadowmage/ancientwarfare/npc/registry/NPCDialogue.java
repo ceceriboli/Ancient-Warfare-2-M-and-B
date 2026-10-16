@@ -10,13 +10,17 @@ import com.google.gson.JsonObject;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.JsonUtils;
+import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TextComponentString;
+import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.util.text.TextFormatting;
 import net.shadowmage.ancientwarfare.core.AncientWarfareCore;
 import net.shadowmage.ancientwarfare.core.registry.IRegistryDataParser;
 import net.shadowmage.ancientwarfare.core.util.parsing.JsonHelper;
 import net.shadowmage.ancientwarfare.npc.AncientWarfareNPC;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
+import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
+import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -53,7 +57,19 @@ public class NPCDialogue {
         String npcName = npc.getName();
         String proffession = npc.getNpcType();
         String message = getRandomDialogue(factionName, isHostile, seed);
-        speakToPlayer(player, TextFormatting.YELLOW+"[" + npcName + "] "+ TextFormatting.WHITE + message);
+        if (npc instanceof NpcFactionLeader) {
+            // leaders introduce themselves with their title, so that players know who to pledge allegiance to
+            ITextComponent line = new TextComponentString("[");
+            line.getStyle().setColor(TextFormatting.GOLD);
+            line.appendSibling(new TextComponentTranslation("gui.ancientwarfarenpc.leader_title", FactionMembership.factionName(factionName)));
+            line.appendText("] ");
+            ITextComponent text = new TextComponentString(message);
+            text.getStyle().setColor(TextFormatting.WHITE);
+            player.sendMessage(line.appendSibling(text));
+        } else {
+            speakToPlayer(player, TextFormatting.YELLOW+"[" + npcName + "] "+ TextFormatting.WHITE + message);
+        }
+        FactionMembership.afterDialogue(player, npc, isHostile);
     }
 
     // Sends a chat message to the given player.

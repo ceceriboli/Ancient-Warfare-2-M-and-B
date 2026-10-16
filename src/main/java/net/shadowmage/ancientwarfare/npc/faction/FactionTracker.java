@@ -45,6 +45,10 @@ public class FactionTracker {
 	}
 
 	public boolean isHostileToPlayer(World world, UUID playerUUID, String playerName, String factionName) {
+		Boolean membershipHostility = FactionMembership.getHostility(world, playerUUID, factionName);
+		if (membershipHostility != null) {
+			return membershipHostility;
+		}
 		return getStandingFor(world, playerUUID, playerName, factionName) < 0;
 	}
 

@@ -23,11 +23,13 @@ import net.shadowmage.ancientwarfare.core.network.PacketBase;
 import net.shadowmage.ancientwarfare.core.registry.RegistryLoader;
 import net.shadowmage.ancientwarfare.npc.command.CommandDebugAI;
 import net.shadowmage.ancientwarfare.npc.command.CommandFaction;
+import net.shadowmage.ancientwarfare.npc.command.CommandFactionMembership;
 import net.shadowmage.ancientwarfare.npc.command.CommandFactionRelation;
 import net.shadowmage.ancientwarfare.npc.command.CommandTeams;
 import net.shadowmage.ancientwarfare.npc.compat.EpicSiegeCompat;
 import net.shadowmage.ancientwarfare.npc.compat.TwilightForestCompat;
 import net.shadowmage.ancientwarfare.npc.compat.ebwizardry.EBWizardryCompat;
+import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.config.AWNPCStatics;
 import net.shadowmage.ancientwarfare.npc.container.ContainerCombatOrder;
 import net.shadowmage.ancientwarfare.npc.container.ContainerNpcBard;
@@ -45,10 +47,12 @@ import net.shadowmage.ancientwarfare.npc.container.ContainerUpkeepOrder;
 import net.shadowmage.ancientwarfare.npc.container.ContainerWorkOrder;
 import net.shadowmage.ancientwarfare.npc.registry.NPCDialogue;
 import net.shadowmage.ancientwarfare.npc.entity.faction.attributes.EntityVehicleProperty;
+import net.shadowmage.ancientwarfare.npc.event.FactionMembershipEventHandler;
 import net.shadowmage.ancientwarfare.npc.faction.FactionTracker;
 import net.shadowmage.ancientwarfare.npc.init.AWNPCEntities;
 import net.shadowmage.ancientwarfare.npc.init.AWNPCItems;
 import net.shadowmage.ancientwarfare.npc.network.PacketExtendedReachAttack;
+import net.shadowmage.ancientwarfare.npc.network.PacketFactionDiplomacy;
 import net.shadowmage.ancientwarfare.npc.network.PacketFactionUpdate;
 import net.shadowmage.ancientwarfare.npc.network.PacketNpcCommand;
 import net.shadowmage.ancientwarfare.npc.network.PacketTeamMembershipUpdate;
@@ -85,12 +89,14 @@ public class AncientWarfareNPC {
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent evt) {
 		statics = new AWNPCStatics("AncientWarfareNpc");
+		new AWDiplomacyStatics("AncientWarfareDiplomacy");
 
 		EntityPropertyManager.registerProperty(new EntityVehicleProperty.Serializer());
 		proxy.preInit();
 
 		MinecraftForge.EVENT_BUS.register(this);
 		MinecraftForge.EVENT_BUS.register(net.shadowmage.ancientwarfare.npc.event.EventHandler.INSTANCE);
+		MinecraftForge.EVENT_BUS.register(FactionMembershipEventHandler.INSTANCE);
 
 		NetworkHandler.registerContainer(NetworkHandler.GUI_NPC_INVENTORY, ContainerNpcInventory.class);
 		NetworkHandler.registerContainer(NetworkHandler.GUI_NPC_WORK_ORDER, ContainerWorkOrder.class);
@@ -124,6 +130,7 @@ public class AncientWarfareNPC {
 		PacketBase.registerPacketType(NetworkHandler.PACKET_TEAM_MEMBERSHIP_UPDATE, PacketTeamMembershipUpdate.class, PacketTeamMembershipUpdate::new);
 		PacketBase.registerPacketType(NetworkHandler.PACKET_TEAM_STANDINGS_UPDATE, PacketTeamStandingsUpdate.class, PacketTeamStandingsUpdate::new);
 		PacketBase.registerPacketType(NetworkHandler.PACKET_TEAM_STANDING_UPDATE, PacketTeamStandingUpdate.class, PacketTeamStandingUpdate::new);
+		PacketBase.registerPacketType(NetworkHandler.PACKET_FACTION_DIPLOMACY, PacketFactionDiplomacy.class, PacketFactionDiplomacy::new);
 
 		CompatLoader.registerCompat(new EpicSiegeCompat());
 		CompatLoader.registerCompat(new TwilightForestCompat());
@@ -166,6 +173,7 @@ public class AncientWarfareNPC {
 		evt.registerServerCommand(new CommandTeams());
 		evt.registerServerCommand(new CommandDebugAI());
 		evt.registerServerCommand(new CommandFactionRelation());
+		evt.registerServerCommand(new CommandFactionMembership());
 	}
 
 	@SubscribeEvent

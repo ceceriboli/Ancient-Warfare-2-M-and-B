@@ -11,14 +11,17 @@ import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.entity.layers.LayerBipedArmor;
 import net.minecraft.client.renderer.entity.layers.LayerHeldItem;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.passive.EntityPig;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.TextFormatting;
 import net.shadowmage.ancientwarfare.npc.ai.NpcAI;
+import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.config.AWNPCStatics;
 import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
+import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
@@ -102,6 +105,19 @@ public class RenderNpcBase<T extends NpcBase> extends RenderBiped<T> {
 				renderNpcAITasks(npc, x, y, z);
 			}
 		}
+		renderLeaderLabel(npc, player, x, y, z);
+	}
+
+	private void renderLeaderLabel(NpcBase npc, EntityPlayer player, double x, double y, double z) {
+		if (!(npc instanceof NpcFactionLeader) || !AWDiplomacyStatics.renderLeaderLabel
+				|| npc.getDistanceSq(player) > AWDiplomacyStatics.leaderLabelRange * AWDiplomacyStatics.leaderLabelRange) {
+			return;
+		}
+		String faction = ((NpcFactionLeader) npc).getFaction();
+		String title = I18n.format("gui.ancientwarfarenpc.leader_title", I18n.format("gui.ancientwarfarenpc.faction_name." + faction));
+		// above the regular nameplate when that one is rendered too
+		boolean nameplateRendered = npc.isHostileTowards(player) ? AWNPCStatics.renderHostileNames.getBoolean() : AWNPCStatics.renderFriendlyNames.getBoolean();
+		renderColoredLabel(npc, title, x, nameplateRendered ? y + 0.3D : y, z, 0x20ffaa00, 0xffffaa00);
 	}
 
 	@Override
