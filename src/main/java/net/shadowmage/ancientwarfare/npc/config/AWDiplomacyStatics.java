@@ -214,7 +214,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		siegeCooldownDays = config.get(serverOptions, "siege_cooldown_days", siegeCooldownDays, "Siege cooldown\nDefault=" + siegeCooldownDays + "\n" + "Minecraft days after a raid or siege ends (or after the city is founded) before the city can be attacked again.", 0, 1000).getInt();
 
-		maxActiveSieges = config.get(serverOptions, "max_active_sieges", maxActiveSieges, "Maximum sieges\nDefault=" + maxActiveSieges + "\n" + "Maximum number of sieges at the same time started by the automatic check (not counting /awsiege start).", 0, 100).getInt();
+		maxActiveSieges = config.get(serverOptions, "max_active_sieges", maxActiveSieges, "Maximum attacks\nDefault=" + maxActiveSieges + "\n" + "The automatic check starts no new raid or siege while this many are going on in the whole world (on any city,\n" + "those started with /awsiege start included). /awsiege start itself is not limited. A city has one attack at a time.", 0, 100).getInt();
 
 		siegeWarmupTicks = config.get(serverOptions, "siege_warmup_ticks", siegeWarmupTicks, "Siege warm up\nDefault=" + siegeWarmupTicks + "\n" + "Ticks (20 per second) of warning before the first wave and between two waves.", 20, 72000).getInt();
 
