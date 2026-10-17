@@ -73,9 +73,14 @@ public abstract class NpcFaction extends NpcBase {
 	private static final String HEIGHT_TAG = "height";
 	private static final DataParameter<String> SOUND = EntityDataManager.createKey(NpcFaction.class, DataSerializers.STRING);
 
+	private static final int DIALOGUE_REPEAT_TICKS = 2;
+
 	protected String factionName;
 	private Map<String, Long> revengePlayers = new HashMap<>();
 	public double dialogueSeed;
+	@Nullable
+	private UUID lastDialoguePlayer;
+	private long lastDialogueTick;
 
 	public NpcFaction(World world) {
 		super(world);
@@ -558,6 +563,14 @@ public abstract class NpcFaction extends NpcBase {
 		boolean baton = playerIsHoldingItem && player.getHeldItem(hand).getItem() instanceof ItemCommandBaton;
 		if (AWCoreStatics.npcDialogue && !baton && isEntityAlive()) {
 			if (!player.world.isRemote) {
+				// one click can reach the server twice (main hand, then off hand when the client handled the first one differently,
+				// e.g. with an outdated standing): the npc speaks once
+				long now = world.getTotalWorldTime();
+				if (player.getUniqueID().equals(lastDialoguePlayer) && now - lastDialogueTick <= DIALOGUE_REPEAT_TICKS) {
+					return true;
+				}
+				lastDialoguePlayer = player.getUniqueID();
+				lastDialogueTick = now;
 				// Say something to the player who right-clicked, pass in the NPC object containing important data
 				NPCDialogue.speakToPlayer(player, this);
 			}
