@@ -49,6 +49,18 @@ public class FactionMembershipData extends WorldSavedData {
 		}
 	}
 
+	/**
+	 * Military service: calls to arms the member missed (see Service), and the day of the last change.
+	 */
+	public void setStrikes(UUID playerId, int strikes, long day) {
+		Member member = members.get(playerId);
+		if (member != null) {
+			member.strikes = Math.max(0, strikes);
+			member.lastStrikeDay = day;
+			markDirty();
+		}
+	}
+
 	public boolean remove(UUID playerId) {
 		if (members.remove(playerId) != null) {
 			markDirty();
@@ -74,6 +86,8 @@ public class FactionMembershipData extends WorldSavedData {
 				for (String otherFaction : inheritedTag.getKeySet()) {
 					member.inherited.put(otherFaction, inheritedTag.getInteger(otherFaction));
 				}
+				member.strikes = memberTag.getInteger("strikes");
+				member.lastStrikeDay = memberTag.getLong("lastStrikeDay");
 				members.put(playerId, member);
 			}
 		}
@@ -90,6 +104,8 @@ public class FactionMembershipData extends WorldSavedData {
 			NBTTagCompound inheritedTag = new NBTTagCompound();
 			member.inherited.forEach(inheritedTag::setInteger);
 			memberTag.setTag("inherited", inheritedTag);
+			memberTag.setInteger("strikes", member.strikes);
+			memberTag.setLong("lastStrikeDay", member.lastStrikeDay);
 			memberList.appendTag(memberTag);
 		}
 		tag.setTag("members", memberList);
@@ -104,9 +120,19 @@ public class FactionMembershipData extends WorldSavedData {
 		 * Standing changes inherited from the faction, per other faction
 		 */
 		private final Map<String, Integer> inherited = new HashMap<>();
+		private int strikes;
+		private long lastStrikeDay;
 
 		public Map<String, Integer> getInherited() {
 			return Collections.unmodifiableMap(inherited);
+		}
+
+		public int getStrikes() {
+			return strikes;
+		}
+
+		public long getLastStrikeDay() {
+			return lastStrikeDay;
 		}
 
 		private Member(UUID playerId, String playerName, String faction) {

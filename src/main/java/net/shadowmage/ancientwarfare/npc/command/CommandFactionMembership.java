@@ -12,6 +12,7 @@ import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.faction.FactionTracker;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
+import net.shadowmage.ancientwarfare.npc.war.Service;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -128,6 +129,7 @@ public class CommandFactionMembership extends CommandBase {
 		} else {
 			int standing = FactionTracker.INSTANCE.getStandingFor(player.world, player.getName(), faction);
 			sender.sendMessage(new TextComponentTranslation("command.aw.membership.status.member", FactionMembership.factionName(faction), standing));
+			Service.sendStatus(sender, player);
 		}
 	}
 

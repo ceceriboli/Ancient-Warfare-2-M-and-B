@@ -114,6 +114,10 @@ public class CommandSiege extends CommandBase {
 					siege.getState().getName(), siege.getWavesSpawned(), siege.getTotalWaves(), siege.getLoadedAttackers().size()));
 			sender.sendMessage(new TextComponentTranslation("command.aw.siege.list.timers", siege.getIdleTicks() / 20, AWDiplomacyStatics.siegeWaveStallTicks / 20,
 					siege.getTotalTicks() / 20, AWDiplomacyStatics.siegeMaxTicks / 20, siege.isSuspended() ? new TextComponentTranslation("command.aw.siege.list.suspended") : ""));
+			if (siege.getState() == Siege.State.MUSTER) {
+				long left = Math.max(0, siege.getMusterUntil() - sender.getEntityWorld().getTotalWorldTime());
+				sender.sendMessage(new TextComponentTranslation("command.aw.siege.list.muster", siege.getOrigin().getName(), left / 20, siege.getCalls().size()));
+			}
 		}
 	}
 

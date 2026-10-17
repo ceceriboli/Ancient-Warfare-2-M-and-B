@@ -21,10 +21,24 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean announceRelationChanges = true;
 	public static boolean announceMembershipChanges = true;
 	public static boolean armiesEnabled = true;
-	public static int armySize = 10;
-	public static String[] armyUnitWeights = {"faction.soldier=4", "faction.archer=3", "faction.soldier.elite=2", "faction.archer.elite=1", "faction.cavalry=2"};
-	public static int armyChargeRange = 96;
 	public static int armyOwnedNpcRange = 32;
+	public static boolean serviceEnabled = true;
+	public static int serviceCheckInterval = 2400;
+	public static double campaignChance = 0.3;
+	public static double campaignOffenseShare = 0.5;
+	public static int serviceCallRange = 1500;
+	public static int serviceMusterTicks = 12000;
+	public static int serviceMusterRange = 96;
+	public static int serviceReminderTicks = 2400;
+	public static int servicePresenceRange = 96;
+	public static int serviceMinPresenceTicks = 1200;
+	public static int serviceRewardStanding = 10;
+	public static int serviceMissPenalty = 25;
+	public static int serviceMaxStrikes = 3;
+	public static int serviceStrikeDecayDays = 7;
+	public static boolean serviceExcuseOffline = true;
+	public static double servicePlunderRatio = 0.5;
+	public static int exhaustionCityPlundered = 15;
 	public static boolean diplomacyEnabled = true;
 	public static String[] eternalEnemies = {"brigand", "pirate", "monster", "beast", "undead", "demon", "vampire"};
 	public static int exhaustionUnitKilled = 1;
@@ -141,15 +155,48 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		announceMembershipChanges = config.get(serverOptions, "announce_membership_changes", announceMembershipChanges, "Announce membership changes\nDefault=" + announceMembershipChanges + "\n" + "If true, all players are told in chat when a player joins, leaves or is expelled from a faction.").getBoolean();
 
-		armiesEnabled = config.get(serverOptions, "armies_enabled", armiesEnabled, "Player armies\nDefault=" + armiesEnabled + "\n" + "If true, a member of a faction can raise an army from the ruler of a city of its faction (the soldiers are taken from\n" + "the city's manpower), and lead it and its own Ancient Warfare soldiers that follow it against an enemy city\n" + "(/awarmy raise | charge | follow | disband | status).").getBoolean();
+		armiesEnabled = config.get(serverOptions, "armies_enabled", armiesEnabled, "Own soldiers in the attacks of the faction\nDefault=" + armiesEnabled + "\n" + "If true, when a member of a faction takes part in an attack of its faction, its own Ancient Warfare combat npcs that\n" + "follow it join the assault on the city leader, and follow it again when the attack is over (/awarmy status).").getBoolean();
 
-		armySize = config.get(serverOptions, "army_size", armySize, "Army size\nDefault=" + armySize + "\n" + "Soldiers raised from a city (at most its manpower, which goes down by as much).", 1, 200).getInt();
+		armyOwnedNpcRange = config.get(serverOptions, "army_owned_npc_range", armyOwnedNpcRange, "Own soldiers range\nDefault=" + armyOwnedNpcRange + "\n" + "The player's own Ancient Warfare combat npcs within this many blocks that follow it (shift + right click with an\n" + "empty hand) join the assault when it takes part in an attack of its faction.", 0, 256).getInt();
 
-		armyUnitWeights = config.get(serverOptions, "army_unit_weights", armyUnitWeights, "Army units\n" + "Units of a raised army, as npc type=weight (types the faction does not have are replaced).").getStringList();
+		// the levy raised from a ruler was replaced by the military service
+		for (String obsolete : new String[] {"army_size", "army_unit_weights", "army_charge_range"}) {
+			config.getCategory(serverOptions).remove(obsolete);
+		}
 
-		armyChargeRange = config.get(serverOptions, "army_charge_range", armyChargeRange, "Charge range\nDefault=" + armyChargeRange + "\n" + "/awarmy charge attacks the nearest enemy city whose center is within this many blocks of the player.", 8, 512).getInt();
+		serviceEnabled = config.get(serverOptions, "service_enabled", serviceEnabled, "Military service\nDefault=" + serviceEnabled + "\n" + "If true, a member of a faction serves it as in Mount & Blade: when its faction attacks an enemy city, or a city of\n" + "its faction is attacked, the player is called to arms and must go there before the muster is over. The attack waits\n" + "for a called player (state muster). Missing a call gives a strike and a growing standing penalty with the faction,\n" + "service_max_strikes strikes get the player expelled. Attacks that start near players call the members there too.").getBoolean();
 
-		armyOwnedNpcRange = config.get(serverOptions, "army_owned_npc_range", armyOwnedNpcRange, "Own soldiers in a charge\nDefault=" + armyOwnedNpcRange + "\n" + "On /awarmy charge, the player's own Ancient Warfare combat npcs within this many blocks that follow it (shift + right\n" + "click with an empty hand) join the assault.", 0, 256).getInt();
+		serviceCheckInterval = config.get(serverOptions, "service_check_interval", serviceCheckInterval, "Campaign check interval\nDefault=" + serviceCheckInterval + "\n" + "Ticks (20 per second) between two checks for a new campaign (an attack of the faction of an online member, or on a\n" + "city of its faction, anywhere within service_call_range).", 20, 720000).getInt();
+
+		campaignChance = config.get(serverOptions, "campaign_chance", campaignChance, "Campaign chance\nDefault=" + campaignChance + "\n" + "Chance (0.0 to 1.0), at each check, that a campaign starts for an online member without a call. Limited by\n" + "max_active_sieges and by the cooldown of the cities.", 0.0D, 1.0D).getDouble();
+
+		campaignOffenseShare = config.get(serverOptions, "campaign_offense_share", campaignOffenseShare, "Offensive campaigns\nDefault=" + campaignOffenseShare + "\n" + "Chance (0.0 to 1.0) that a campaign is an attack of the member's faction on an enemy city (at war), otherwise it\n" + "is an attack of an enemy on a city of the member's faction.", 0.0D, 1.0D).getDouble();
+
+		serviceCallRange = config.get(serverOptions, "service_call_range", serviceCallRange, "Call range\nDefault=" + serviceCallRange + "\n" + "Campaigns are on cities within this many blocks of the called member, and members within this distance are called.", 16, 100000).getInt();
+
+		serviceMusterTicks = config.get(serverOptions, "service_muster_ticks", serviceMusterTicks, "Muster time\nDefault=" + serviceMusterTicks + "\n" + "Ticks (20 per second) a campaign waits for a called player. Then an attack of the player's faction is called off\n" + "(unsupported) and an attack on a city of the player's faction plunders it (it loses manpower, it never falls).", 200, 720000).getInt();
+
+		serviceMusterRange = config.get(serverOptions, "service_muster_range", serviceMusterRange, "Muster range\nDefault=" + serviceMusterRange + "\n" + "A campaign begins when a called player comes within this many blocks of the city leader.", 16, 512).getInt();
+
+		serviceReminderTicks = config.get(serverOptions, "service_reminder_ticks", serviceReminderTicks, "Call reminder\nDefault=" + serviceReminderTicks + "\n" + "Ticks (20 per second) between two reminders (distance, direction, time left) to a called player during the muster.\n" + "0 = no reminders.", 0, 720000).getInt();
+
+		servicePresenceRange = config.get(serverOptions, "service_presence_range", servicePresenceRange, "Presence range\nDefault=" + servicePresenceRange + "\n" + "A called player within this many blocks of the city leader takes part in the attack.", 16, 512).getInt();
+
+		serviceMinPresenceTicks = config.get(serverOptions, "service_min_presence_ticks", serviceMinPresenceTicks, "Service time\nDefault=" + serviceMinPresenceTicks + "\n" + "Ticks (20 per second) a called player must take part in the attack to have served (or be there when it ends).", 0, 720000).getInt();
+
+		serviceRewardStanding = config.get(serverOptions, "service_reward_standing", serviceRewardStanding, "Service reward\nDefault=" + serviceRewardStanding + "\n" + "Standing a player gains with its faction for answering a call (and one strike is forgiven).", 0, 10000).getInt();
+
+		serviceMissPenalty = config.get(serverOptions, "service_miss_penalty", serviceMissPenalty, "Missed call penalty\nDefault=" + serviceMissPenalty + "\n" + "Standing a player loses with its faction for a missed call, times its strikes (25, 50, 75...).", 0, 10000).getInt();
+
+		serviceMaxStrikes = config.get(serverOptions, "service_max_strikes", serviceMaxStrikes, "Strikes before expulsion\nDefault=" + serviceMaxStrikes + "\n" + "A player who misses this many calls (strikes) is expelled from its faction as a deserter (expel_standing_penalty).\n" + "0 = never expelled.", 0, 100).getInt();
+
+		serviceStrikeDecayDays = config.get(serverOptions, "service_strike_decay_days", serviceStrikeDecayDays, "Strike forgiveness\nDefault=" + serviceStrikeDecayDays + "\n" + "Minecraft days without missed calls after which one strike is forgiven. 0 = never.", 0, 10000).getInt();
+
+		serviceExcuseOffline = config.get(serverOptions, "service_excuse_offline", serviceExcuseOffline, "Offline players excused\nDefault=" + serviceExcuseOffline + "\n" + "If true, a called player who goes offline is excused (no strike). Players offline when a campaign starts are\n" + "never called.").getBoolean();
+
+		servicePlunderRatio = config.get(serverOptions, "service_plunder_ratio", servicePlunderRatio, "Plunder\nDefault=" + servicePlunderRatio + "\n" + "Manpower a city loses when nobody comes to defend it = attackers of the campaign x this value.", 0.0D, 100.0D).getDouble();
+
+		exhaustionCityPlundered = config.get(serverOptions, "exhaustion_city_plundered", exhaustionCityPlundered, "Exhaustion: city plundered\nDefault=" + exhaustionCityPlundered + "\n" + "War exhaustion a faction gets when one of its cities is plundered because nobody came to defend it.", 0, 10000).getInt();
 
 		diplomacyEnabled = config.get(serverOptions, "diplomacy_enabled", diplomacyEnabled, "Dynamic diplomacy\nDefault=" + diplomacyEnabled + "\n" + "If true, factions hostile in factions.json start at war (once per world), and once per Minecraft day wars can end\n" + "in a truce when one side is exhausted by its losses, rivals can go to war again after the truce, and factions\n" + "with a common enemy can ally (allies may join each other's wars). If false, relations change only with /awrelation.").getBoolean();
 

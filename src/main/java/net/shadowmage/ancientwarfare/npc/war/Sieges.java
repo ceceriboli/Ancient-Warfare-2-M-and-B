@@ -60,14 +60,18 @@ import java.util.Set;
 public class Sieges {
 	private Sieges() {}
 
+	/**
+	 * UNSUPPORTED: a campaign of the faction of a player called off because no called player came. PLUNDERED: a campaign on a city of the
+	 * faction of a player, nobody came to defend it: the city loses manpower (it never falls away from players).
+	 */
 	public enum Outcome {
-		DEFENDED, TAKEN, LIFTED, PEACE, STOPPED;
+		DEFENDED, TAKEN, LIFTED, PEACE, STOPPED, UNSUPPORTED, PLUNDERED;
 
 		/**
 		 * @return true if the attackers leave in order and take their siege engines with them
 		 */
 		private boolean removesEngines() {
-			return this == LIFTED || this == PEACE || this == STOPPED;
+			return this == LIFTED || this == PEACE || this == STOPPED || this == UNSUPPORTED || this == PLUNDERED;
 		}
 	}
 
@@ -125,6 +129,14 @@ public class Sieges {
 	 * Check {@link #canStart} first.
 	 */
 	public static Siege start(WorldServer world, SettlementData data, Settlement settlement, String attackerFaction, Siege.Kind kind) {
+		return start(world, data, settlement, attackerFaction, kind, Siege.Origin.AMBIENT);
+	}
+
+	/**
+	 * Like {@link #start(WorldServer, SettlementData, Settlement, String, Siege.Kind)}: a campaign (origin OFFENSIVE or DEFENSIVE) starts
+	 * mustering, the players of the two factions are called (see {@link Service}).
+	 */
+	public static Siege start(WorldServer world, SettlementData data, Settlement settlement, String attackerFaction, Siege.Kind kind, Siege.Origin origin) {
 		boolean full = kind == Siege.Kind.SIEGE;
 		int strength = countGarrison(world, settlement) + settlement.getManpower();
 		int total = (int) Math.round(strength * (full ? AWDiplomacyStatics.fullSiegeStrengthRatio : AWDiplomacyStatics.raidStrengthRatio));
@@ -133,15 +145,39 @@ public class Sieges {
 		total = Math.min(max, Math.max(min, total));
 		int waves = Math.max(1, Math.min(full ? AWDiplomacyStatics.fullSiegeWaves : AWDiplomacyStatics.raidWaves, total));
 		int perWave = (int) Math.ceil((double) total / waves);
-		Siege siege = Siege.create(data.getNextSiegeId(), kind, settlement, attackerFaction, waves, perWave);
+		Siege siege = Siege.create(data.getNextSiegeId(), kind, origin, settlement, attackerFaction, waves, perWave);
 		data.addSiege(siege);
 		settlement.setActiveSiegeId(siege.getId());
+		if (origin == Siege.Origin.AMBIENT) {
+			announce(world, siege, "start", settlement);
+			playHorn(world, settlement.getCenter());
+		} else {
+			// announced when a called player arrives
+			siege.startMuster(world.getTotalWorldTime() + AWDiplomacyStatics.serviceMusterTicks);
+		}
 		data.markDirty();
-		announce(world, siege, "start", settlement);
-		playHorn(world, settlement.getCenter());
-		AncientWarfareNPC.LOG.info("{} {} of city {} ({}) by {} started: strength {}, {} waves of {} attackers", kind.getName(), siege.getId(),
-				settlement.getId(), settlement.getFaction(), attackerFaction, strength, waves, perWave);
+		AncientWarfareNPC.LOG.info("{} {} of city {} ({}) by {} started ({}): strength {}, {} waves of {} attackers", kind.getName(), siege.getId(),
+				settlement.getId(), settlement.getFaction(), attackerFaction, origin.getName(), strength, waves, perWave);
+		Service.onSiegeStarted(world, siege, settlement);
 		return siege;
+	}
+
+	/**
+	 * @return a full siege if the city had none for full_siege_cooldown_days, the attacker has a known city and the full_siege_share roll
+	 * says so, otherwise a raid
+	 */
+	static Siege.Kind chooseKind(World world, Settlement settlement, String attacker, long now) {
+		// full sieges come only from factions with a known city (in the settlement list), the others only raid
+		boolean fullSiegeAllowed = now - settlement.getLastFullSiegeEnd() >= (long) AWDiplomacyStatics.fullSiegeCooldownDays * DAY_TICKS
+				&& Diplomacy.getFactionsWithCities(world).contains(attacker);
+		return fullSiegeAllowed && world.rand.nextDouble() < AWDiplomacyStatics.fullSiegeShare ? Siege.Kind.SIEGE : Siege.Kind.RAID;
+	}
+
+	/**
+	 * @return true if the city has had no attack for siege_cooldown_days
+	 */
+	static boolean isCooledDown(Settlement settlement, long now) {
+		return now - settlement.getLastSiegeEnd() >= (long) AWDiplomacyStatics.siegeCooldownDays * DAY_TICKS;
 	}
 
 	public static void stop(World world, SettlementData data, Siege siege) {
@@ -160,8 +196,13 @@ public class Sieges {
 			}
 		}
 		AreaBossBars.retainOnly(world, BAR_PREFIX, barKeys);
+		Service.tick(world, data, now);
 		if (AWDiplomacyStatics.siegesEnabled && (now / 20) % Math.max(1, AWDiplomacyStatics.siegeCheckInterval / 20) == 0) {
 			tryStartSiege(world, data, now);
+		}
+		if (AWDiplomacyStatics.siegesEnabled && AWDiplomacyStatics.serviceEnabled
+				&& (now / 20) % Math.max(1, AWDiplomacyStatics.serviceCheckInterval / 20) == 0) {
+			Service.tryStartCampaigns(world, data, now);
 		}
 	}
 
@@ -279,6 +320,21 @@ public class Sieges {
 			end(world, data, siege, Outcome.PEACE);
 			return;
 		}
+		if (siege.getState() == Siege.State.MUSTER) {
+			// a campaign waits for a called player, also while the city is far away and not loaded
+			if (Service.hasCalledPlayerNear(world, siege, settlement)) {
+				siege.setState(Siege.State.WARMUP);
+				data.markDirty();
+				announce(world, siege, "start", settlement);
+				playHorn(world, settlement.getCenter());
+				AncientWarfareNPC.LOG.info("{} {}: a called player arrived, the attack begins", siege.getKind().getName(), siege.getId());
+			} else {
+				if (now >= siege.getMusterUntil()) {
+					Service.resolveUnattended(world, data, siege, settlement);
+				}
+				return;
+			}
+		}
 		if (!world.isBlockLoaded(settlement.getCenter())) {
 			// nobody around: the siege waits
 			siege.suspended = true;
@@ -376,7 +432,7 @@ public class Sieges {
 		AreaBossBars.show(world, key, area, name, BossInfo.Color.RED, BossInfo.Overlay.NOTCHED_10, percent);
 	}
 
-	private static void end(World world, SettlementData data, Siege siege, Outcome outcome) {
+	static void end(World world, SettlementData data, Siege siege, Outcome outcome) {
 		data.removeSiege(siege);
 		Settlement settlement = data.get(siege.getSettlementId());
 		long now = world.getTotalWorldTime();
@@ -406,9 +462,14 @@ public class Sieges {
 			}
 		}
 		announce(world, siege, outcome.name().toLowerCase(Locale.ROOT), settlement);
-		if (settlement != null && (outcome == Outcome.DEFENDED || outcome == Outcome.LIFTED)) {
+		if (settlement != null && (outcome == Outcome.DEFENDED || outcome == Outcome.LIFTED || outcome == Outcome.UNSUPPORTED)) {
 			Diplomacy.onAttackFailed(world, siege.getAttackerFaction(), settlement.getFaction());
 		}
+		if (settlement != null && outcome == Outcome.PLUNDERED) {
+			Diplomacy.onCityPlundered(world, settlement.getFaction(), siege.getAttackerFaction());
+		}
+		Armies.releaseAll(world, siege.getId());
+		Service.onSiegeEnded(world, siege, settlement, outcome);
 		AncientWarfareNPC.LOG.info("{} {} of city {} by {} ended: {}", siege.getKind().getName(), siege.getId(), siege.getSettlementId(),
 				siege.getAttackerFaction(), outcome);
 	}
@@ -421,8 +482,7 @@ public class Sieges {
 		List<Settlement> candidates = new ArrayList<>();
 		for (Settlement settlement : data.getAll()) {
 			if (settlement.getDimension() == dimension && settlement.isActive() && settlement.getType() == Settlement.Type.FACTION_CITY
-					&& !isBesieged(settlement) && now - settlement.getLastSiegeEnd() >= (long) AWDiplomacyStatics.siegeCooldownDays * DAY_TICKS
-					&& isPlayerNear(world, settlement.getCenter())) {
+					&& !isBesieged(settlement) && isCooledDown(settlement, now) && isPlayerNear(world, settlement.getCenter())) {
 				candidates.add(settlement);
 			}
 		}
@@ -434,11 +494,7 @@ public class Sieges {
 				continue;
 			}
 			String attacker = enemies.get(world.rand.nextInt(enemies.size()));
-			// full sieges come only from factions with a known city (in the settlement list), the others only raid
-			boolean fullSiegeAllowed = now - settlement.getLastFullSiegeEnd() >= (long) AWDiplomacyStatics.fullSiegeCooldownDays * DAY_TICKS
-					&& Diplomacy.getFactionsWithCities(world).contains(attacker);
-			Siege.Kind kind = fullSiegeAllowed && world.rand.nextDouble() < AWDiplomacyStatics.fullSiegeShare ? Siege.Kind.SIEGE : Siege.Kind.RAID;
-			start(world, data, settlement, attacker, kind);
+			start(world, data, settlement, attacker, chooseKind(world, settlement, attacker, now));
 			return;
 		}
 	}
@@ -487,7 +543,7 @@ public class Sieges {
 		ai.setBreachAllowed(breach);
 	}
 
-	private static boolean isBreachAllowed(Siege siege) {
+	static boolean isBreachAllowed(Siege siege) {
 		return "all".equals(AWDiplomacyStatics.attackerBreach) || "siege".equals(AWDiplomacyStatics.attackerBreach) && siege.getKind() == Siege.Kind.SIEGE;
 	}
 

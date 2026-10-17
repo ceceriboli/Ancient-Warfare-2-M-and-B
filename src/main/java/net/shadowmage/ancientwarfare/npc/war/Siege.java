@@ -1,26 +1,121 @@
 package net.shadowmage.ancientwarfare.npc.war;
 
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraftforge.common.util.Constants;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 
 import javax.annotation.Nullable;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * A siege of a faction city: after a warm up, waves of attackers spawn near the city and march on its leader.
  * The next wave comes when the previous one is wiped out. The attackers are not saved here: each of them carries the siege id
  * in its persistent entity data and joins the siege again when it is loaded.
+ * <p>
+ * A campaign (an attack of the faction of a player, or on a city of its faction, see {@link Service}) starts mustering: nothing
+ * happens until a called player comes near the city, or the muster time is over.
  */
 public class Siege {
 	public enum State {
-		WARMUP, WAVE;
+		MUSTER, WARMUP, WAVE;
 
 		public String getName() {
 			return name().toLowerCase(Locale.ROOT);
+		}
+
+		public static State fromName(String name) {
+			for (State state : values()) {
+				if (state.getName().equals(name)) {
+					return state;
+				}
+			}
+			return WARMUP;
+		}
+	}
+
+	/**
+	 * AMBIENT: an attack started near a player, as any automatic attack. OFFENSIVE: an attack of the faction of a player, who is called
+	 * to join it. DEFENSIVE: an attack on a city of the faction of a player, who is called to defend it.
+	 */
+	public enum Origin {
+		AMBIENT, OFFENSIVE, DEFENSIVE;
+
+		public String getName() {
+			return name().toLowerCase(Locale.ROOT);
+		}
+
+		public static Origin fromName(String name) {
+			for (Origin origin : values()) {
+				if (origin.getName().equals(name)) {
+					return origin;
+				}
+			}
+			return AMBIENT;
+		}
+	}
+
+	/**
+	 * A player called to fight in this attack, on the side of the faction it was a member of when called.
+	 */
+	public static class Call {
+		private final String faction;
+		private final boolean attacking;
+		private int presenceTicks;
+		private boolean excused;
+		// not saved
+		long lastReminder;
+
+		Call(String faction, boolean attacking) {
+			this.faction = faction;
+			this.attacking = attacking;
+		}
+
+		public String getFaction() {
+			return faction;
+		}
+
+		public boolean isAttacking() {
+			return attacking;
+		}
+
+		public int getPresenceTicks() {
+			return presenceTicks;
+		}
+
+		void addPresenceTicks(int ticks) {
+			presenceTicks += ticks;
+		}
+
+		public boolean isExcused() {
+			return excused;
+		}
+
+		void setExcused() {
+			excused = true;
+		}
+
+		private NBTTagCompound writeToNBT(NBTTagCompound tag) {
+			tag.setString("faction", faction);
+			tag.setBoolean("attacking", attacking);
+			tag.setInteger("presence", presenceTicks);
+			tag.setBoolean("excused", excused);
+			return tag;
+		}
+
+		private static Call readFromNBT(NBTTagCompound tag) {
+			Call call = new Call(tag.getString("faction"), tag.getBoolean("attacking"));
+			call.presenceTicks = tag.getInteger("presence");
+			call.excused = tag.getBoolean("excused");
+			return call;
 		}
 	}
 
@@ -58,6 +153,9 @@ public class Siege {
 	private int totalTicks;
 	private float waveMaxHealth;
 	private int idleTicks;
+	private Origin origin = Origin.AMBIENT;
+	private long musterUntil;
+	private final Map<UUID, Call> calls = new LinkedHashMap<>();
 
 	// not saved
 	private final List<WeakReference<NpcFaction>> attackers = new ArrayList<>();
@@ -68,15 +166,45 @@ public class Siege {
 		this.id = id;
 	}
 
-	public static Siege create(int id, Kind kind, Settlement settlement, String attackerFaction, int totalWaves, int attackersPerWave) {
+	public static Siege create(int id, Kind kind, Origin origin, Settlement settlement, String attackerFaction, int totalWaves, int attackersPerWave) {
 		Siege siege = new Siege(id);
 		siege.kind = kind;
+		siege.origin = origin;
 		siege.settlementId = settlement.getId();
 		siege.dimension = settlement.getDimension();
 		siege.attackerFaction = attackerFaction;
 		siege.totalWaves = totalWaves;
 		siege.attackersPerWave = attackersPerWave;
 		return siege;
+	}
+
+	public Origin getOrigin() {
+		return origin;
+	}
+
+	/**
+	 * @return the total world time when the muster is over (state MUSTER)
+	 */
+	public long getMusterUntil() {
+		return musterUntil;
+	}
+
+	void startMuster(long musterUntil) {
+		this.musterUntil = musterUntil;
+		setState(State.MUSTER);
+	}
+
+	public Map<UUID, Call> getCalls() {
+		return Collections.unmodifiableMap(calls);
+	}
+
+	@Nullable
+	public Call getCall(UUID playerId) {
+		return calls.get(playerId);
+	}
+
+	void addCall(UUID playerId, Call call) {
+		calls.put(playerId, call);
 	}
 
 	public int getId() {
@@ -212,6 +340,15 @@ public class Siege {
 		tag.setInteger("totalTicks", totalTicks);
 		tag.setFloat("waveMaxHealth", waveMaxHealth);
 		tag.setInteger("idleTicks", idleTicks);
+		tag.setString("origin", origin.getName());
+		tag.setLong("musterUntil", musterUntil);
+		NBTTagList callList = new NBTTagList();
+		for (Map.Entry<UUID, Call> entry : calls.entrySet()) {
+			NBTTagCompound callTag = entry.getValue().writeToNBT(new NBTTagCompound());
+			callTag.setUniqueId("player", entry.getKey());
+			callList.appendTag(callTag);
+		}
+		tag.setTag("calls", callList);
 		return tag;
 	}
 
@@ -222,7 +359,7 @@ public class Siege {
 		siege.settlementId = tag.getInteger("settlement");
 		siege.dimension = tag.getInteger("dimension");
 		siege.attackerFaction = tag.getString("attacker");
-		siege.state = State.WAVE.getName().equals(tag.getString("state")) ? State.WAVE : State.WARMUP;
+		siege.state = State.fromName(tag.getString("state"));
 		siege.wavesSpawned = tag.getInteger("wavesSpawned");
 		siege.totalWaves = tag.getInteger("totalWaves");
 		siege.attackersPerWave = tag.getInteger("attackersPerWave");
@@ -230,6 +367,16 @@ public class Siege {
 		siege.totalTicks = tag.getInteger("totalTicks");
 		siege.waveMaxHealth = tag.getFloat("waveMaxHealth");
 		siege.idleTicks = tag.getInteger("idleTicks");
+		siege.origin = Origin.fromName(tag.getString("origin"));
+		siege.musterUntil = tag.getLong("musterUntil");
+		NBTTagList callList = tag.getTagList("calls", Constants.NBT.TAG_COMPOUND);
+		for (int i = 0; i < callList.tagCount(); i++) {
+			NBTTagCompound callTag = callList.getCompoundTagAt(i);
+			UUID playerId = callTag.getUniqueId("player");
+			if (playerId != null) {
+				siege.calls.put(playerId, Call.readFromNBT(callTag));
+			}
+		}
 		return siege;
 	}
 }

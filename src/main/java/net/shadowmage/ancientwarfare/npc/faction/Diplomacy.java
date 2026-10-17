@@ -110,6 +110,15 @@ public class Diplomacy {
 		}
 	}
 
+	/**
+	 * A city was plundered (an attack nobody came to defend): its faction gets war exhaustion.
+	 */
+	public static void onCityPlundered(World world, String defender, String attacker) {
+		if (AWDiplomacyStatics.diplomacyEnabled) {
+			addExhaustion(world, defender, attacker, AWDiplomacyStatics.exhaustionCityPlundered);
+		}
+	}
+
 	@Nullable
 	private static String getFactionOf(World world, @Nullable Entity entity) {
 		if (entity instanceof NpcFaction) {
