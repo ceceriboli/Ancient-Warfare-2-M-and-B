@@ -58,6 +58,14 @@ public class FactionData extends WorldSavedData {
 		}
 	}
 
+	/**
+	 * Server side: sets the standing and sends it to the player's client (the standings screen reads the client copy).
+	 */
+	public void setStandingFor(World world, String playerName, String faction, int setting) {
+		setStandingFor(playerName, faction, setting);
+		sendFactionUpdate(world, playerName, faction);
+	}
+
 	@Override
 	public void readFromNBT(NBTTagCompound tag) {
 		NBTTagList entryList = tag.getTagList("entryList", Constants.NBT.TAG_COMPOUND);

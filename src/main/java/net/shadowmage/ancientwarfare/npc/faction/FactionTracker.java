@@ -41,7 +41,7 @@ public class FactionTracker {
 			throw new IllegalArgumentException("Cannot set standing on client world!");
 		}
 		FactionData data = AWGameData.INSTANCE.getData(world, FactionData.class);
-		data.setStandingFor(playerName, factionName, standing);
+		data.setStandingFor(world, playerName, factionName, standing);
 	}
 
 	public boolean isHostileToPlayer(World world, UUID playerUUID, String playerName, String factionName) {

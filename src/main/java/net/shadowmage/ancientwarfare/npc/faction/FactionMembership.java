@@ -23,6 +23,7 @@ import net.shadowmage.ancientwarfare.npc.war.Settlements;
 import net.shadowmage.ancientwarfare.npc.gamedata.FactionMembershipData;
 import net.shadowmage.ancientwarfare.npc.gamedata.FactionRelationData;
 import net.shadowmage.ancientwarfare.npc.network.PacketFactionDiplomacy;
+import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 
 import javax.annotation.Nullable;
 import java.util.Comparator;
@@ -76,10 +77,57 @@ public class FactionMembership {
 		if (FactionTracker.INSTANCE.getStandingFor(world, player.getName(), faction) < AWDiplomacyStatics.memberStanding) {
 			FactionTracker.INSTANCE.setStandingFor(world, player.getName(), faction, AWDiplomacyStatics.memberStanding);
 		}
+		inheritStandings(world, player.getName(), faction);
 		if (announce) {
 			announce(server, player.getUniqueID(), "command.aw.membership.announce.join", player.getName(), faction);
 		}
 		sendDiplomacy(player);
+	}
+
+	/**
+	 * The member takes the relations of its faction as standings with every other faction.
+	 */
+	private static void inheritStandings(World world, String playerName, String faction) {
+		for (String other : FactionRegistry.getFactionNames()) {
+			if (!other.equals(faction)) {
+				inheritStanding(world, playerName, faction, other);
+			}
+		}
+	}
+
+	/**
+	 * At most member_enemy_standing with an enemy of the faction, at least member_ally_standing with an ally, at least 0 with the others
+	 * (a faction at peace with the member's faction is not hostile to it). Factions with a fixed standing are left as they are.
+	 */
+	private static void inheritStanding(World world, String playerName, String faction, String other) {
+		if (!AWDiplomacyStatics.membershipEnabled || !AWDiplomacyStatics.memberInheritStandings) {
+			return;
+		}
+		int standing = FactionTracker.INSTANCE.getStandingFor(world, playerName, other);
+		int inherited;
+		if (FactionRelations.isHostile(world, faction, other) || FactionRelations.isHostile(world, other, faction)) {
+			inherited = Math.min(standing, AWDiplomacyStatics.memberEnemyStanding);
+		} else if (FactionRelations.getSetRelation(world, faction, other) == FactionRelation.ALLIANCE) {
+			inherited = Math.max(standing, AWDiplomacyStatics.memberAllyStanding);
+		} else {
+			inherited = Math.max(standing, 0);
+		}
+		if (inherited != standing) {
+			FactionTracker.INSTANCE.setStandingFor(world, playerName, other, inherited);
+		}
+	}
+
+	/**
+	 * Called when the relation between two factions changed: members of either faction take the new relation as standing.
+	 */
+	static void onRelationChanged(World world, String faction, String otherFaction) {
+		for (FactionMembershipData.Member member : getData(world).getMembers()) {
+			if (member.faction.equals(faction)) {
+				inheritStanding(world, member.playerName, faction, otherFaction);
+			} else if (member.faction.equals(otherFaction)) {
+				inheritStanding(world, member.playerName, otherFaction, faction);
+			}
+		}
 	}
 
 	/**

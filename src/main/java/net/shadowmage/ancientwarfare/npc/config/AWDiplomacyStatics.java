@@ -10,6 +10,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean membershipEnabled = true;
 	public static int joinMinStanding = 0;
 	public static int memberStanding = 100;
+	public static boolean memberInheritStandings = true;
+	public static int memberEnemyStanding = -100;
+	public static int memberAllyStanding = 50;
 	public static boolean expelOnKillingOwnFaction = true;
 	public static int expelStandingPenalty = 50;
 	public static int leaderJoinRange = 8;
@@ -118,6 +121,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		joinMinStanding = config.get(serverOptions, "join_min_standing", joinMinStanding, "Minimum standing to join a faction\nDefault=" + joinMinStanding + "\n" + "Standing the player needs with a faction to pledge allegiance to it.", -10000, 10000).getInt();
 
 		memberStanding = config.get(serverOptions, "member_standing", memberStanding, "Member standing\nDefault=" + memberStanding + "\n" + "When a player joins a faction, its standing with it is raised to at least this value. When it renounces the faction,\n" + "a positive standing goes back to 0 (not hostile); a negative one stays as it is.", 0, 10000).getInt();
+		memberInheritStandings = config.get(serverOptions, "member_inherit_standings", memberInheritStandings, "Members inherit standings\nDefault=" + memberInheritStandings + "\n" + "If true, a member takes the relations of its faction as standings, on joining and whenever they change: at most\n" + "member_enemy_standing with its enemies, at least member_ally_standing with its allies, at least 0 with the others.\n" + "Leaving the faction keeps the standings.").getBoolean();
+		memberEnemyStanding = config.get(serverOptions, "member_enemy_standing", memberEnemyStanding, "Member standing with enemies\nDefault=" + memberEnemyStanding + "\n" + "Highest standing a member keeps with the enemies of its faction.", -10000, -1).getInt();
+		memberAllyStanding = config.get(serverOptions, "member_ally_standing", memberAllyStanding, "Member standing with allies\nDefault=" + memberAllyStanding + "\n" + "Lowest standing a member has with the allies of its faction.", 0, 10000).getInt();
 		// replaced by member_standing (renouncing resets the standing to 0 instead of taking a penalty)
 		config.getCategory(serverOptions).remove("leave_standing_penalty");
 

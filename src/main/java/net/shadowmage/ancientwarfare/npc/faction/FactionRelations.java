@@ -70,6 +70,7 @@ public class FactionRelations {
 		}
 
 		Diplomacy.onRelationChanged(overworld, faction, otherFaction, relation);
+		FactionMembership.onRelationChanged(overworld, faction, otherFaction);
 
 		if (AWDiplomacyStatics.announceRelationChanges) {
 			Object[] args = new Object[2 + extraArgs.length];
