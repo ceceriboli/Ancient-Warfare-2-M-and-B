@@ -50,6 +50,7 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	private static final int MIN_REPATH_TICKS = 20;
 	private static final int STUCK_TICKS = 60;
 	private static final int PUSH_TICKS = 100;
+	private static final int FRUITLESS_FIGHT_TICKS = 300;
 	private static final int PROGRESS_CHECK_TICKS = 40;
 	private static final int NO_PROGRESS_CHECKS = 2;
 	private static final int MIN_BREACH_TICKS = 20;
@@ -60,6 +61,10 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	private int repathDelay;
 	private long stuckSince = -1;
 	private long pushUntil;
+	@Nullable
+	private EntityLivingBase fightEnemy;
+	private float fightEnemyHealth;
+	private long fightSince;
 	private boolean breachAllowed;
 	@Nullable
 	private BlockPos breachPos;
@@ -91,7 +96,15 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 		EntityLivingBase enemy = npc.getAttackTarget();
 		if (enemy == null || !enemy.isEntityAlive()) {
 			stuckSince = -1;
+			fightEnemy = null;
 			return getDistanceSqToTarget() > ARRIVED_DIST_SQ;
+		}
+		if (isFruitlessFight(enemy, now)) {
+			// e.g. an archer shooting at a defender behind battlements: the arrows never hit
+			stuckSince = -1;
+			fightEnemy = null;
+			pushUntil = now + PUSH_TICKS;
+			return true;
 		}
 		if (isFighting(enemy)) {
 			stuckSince = -1;
@@ -105,6 +118,19 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * @return true if the npc has been fighting the same enemy for {@link #FRUITLESS_FIGHT_TICKS} without the enemy losing health
+	 */
+	private boolean isFruitlessFight(EntityLivingBase enemy, long now) {
+		if (enemy != fightEnemy || enemy.getHealth() < fightEnemyHealth - 0.5F) {
+			fightEnemy = enemy;
+			fightEnemyHealth = enemy.getHealth();
+			fightSince = now;
+			return false;
+		}
+		return now - fightSince >= FRUITLESS_FIGHT_TICKS;
 	}
 
 	/**

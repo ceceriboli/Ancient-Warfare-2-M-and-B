@@ -24,7 +24,9 @@ import net.minecraft.world.BossInfo;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.shadowmage.ancientwarfare.npc.AncientWarfareNPC;
+import net.shadowmage.ancientwarfare.npc.ai.NpcAI;
 import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionAssault;
+import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionRangedAttack;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionSiegeEngineer;
@@ -601,6 +603,13 @@ public class Sieges {
 		}
 		NpcAIFactionAssault ai = new NpcAIFactionAssault(npc);
 		npc.tasks.addTask(NpcAIFactionAssault.PRIORITY, ai);
+		for (EntityAITasks.EntityAITaskEntry entry : npc.tasks.taskEntries) {
+			if (entry.action instanceof NpcAIFactionRangedAttack) {
+				// the ranged attack of Ancient Warfare has no mutex: running together with the assault it cleared (or replaced) the path
+				// of the archer every tick, so archers stood still. Now the assault interrupts it and it waits while the assault runs
+				entry.action.setMutexBits(NpcAI.MOVE | NpcAI.ATTACK);
+			}
+		}
 		return ai;
 	}
 
