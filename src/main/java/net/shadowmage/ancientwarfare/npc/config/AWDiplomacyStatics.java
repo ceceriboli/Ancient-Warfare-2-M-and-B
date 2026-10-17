@@ -18,6 +18,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean announceRelationChanges = true;
 	public static boolean announceMembershipChanges = true;
 	public static int spawnerMinPlayerRange = 48;
+	public static boolean spawnersTriggerInCreative = false;
 	public static boolean settlementsEnabled = true;
 	public static int settlementDefaultRadius = 48;
 	public static boolean settlementUseStructureBounds = true;
@@ -95,7 +96,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		announceMembershipChanges = config.get(serverOptions, "announce_membership_changes", announceMembershipChanges, "Announce membership changes\nDefault=" + announceMembershipChanges + "\n" + "If true, all players are told in chat when a player joins, leaves or is expelled from a faction.").getBoolean();
 
-		spawnerMinPlayerRange = config.get(serverOptions, "spawner_min_player_range", spawnerMinPlayerRange, "Structure spawner range\nDefault=" + spawnerMinPlayerRange + "\n" + "Ancient Warfare structure spawners create their npcs (leaders included, so also cities) when a player is within\n" + "their own range, set in each structure template (often 16 blocks). This is the minimum range for all spawners,\n" + "measured as a cube around the spawner. 0 = use the range of each template. Players in creative or spectator mode\n" + "still do not trigger spawners. Keep it well below 128: npcs that can despawn vanish when no player is within 128 blocks.", 0, 112).getInt();
+		spawnerMinPlayerRange = config.get(serverOptions, "spawner_min_player_range", spawnerMinPlayerRange, "Structure spawner range\nDefault=" + spawnerMinPlayerRange + "\n" + "Ancient Warfare structure spawners create their npcs (leaders included, so also cities) when a player is within\n" + "their own range, set in each structure template (often 16 blocks). This is the minimum range for all spawners,\n" + "measured as a cube around the spawner. 0 = use the range of each template. Keep it well below 128: npcs that can\n" + "despawn vanish when no player is within 128 blocks.", 0, 112).getInt();
+
+		spawnersTriggerInCreative = config.get(serverOptions, "spawners_trigger_in_creative", spawnersTriggerInCreative, "Structure spawners in creative\nDefault=" + spawnersTriggerInCreative + "\n" + "If true, players in creative mode also make structure spawners create their npcs (and so found cities), useful\n" + "for testing. If false (Ancient Warfare behaviour), only players in survival or adventure mode do. Players in\n" + "spectator mode never do.").getBoolean();
 
 		settlementsEnabled = config.get(serverOptions, "settlements_enabled", settlementsEnabled, "Faction cities and manpower\nDefault=" + settlementsEnabled + "\n" + "If true, every faction leader founds a city with the faction npcs around it. While the leader lives, killed units respawn\n" + "using the city's manpower; when the leader dies the city falls and is abandoned.").getBoolean();
 

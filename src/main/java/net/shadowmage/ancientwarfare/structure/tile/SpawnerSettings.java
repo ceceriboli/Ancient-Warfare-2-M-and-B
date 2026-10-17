@@ -246,7 +246,8 @@ public class SpawnerSettings {
 			}
 
 			for (EntityPlayer player : nearbyPlayers) {
-				if ((debugMode || (!player.isCreative() && !player.isSpectator())) && !isContinuousSpawnerOfFriendlyFaction(player)) {
+				if ((debugMode || ((AWDiplomacyStatics.spawnersTriggerInCreative || !player.isCreative()) && !player.isSpectator()))
+						&& !isContinuousSpawnerOfFriendlyFaction(player)) {
 					return true;
 				}
 			}
