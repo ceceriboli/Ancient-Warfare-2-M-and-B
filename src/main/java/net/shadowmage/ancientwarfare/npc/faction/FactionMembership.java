@@ -120,14 +120,15 @@ public class FactionMembership {
 	}
 
 	/**
-	 * Called after a faction npc spoke to a player: leaders offer to join or leave the faction, other npcs tell where their leader is.
+	 * Called after a faction npc spoke to a player: ruling leaders offer to join or leave the faction, other npcs (captains included)
+	 * tell where their ruling leader is.
 	 */
 	public static void afterDialogue(EntityPlayer player, NpcFaction npc, boolean npcHostile) {
 		if (!AWDiplomacyStatics.membershipEnabled || npcHostile || player.world.isRemote) {
 			return;
 		}
 		String npcFaction = npc.getFaction();
-		if (npc instanceof NpcFactionLeader) {
+		if (npc instanceof NpcFactionLeader && ((NpcFactionLeader) npc).isRuler()) {
 			String playerFaction = getFaction(player.world, player.getUniqueID());
 			if (playerFaction == null) {
 				player.sendMessage(clickable(new TextComponentTranslation("command.aw.membership.click.pledge", factionName(npcFaction)), TextFormatting.GREEN,
@@ -148,7 +149,8 @@ public class FactionMembership {
 
 	public static Optional<NpcFactionLeader> findNearestLeader(World world, Entity center, String faction, int range) {
 		AxisAlignedBB area = center.getEntityBoundingBox().grow(range);
-		return world.getEntitiesWithinAABB(NpcFactionLeader.class, area, leader -> leader != null && leader.isEntityAlive() && faction.equals(leader.getFaction()))
+		return world.getEntitiesWithinAABB(NpcFactionLeader.class, area, leader -> leader != null && leader.isEntityAlive() && leader.isRuler()
+						&& faction.equals(leader.getFaction()))
 				.stream().filter(leader -> leader.getDistance(center) <= range).min(Comparator.comparingDouble(leader -> leader.getDistanceSq(center)));
 	}
 

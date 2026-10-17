@@ -50,7 +50,12 @@ public class Settlements {
 	public static final String TAG_ROLE = "awSettlementRole";
 	public static final String TAG_SIEGE = "awSiege";
 	public static final String TAG_ARMY = "awArmy";
+	/**
+	 * Units left by a fallen city (bandits or units without city): they never found or join a city again
+	 */
+	public static final String TAG_REMNANT = "awRemnant";
 	private static final String ROLE_LEADER = "leader";
+	private static final String ROLE_CAPTAIN = "captain";
 	private static final String ROLE_GARRISON = "garrison";
 
 	private static final int LEADER_REGISTRATION_DELAY = 40;
@@ -82,15 +87,22 @@ public class Settlements {
 	}
 
 	public static void onEntityJoinWorld(Entity entity) {
-		if (!AWDiplomacyStatics.settlementsEnabled || entity.world.isRemote || !(entity instanceof NpcFaction)) {
+		if (entity.world.isRemote || !(entity instanceof NpcFaction)) {
 			return;
 		}
 		NpcFaction npc = (NpcFaction) entity;
+		if (!AWDiplomacyStatics.settlementsEnabled) {
+			// without cities every leader rules
+			if (npc instanceof NpcFactionLeader) {
+				((NpcFactionLeader) npc).setRuler(true);
+			}
+			return;
+		}
 		if (npc.getEntityData().hasKey(TAG_SIEGE)) {
 			Sieges.onAttackerJoinWorld(npc);
 			return;
 		}
-		if (isSiegeOrArmyUnit(npc)) {
+		if (isSiegeOrArmyUnit(npc) || npc.getEntityData().getBoolean(TAG_REMNANT)) {
 			return;
 		}
 		long now = npc.world.getTotalWorldTime();
@@ -101,8 +113,11 @@ public class Settlements {
 				data.removeTag(TAG_SETTLEMENT);
 				data.removeTag(TAG_ROLE);
 			} else if (settlement.isActive()) {
-				// units tagged before they were made persistent
+				// units tagged before they were made persistent, and the ruler flag that is not saved
 				npc.enablePersistence();
+				if (npc instanceof NpcFactionLeader) {
+					((NpcFactionLeader) npc).setRuler(ROLE_LEADER.equals(data.getString(TAG_ROLE)) && npc.getUniqueID().equals(settlement.getLeaderId()));
+				}
 			} else {
 				// loaded again after its city fell
 				leaveFallenCity(npc, now + 20 + npc.world.rand.nextInt(100));
@@ -139,7 +154,7 @@ public class Settlements {
 					killer == null ? "no entity" : killer.getName(), killer instanceof NpcFaction ? ", faction " + ((NpcFaction) killer).getFaction()
 							+ (isSiegeOrArmyUnit(killer) ? ", attacker" : "") : "");
 			collapse(npc.world, data, settlement);
-		} else if (ROLE_GARRISON.equals(role) && settlement.getManpower() > 0) {
+		} else if ((ROLE_GARRISON.equals(role) || ROLE_CAPTAIN.equals(role)) && settlement.getManpower() > 0) {
 			NBTTagCompound entityTag = snapshotForRespawn(npc);
 			if (entityTag != null) {
 				settlement.setManpower(settlement.getManpower() - 1);
@@ -207,14 +222,19 @@ public class Settlements {
 		BlockPos pos = leader.getPosition();
 		Settlement existing = data.getActiveAt(dimension, pos, Settlement.Type.FACTION_CITY);
 		if (existing != null) {
-			// already inside an active city: one leader per city. A leader of the same faction takes over a city whose leader is gone
-			// (e.g. replaced by an Ancient Warfare spawner after a despawn)
-			if (existing.getFaction().equals(leader.getFaction()) && !isLeaderPresent(world, existing)) {
+			// already inside an active city: one ruling leader per city
+			if (!existing.getFaction().equals(leader.getFaction())) {
+				// a leader of another faction inside the city: it rules nothing, but is still the leader of its faction here
+				leader.setRuler(true);
+			} else if (!isLeaderPresent(world, existing) && world.isBlockLoaded(existing.getLastLeaderPos())) {
+				// takes over a city whose leader is gone (e.g. replaced by an Ancient Warfare spawner after a despawn)
 				AncientWarfareNPC.LOG.info("New leader {} takes over city {} ({}) at {}", leader.getUniqueID(), existing.getId(), existing.getName(), pos);
 				existing.setLeader(leader.getUniqueID(), pos);
 				existing.missingLeaderChecks = 0;
 				data.markDirty();
 				tag(leader, existing, ROLE_LEADER);
+			} else {
+				tag(leader, existing, ROLE_CAPTAIN);
 			}
 			return;
 		}
@@ -254,8 +274,8 @@ public class Settlements {
 		settlement.setLastFullSiegeEnd(world.getTotalWorldTime());
 		List<NpcFaction> garrison = new ArrayList<>();
 		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, settlement.getAABB())) {
-			if (npc != leader && !(npc instanceof NpcFactionLeader) && !npc.isPassive() && leader.getFaction().equals(npc.getFaction())
-					&& !isSiegeOrArmyUnit(npc) && !isInActiveSettlement(data, npc)) {
+			if (npc != leader && !npc.isPassive() && leader.getFaction().equals(npc.getFaction()) && !isSiegeOrArmyUnit(npc)
+					&& !npc.getEntityData().getBoolean(TAG_REMNANT) && !isInActiveSettlement(data, npc)) {
 				garrison.add(npc);
 			}
 		}
@@ -264,9 +284,15 @@ public class Settlements {
 		settlement.setMaxManpower(manpower);
 		data.add(settlement);
 		tag(leader, settlement, ROLE_LEADER);
-		garrison.forEach(npc -> tag(npc, settlement, ROLE_GARRISON));
-		AncientWarfareNPC.LOG.info("Founded city {} ({}) of faction {} at {} with {} garrison units and {} manpower", settlement.getId(), name,
-				settlement.getFaction(), pos, garrison.size(), manpower);
+		int captains = 0;
+		for (NpcFaction npc : garrison) {
+			// the other leaders of the city are its captains
+			boolean captain = npc instanceof NpcFactionLeader;
+			tag(npc, settlement, captain ? ROLE_CAPTAIN : ROLE_GARRISON);
+			captains += captain ? 1 : 0;
+		}
+		AncientWarfareNPC.LOG.info("Founded city {} ({}) of faction {} at {} with {} garrison units ({} captains) and {} manpower", settlement.getId(), name,
+				settlement.getFaction(), pos, garrison.size(), captains, manpower);
 	}
 
 	private static boolean isLeaderPresent(WorldServer world, Settlement settlement) {
@@ -291,6 +317,9 @@ public class Settlements {
 		// npcs created by Ancient Warfare spawners can despawn when no player is within 32 blocks, and the spawner then comes back
 		// and later spawns a new npc: a city keeps its units, losses go through manpower
 		npc.enablePersistence();
+		if (npc instanceof NpcFactionLeader) {
+			((NpcFactionLeader) npc).setRuler(ROLE_LEADER.equals(role));
+		}
 	}
 
 	@Nullable
@@ -443,6 +472,10 @@ public class Settlements {
 	private static void untag(NpcFaction npc) {
 		npc.getEntityData().removeTag(TAG_SETTLEMENT);
 		npc.getEntityData().removeTag(TAG_ROLE);
+		npc.getEntityData().setBoolean(TAG_REMNANT, true);
+		if (npc instanceof NpcFactionLeader) {
+			((NpcFactionLeader) npc).setRuler(false);
+		}
 	}
 
 	private static void processTurningBandits(WorldServer world, long now) {
@@ -484,6 +517,7 @@ public class Settlements {
 		NBTTagCompound forgeData = tag.getCompoundTag("ForgeData");
 		forgeData.removeTag(TAG_SETTLEMENT);
 		forgeData.removeTag(TAG_ROLE);
+		forgeData.setBoolean(TAG_REMNANT, true);
 		tag.setTag("ForgeData", forgeData);
 		Entity bandit = EntityList.createEntityFromNBT(tag, world);
 		if (bandit == null) {

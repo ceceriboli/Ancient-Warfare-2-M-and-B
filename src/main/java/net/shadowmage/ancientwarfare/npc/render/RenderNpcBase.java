@@ -109,7 +109,7 @@ public class RenderNpcBase<T extends NpcBase> extends RenderBiped<T> {
 	}
 
 	private void renderLeaderLabel(NpcBase npc, EntityPlayer player, double x, double y, double z) {
-		if (!(npc instanceof NpcFactionLeader) || !AWDiplomacyStatics.renderLeaderLabel
+		if (!(npc instanceof NpcFactionLeader) || !((NpcFactionLeader) npc).isRuler() || !AWDiplomacyStatics.renderLeaderLabel
 				|| npc.getDistanceSq(player) > AWDiplomacyStatics.leaderLabelRange * AWDiplomacyStatics.leaderLabelRange) {
 			return;
 		}

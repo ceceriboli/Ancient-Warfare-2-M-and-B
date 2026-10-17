@@ -5,6 +5,9 @@ import net.minecraft.entity.ai.EntityAIRestrictOpenDoor;
 import net.minecraft.entity.ai.EntityAISwimming;
 import net.minecraft.entity.ai.EntityAIWatchClosest2;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.network.datasync.DataParameter;
+import net.minecraft.network.datasync.DataSerializers;
+import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.world.World;
 import net.shadowmage.ancientwarfare.npc.ai.NpcAIAttackMeleeLongRange;
 import net.shadowmage.ancientwarfare.npc.ai.NpcAIAttackNearest;
@@ -17,6 +20,13 @@ import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionCommander;
 import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionHurt;
 
 public class NpcFactionLeader extends NpcFaction {
+	/**
+	 * The leader that rules its city (or any leader when cities are disabled): shows the leader label, gives its title in the
+	 * dialogue and accepts pledges of allegiance. Other leaders of the same city are its captains. Set by the server (Settlements),
+	 * not saved: it is set again from the city role when the npc is loaded.
+	 */
+	private static final DataParameter<Boolean> RULER = EntityDataManager.createKey(NpcFactionLeader.class, DataSerializers.BOOLEAN);
+
 	private NpcAIAttackMeleeLongRange meleeAI = new NpcAIAttackMeleeLongRange(this);
 
 	public NpcFactionLeader(World world) {
@@ -44,6 +54,20 @@ public class NpcFactionLeader extends NpcFaction {
 
 		targetTasks.addTask(1, new NpcAIFactionHurt(this, this::isHostileTowards));
 		targetTasks.addTask(2, new NpcAIAttackNearest(this, this::isHostileTowards));
+	}
+
+	@Override
+	protected void entityInit() {
+		super.entityInit();
+		dataManager.register(RULER, false);
+	}
+
+	public boolean isRuler() {
+		return dataManager.get(RULER);
+	}
+
+	public void setRuler(boolean ruler) {
+		dataManager.set(RULER, ruler);
 	}
 
 	@Override

@@ -57,8 +57,8 @@ public class NPCDialogue {
         String npcName = npc.getName();
         String proffession = npc.getNpcType();
         String message = getRandomDialogue(factionName, isHostile, seed);
-        if (npc instanceof NpcFactionLeader) {
-            // leaders introduce themselves with their title, so that players know who to pledge allegiance to
+        if (npc instanceof NpcFactionLeader && ((NpcFactionLeader) npc).isRuler()) {
+            // ruling leaders introduce themselves with their title, so that players know who to pledge allegiance to
             ITextComponent line = new TextComponentString("[");
             line.getStyle().setColor(TextFormatting.GOLD);
             line.appendSibling(new TextComponentTranslation("gui.ancientwarfarenpc.leader_title", FactionMembership.factionName(factionName)));
