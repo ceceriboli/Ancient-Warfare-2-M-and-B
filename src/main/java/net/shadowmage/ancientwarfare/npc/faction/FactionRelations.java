@@ -5,7 +5,9 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.ai.EntityAITarget;
 import net.minecraft.entity.ai.EntityAITasks;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TextComponentTranslation;
+import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.shadowmage.ancientwarfare.core.gamedata.AWGameData;
@@ -46,6 +48,15 @@ public class FactionRelations {
 	 * Clears the targets of loaded npcs that are no longer hostile to each other and announces the change to all players.
 	 */
 	public static void setRelation(MinecraftServer server, String faction, String otherFaction, @Nullable FactionRelation relation) {
+		setRelation(server, faction, otherFaction, relation, relation == null ? "command.aw.relation.announce.reset" : "command.aw.relation.announce." + relation.getName());
+	}
+
+	/**
+	 * Like {@link #setRelation(MinecraftServer, String, String, FactionRelation)} with the given announcement: a translation key
+	 * with the display names of the two factions as arguments, followed by the extra arguments.
+	 */
+	public static void setRelation(MinecraftServer server, String faction, String otherFaction, @Nullable FactionRelation relation, String announceKey,
+			Object... extraArgs) {
 		World overworld = server.getEntityWorld();
 		FactionRelationData data = getData(overworld);
 		if (relation == null) {
@@ -58,9 +69,19 @@ public class FactionRelations {
 			clearTargetsIfNotHostile(world, faction, otherFaction);
 		}
 
+		Diplomacy.onRelationChanged(overworld, faction, otherFaction, relation);
+
 		if (AWDiplomacyStatics.announceRelationChanges) {
-			String messageKey = relation == null ? "command.aw.relation.announce.reset" : "command.aw.relation.announce." + relation.getName();
-			server.getPlayerList().sendMessage(new TextComponentTranslation(messageKey, faction, otherFaction));
+			Object[] args = new Object[2 + extraArgs.length];
+			args[0] = FactionMembership.factionName(faction);
+			args[1] = FactionMembership.factionName(otherFaction);
+			System.arraycopy(extraArgs, 0, args, 2, extraArgs.length);
+			ITextComponent message = new TextComponentTranslation(announceKey, args);
+			if (relation != null) {
+				message.getStyle().setColor(relation == FactionRelation.WAR ? TextFormatting.RED : relation == FactionRelation.ALLIANCE ? TextFormatting.AQUA
+						: TextFormatting.GREEN);
+			}
+			server.getPlayerList().sendMessage(message);
 		}
 		FactionMembership.sendDiplomacyToAll(server);
 	}

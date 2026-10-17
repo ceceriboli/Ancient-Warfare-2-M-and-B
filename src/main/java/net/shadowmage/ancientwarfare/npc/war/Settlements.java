@@ -25,6 +25,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
+import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.gamedata.SettlementData;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
@@ -543,6 +544,7 @@ public class Settlements {
 		if (AWDiplomacyStatics.manpowerPerUnit > 0) {
 			settlement.setGarrisonCap(Math.max(settlement.getGarrisonCap(), (int) Math.floor(settlement.getMaxManpower() / AWDiplomacyStatics.manpowerPerUnit)));
 		}
+		Diplomacy.onCityLost(world, oldFaction, winner);
 		List<NpcFaction> newGarrison = Sieges.onSettlementConquered(world, settlement);
 		releaseGarrison(world, settlement);
 		settlement.setFaction(winner);

@@ -17,6 +17,25 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static double leaderDirectionsChance = 0.25;
 	public static boolean announceRelationChanges = true;
 	public static boolean announceMembershipChanges = true;
+	public static boolean diplomacyEnabled = true;
+	public static String[] eternalEnemies = {"brigand", "pirate", "monster", "beast", "undead", "demon", "vampire"};
+	public static int exhaustionUnitKilled = 1;
+	public static int exhaustionLeaderKilled = 10;
+	public static int exhaustionCityLost = 40;
+	public static int exhaustionAttackFailed = 10;
+	public static int exhaustionDecayPerDay = 1;
+	public static int backgroundExhaustionPerDay = 2;
+	public static int minWarDays = 3;
+	public static int peaceExhaustion = 30;
+	public static double peaceChancePerDay = 0.25;
+	public static int truceDays = 5;
+	public static double warChancePerDay = 0.05;
+	public static int maxWars = 3;
+	public static double allianceChancePerDay = 0.05;
+	public static int maxAlliances = 2;
+	public static double allianceJoinWarChance = 0.2;
+	public static double allianceBreakChancePerDay = 0.1;
+	public static int allianceMinDays = 5;
 	public static int spawnerMinPlayerRange = 48;
 	public static boolean spawnersTriggerInCreative = false;
 	public static boolean settlementsEnabled = true;
@@ -108,6 +127,44 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		announceRelationChanges = config.get(serverOptions, "announce_relation_changes", announceRelationChanges, "Announce relation changes\nDefault=" + announceRelationChanges + "\n" + "If true, all players are told in chat when two factions go to war, make peace or form an alliance.").getBoolean();
 
 		announceMembershipChanges = config.get(serverOptions, "announce_membership_changes", announceMembershipChanges, "Announce membership changes\nDefault=" + announceMembershipChanges + "\n" + "If true, all players are told in chat when a player joins, leaves or is expelled from a faction.").getBoolean();
+
+		diplomacyEnabled = config.get(serverOptions, "diplomacy_enabled", diplomacyEnabled, "Dynamic diplomacy\nDefault=" + diplomacyEnabled + "\n" + "If true, factions hostile in factions.json start at war (once per world), and once per Minecraft day wars can end\n" + "in a truce when one side is exhausted by its losses, rivals can go to war again after the truce, and factions\n" + "with a common enemy can ally (allies may join each other's wars). If false, relations change only with /awrelation.").getBoolean();
+
+		eternalEnemies = config.get(serverOptions, "eternal_enemies", eternalEnemies, "Eternal enemies\n" + "Factions that never make peace nor ally (they stay at war with every faction hostile to them).").getStringList();
+
+		exhaustionUnitKilled = config.get(serverOptions, "exhaustion_unit_killed", exhaustionUnitKilled, "Exhaustion: unit killed\nDefault=" + exhaustionUnitKilled + "\n" + "War exhaustion a faction gets when one of its npcs is killed by the enemy (an npc of the enemy faction, a player\n" + "member of it or an npc of such a player).", 0, 10000).getInt();
+
+		exhaustionLeaderKilled = config.get(serverOptions, "exhaustion_leader_killed", exhaustionLeaderKilled, "Exhaustion: leader killed\nDefault=" + exhaustionLeaderKilled + "\n" + "War exhaustion a faction gets when one of its leaders is killed by the enemy.", 0, 10000).getInt();
+
+		exhaustionCityLost = config.get(serverOptions, "exhaustion_city_lost", exhaustionCityLost, "Exhaustion: city lost\nDefault=" + exhaustionCityLost + "\n" + "War exhaustion a faction gets when the enemy conquers one of its cities.", 0, 10000).getInt();
+
+		exhaustionAttackFailed = config.get(serverOptions, "exhaustion_attack_failed", exhaustionAttackFailed, "Exhaustion: failed attack\nDefault=" + exhaustionAttackFailed + "\n" + "War exhaustion the attacking faction gets when its raid or siege is repelled or lifted.", 0, 10000).getInt();
+
+		exhaustionDecayPerDay = config.get(serverOptions, "exhaustion_decay_per_day", exhaustionDecayPerDay, "Exhaustion recovery\nDefault=" + exhaustionDecayPerDay + "\n" + "War exhaustion each side of a war recovers every Minecraft day.", 0, 10000).getInt();
+
+		backgroundExhaustionPerDay = config.get(serverOptions, "background_exhaustion_per_day", backgroundExhaustionPerDay, "Background war exhaustion\nDefault=" + backgroundExhaustionPerDay + "\n" + "Every Minecraft day, each side of a war between two factions that both have cities gets 0 to this much exhaustion\n" + "(the fighting away from players), so that every war can end sooner or later.", 0, 10000).getInt();
+
+		minWarDays = config.get(serverOptions, "min_war_days", minWarDays, "Minimum war length\nDefault=" + minWarDays + "\n" + "Minecraft days a war lasts at least before peace is possible.", 0, 10000).getInt();
+
+		peaceExhaustion = config.get(serverOptions, "peace_exhaustion", peaceExhaustion, "Peace threshold\nDefault=" + peaceExhaustion + "\n" + "Peace becomes possible when the war exhaustion of one side reaches this value.", 0, 100000).getInt();
+
+		peaceChancePerDay = config.get(serverOptions, "peace_chance_per_day", peaceChancePerDay, "Peace chance\nDefault=" + peaceChancePerDay + "\n" + "Chance per Minecraft day of a truce once peace is possible, +0.01 for each point of exhaustion above the threshold\n" + "(at most 0.9).", 0.0D, 1.0D).getDouble();
+
+		truceDays = config.get(serverOptions, "truce_days", truceDays, "Truce length\nDefault=" + truceDays + "\n" + "Minecraft days after a peace (or the end of an alliance) during which the two factions cannot go to war or ally.", 0, 10000).getInt();
+
+		warChancePerDay = config.get(serverOptions, "war_chance_per_day", warChancePerDay, "War chance\nDefault=" + warChancePerDay + "\n" + "Chance per Minecraft day that two rival factions (hostile in factions.json) at peace, with cities and with the truce\n" + "over, go to war again. Factions friendly in factions.json never go to war with each other.", 0.0D, 1.0D).getDouble();
+
+		maxWars = config.get(serverOptions, "max_wars", maxWars, "Maximum fronts\nDefault=" + maxWars + "\n" + "A faction already at war with this many factions that have cities does not start a new war (allies can still drag\n" + "it into one).", 0, 100).getInt();
+
+		allianceChancePerDay = config.get(serverOptions, "alliance_chance_per_day", allianceChancePerDay, "Alliance chance\nDefault=" + allianceChancePerDay + "\n" + "Chance per Minecraft day that two factions at peace, with cities and a common enemy, form an alliance.", 0.0D, 1.0D).getDouble();
+
+		maxAlliances = config.get(serverOptions, "max_alliances", maxAlliances, "Maximum alliances\nDefault=" + maxAlliances + "\n" + "Maximum number of alliances of a faction.", 0, 100).getInt();
+
+		allianceJoinWarChance = config.get(serverOptions, "alliance_join_war_chance", allianceJoinWarChance, "Call to arms\nDefault=" + allianceJoinWarChance + "\n" + "Chance per Minecraft day that a faction joins the war of an ally against an enemy it is at peace with.", 0.0D, 1.0D).getDouble();
+
+		allianceBreakChancePerDay = config.get(serverOptions, "alliance_break_chance_per_day", allianceBreakChancePerDay, "Alliance end\nDefault=" + allianceBreakChancePerDay + "\n" + "Chance per Minecraft day that an alliance without common enemies ends.", 0.0D, 1.0D).getDouble();
+
+		allianceMinDays = config.get(serverOptions, "alliance_min_days", allianceMinDays, "Minimum alliance length\nDefault=" + allianceMinDays + "\n" + "Minecraft days an alliance lasts at least.", 0, 10000).getInt();
 
 		spawnerMinPlayerRange = config.get(serverOptions, "spawner_min_player_range", spawnerMinPlayerRange, "Structure spawner range\nDefault=" + spawnerMinPlayerRange + "\n" + "Ancient Warfare structure spawners create their npcs (leaders included, so also cities) when a player is within\n" + "their own range, set in each structure template (often 16 blocks, a cube around the spawner). A player within this\n" + "distance (a sphere) also triggers every spawner. 0 = only the range of each template. At most 128: npcs that can\n" + "despawn vanish at once when no player is within 128 blocks.", 0, 128).getInt();
 

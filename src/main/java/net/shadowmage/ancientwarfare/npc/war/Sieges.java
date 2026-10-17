@@ -32,6 +32,7 @@ import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionRangedAttack;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionSiegeEngineer;
+import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.faction.FactionRelations;
 import net.shadowmage.ancientwarfare.npc.gamedata.SettlementData;
@@ -397,6 +398,9 @@ public class Sieges {
 			}
 		}
 		announce(world, siege, outcome.name().toLowerCase(Locale.ROOT), settlement);
+		if (settlement != null && (outcome == Outcome.DEFENDED || outcome == Outcome.LIFTED)) {
+			Diplomacy.onAttackFailed(world, siege.getAttackerFaction(), settlement.getFaction());
+		}
 		AncientWarfareNPC.LOG.info("{} {} of city {} by {} ended: {}", siege.getKind().getName(), siege.getId(), siege.getSettlementId(),
 				siege.getAttackerFaction(), outcome);
 	}

@@ -27,6 +27,7 @@ import net.shadowmage.ancientwarfare.npc.command.CommandFactionMembership;
 import net.shadowmage.ancientwarfare.npc.command.CommandFactionRelation;
 import net.shadowmage.ancientwarfare.npc.command.CommandSettlement;
 import net.shadowmage.ancientwarfare.npc.command.CommandSiege;
+import net.shadowmage.ancientwarfare.npc.command.CommandDiplomacy;
 import net.shadowmage.ancientwarfare.npc.command.CommandTeams;
 import net.shadowmage.ancientwarfare.npc.compat.EpicSiegeCompat;
 import net.shadowmage.ancientwarfare.npc.compat.TwilightForestCompat;
@@ -180,6 +181,7 @@ public class AncientWarfareNPC {
 		evt.registerServerCommand(new CommandFactionMembership());
 		evt.registerServerCommand(new CommandSettlement());
 		evt.registerServerCommand(new CommandSiege());
+		evt.registerServerCommand(new CommandDiplomacy());
 	}
 
 	@SubscribeEvent
