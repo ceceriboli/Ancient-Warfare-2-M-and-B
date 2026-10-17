@@ -210,6 +210,9 @@ public class Settlements {
 			}
 			processRespawns(world, data, settlement, now);
 			regenerateManpower(world, data, settlement);
+			if (AWDiplomacyStatics.reinforcementIntervalTicks > 0 && (now / 20) % Math.max(1, AWDiplomacyStatics.reinforcementIntervalTicks / 20) == 0) {
+				reinforce(world, settlement);
+			}
 			if (now % LEADER_CHECK_INTERVAL == 0) {
 				checkLeader(world, data, settlement);
 			}
@@ -537,6 +540,10 @@ public class Settlements {
 		String oldFaction = settlement.getFaction();
 		// the new owners start small and slowly grow back to the size the city had (see regenerateManpower)
 		settlement.setManpowerCap(Math.max(settlement.getManpowerCap(), settlement.getMaxManpower()));
+		// garrison size before the conquest, estimated from the maximum manpower (garrison x manpower_per_unit when founded)
+		if (AWDiplomacyStatics.manpowerPerUnit > 0) {
+			settlement.setGarrisonCap(Math.max(settlement.getGarrisonCap(), (int) Math.floor(settlement.getMaxManpower() / AWDiplomacyStatics.manpowerPerUnit)));
+		}
 		List<NpcFaction> newGarrison = Sieges.onSettlementConquered(world, settlement);
 		releaseGarrison(world, settlement);
 		settlement.setFaction(winner);
@@ -597,6 +604,57 @@ public class Settlements {
 			}
 		}
 		return added;
+	}
+
+	/**
+	 * A conquered city gets a new recruit of its faction until its garrison is back to the size it had before the conquest (garrisonCap).
+	 * Only when the whole city is loaded (otherwise units in unloaded parts would not be counted) and not under attack.
+	 */
+	private static void reinforce(WorldServer world, Settlement settlement) {
+		if (settlement.getGarrisonCap() <= 0 || Sieges.isBesieged(settlement) || !world.isAreaLoaded(settlement.getMin(), settlement.getMax())) {
+			return;
+		}
+		int garrison = settlement.getPendingRespawns().size();
+		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, settlement.getAABB())) {
+			if (npc.isEntityAlive() && isDefender(npc, settlement)) {
+				garrison++;
+			}
+		}
+		if (garrison >= settlement.getGarrisonCap()) {
+			return;
+		}
+		List<String> types = new ArrayList<>();
+		List<Integer> weights = new ArrayList<>();
+		Sieges.parseWeights(AWDiplomacyStatics.occupationUnitWeights, "faction.soldier", types, weights);
+		NpcFaction unit = Sieges.createUnit(world, Sieges.pickWeighted(world.rand, types, weights), settlement.getFaction());
+		if (unit == null) {
+			return;
+		}
+		BlockPos pos = findRecruitPos(world, settlement);
+		unit.setLocationAndAngles(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, world.rand.nextFloat() * 360F, 0F);
+		unit.setHomeAreaAtCurrentPosition();
+		unit.setHealth(unit.getMaxHealth());
+		if (world.spawnEntity(unit)) {
+			tag(unit, settlement, ROLE_GARRISON);
+			world.spawnParticle(EnumParticleTypes.CLOUD, unit.posX, unit.posY + 1D, unit.posZ, 10, 0.3D, 0.5D, 0.3D, 0.02D);
+		}
+	}
+
+	/**
+	 * @return a free surface position somewhere in the city (on the ground, not on water), or a position near the leader's post
+	 */
+	private static BlockPos findRecruitPos(World world, Settlement settlement) {
+		int dimension = world.provider.getDimension();
+		BlockPos min = settlement.getMin();
+		BlockPos max = settlement.getMax();
+		for (int attempt = 0; attempt < 16; attempt++) {
+			BlockPos column = new BlockPos(min.getX() + world.rand.nextInt(max.getX() - min.getX() + 1), 64, min.getZ() + world.rand.nextInt(max.getZ() - min.getZ() + 1));
+			BlockPos top = world.getTopSolidOrLiquidBlock(column);
+			if (settlement.contains(dimension, top) && !world.getBlockState(top.down()).getMaterial().isLiquid() && world.isAirBlock(top.up())) {
+				return top;
+			}
+		}
+		return findStandableNear(world, settlement.getLastLeaderPos(), settlement);
 	}
 
 	/**

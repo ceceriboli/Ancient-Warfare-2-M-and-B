@@ -49,6 +49,7 @@ public class Settlement {
 	private int manpower;
 	private int maxManpower;
 	private int manpowerCap;
+	private int garrisonCap;
 	private long lastRegenDay;
 	private int activeSiegeId;
 	private long lastSiegeEnd;
@@ -195,6 +196,17 @@ public class Settlement {
 		this.manpowerCap = Math.max(0, manpowerCap);
 	}
 
+	/**
+	 * @return the garrison size of a conquered city before the conquest, reinforcements come until it is reached again; 0 if none
+	 */
+	public int getGarrisonCap() {
+		return garrisonCap;
+	}
+
+	void setGarrisonCap(int garrisonCap) {
+		this.garrisonCap = Math.max(0, garrisonCap);
+	}
+
 	long getLastRegenDay() {
 		return lastRegenDay;
 	}
@@ -255,6 +267,7 @@ public class Settlement {
 		tag.setInteger("manpower", manpower);
 		tag.setInteger("maxManpower", maxManpower);
 		tag.setInteger("manpowerCap", manpowerCap);
+		tag.setInteger("garrisonCap", garrisonCap);
 		tag.setLong("lastRegenDay", lastRegenDay);
 		tag.setInteger("activeSiege", activeSiegeId);
 		tag.setLong("lastSiegeEnd", lastSiegeEnd);
@@ -291,6 +304,7 @@ public class Settlement {
 		settlement.manpower = tag.getInteger("manpower");
 		settlement.maxManpower = tag.getInteger("maxManpower");
 		settlement.manpowerCap = tag.getInteger("manpowerCap");
+		settlement.garrisonCap = tag.getInteger("garrisonCap");
 		settlement.lastRegenDay = tag.getLong("lastRegenDay");
 		settlement.activeSiegeId = tag.getInteger("activeSiege");
 		settlement.lastSiegeEnd = tag.getLong("lastSiegeEnd");

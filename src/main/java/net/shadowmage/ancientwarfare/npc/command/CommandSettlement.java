@@ -136,6 +136,9 @@ public class CommandSettlement extends CommandBase {
 		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.bounds", min.getX(), min.getY(), min.getZ(), max.getX(), max.getY(), max.getZ()));
 		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.manpower", settlement.getManpower(), settlement.getMaxManpower(),
 				settlement.getPendingRespawns().size()));
+		if (settlement.getGarrisonCap() > 0) {
+			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.garrison_cap", settlement.getGarrisonCap()));
+		}
 		if (settlement.getManpowerCap() > settlement.getMaxManpower()) {
 			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.manpower_cap", settlement.getManpowerCap()));
 		}

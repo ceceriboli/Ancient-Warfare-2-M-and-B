@@ -32,6 +32,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static String fallenGarrison = "flee";
 	public static int occupationGarrison = 6;
 	public static int conqueredManpowerGrowthPerDay = 1;
+	public static int reinforcementIntervalTicks = 1200;
 	public static String[] occupationUnitWeights = {"faction.soldier=3", "faction.archer=2"};
 	public static String banditFaction = "brigand";
 	public static int banditFleeTicks = 6000;
@@ -137,6 +138,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		occupationGarrison = config.get(serverOptions, "occupation_garrison", occupationGarrison, "Occupation garrison\nDefault=" + occupationGarrison + "\n" + "When a city is conquered, the attackers inside it become its garrison. If they are fewer than this, units of the\n" + "winning faction appear at once around the new governor up to this number. 0 = none.", 0, 100).getInt();
 
 		conqueredManpowerGrowthPerDay = config.get(serverOptions, "conquered_manpower_growth_per_day", conqueredManpowerGrowthPerDay, "Conquered city growth\nDefault=" + conqueredManpowerGrowthPerDay + "\n" + "A conquered city starts with the manpower of its new garrison. Every Minecraft day it is not under attack, its\n" + "maximum manpower grows by this much, up to the maximum the city had before the conquest. 0 = it never grows.", 0, 10000).getInt();
+
+		reinforcementIntervalTicks = config.get(serverOptions, "reinforcement_interval_ticks", reinforcementIntervalTicks, "Conquered city reinforcements\nDefault=" + reinforcementIntervalTicks + "\n" + "Ticks (20 per second) between two new recruits in a conquered city, until its garrison is back to the size it had\n" + "before the conquest (units of occupation_unit_weights, no manpower cost). Only while the whole city is loaded and\n" + "not under attack. 0 = no reinforcements.", 0, 720000).getInt();
 
 		occupationUnitWeights = config.get(serverOptions, "occupation_unit_weights", occupationUnitWeights, "Occupation units\n" + "Units of the occupation garrison, as npc type=weight (same types as raid_unit_weights).").getStringList();
 
