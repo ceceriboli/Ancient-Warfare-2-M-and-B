@@ -6,6 +6,7 @@ import net.minecraft.entity.EntityLiving;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
@@ -118,7 +119,7 @@ public class Settlements {
 		}
 	}
 
-	public static void onLivingDeath(Entity entity) {
+	public static void onLivingDeath(Entity entity, DamageSource source) {
 		if (entity.world.isRemote || !(entity instanceof NpcFaction) || !entity.getEntityData().hasKey(TAG_SETTLEMENT)) {
 			return;
 		}
@@ -130,6 +131,10 @@ public class Settlements {
 		}
 		String role = npc.getEntityData().getString(TAG_ROLE);
 		if (ROLE_LEADER.equals(role) && npc.getUniqueID().equals(settlement.getLeaderId())) {
+			Entity killer = source.getTrueSource();
+			AncientWarfareNPC.LOG.info("Leader of city {} killed at {} by {} ({}{})", settlement.getId(), npc.getPosition(), source.getDamageType(),
+					killer == null ? "no entity" : killer.getName(), killer instanceof NpcFaction ? ", faction " + ((NpcFaction) killer).getFaction()
+							+ (isSiegeOrArmyUnit(killer) ? ", attacker" : "") : "");
 			collapse(npc.world, data, settlement);
 		} else if (ROLE_GARRISON.equals(role) && settlement.getManpower() > 0) {
 			NBTTagCompound entityTag = snapshotForRespawn(npc);

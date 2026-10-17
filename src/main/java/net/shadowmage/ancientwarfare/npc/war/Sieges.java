@@ -226,7 +226,7 @@ public class Sieges {
 		BlockPos target = getTarget(world, settlement);
 		BlockPos center = settlement.getCenter();
 		for (NpcFaction npc : siege.getLoadedAttackers()) {
-			if (npc.getDistanceSq(center) > MAX_ATTACKER_DISTANCE * MAX_ATTACKER_DISTANCE) {
+			if (npc.getDistanceSq(target) > MAX_ATTACKER_DISTANCE * MAX_ATTACKER_DISTANCE) {
 				siege.removeAttacker(npc);
 				Settlements.disband(npc, now + 20);
 			} else if (isEngineer(npc)) {
@@ -245,7 +245,7 @@ public class Sieges {
 				BlockPos origin = spawnWave(world, siege, settlement, target);
 				if (origin != null) {
 					if (siege.getKind() == Siege.Kind.SIEGE && siege.getWavesSpawned() == 0) {
-						spawnEngines(world, siege, settlement, origin);
+						spawnEngines(world, siege, settlement, target, origin);
 					}
 					siege.setWavesSpawned(siege.getWavesSpawned() + 1);
 					siege.setState(Siege.State.WAVE);
@@ -427,7 +427,7 @@ public class Sieges {
 	 */
 	@Nullable
 	private static BlockPos spawnWave(WorldServer world, Siege siege, Settlement settlement, BlockPos target) {
-		BlockPos origin = findSpawnPos(world, settlement);
+		BlockPos origin = findSpawnPos(world, target);
 		if (origin == null) {
 			return null;
 		}
@@ -465,9 +465,9 @@ public class Sieges {
 	}
 
 	/**
-	 * Places the siege engines between the city and the first wave, facing the city, each with a siege engineer of the attackers on it.
+	 * Places the siege engines between the city leader and the first wave, facing the leader, each with a siege engineer of the attackers on it.
 	 */
-	private static void spawnEngines(WorldServer world, Siege siege, Settlement settlement, BlockPos waveOrigin) {
+	private static void spawnEngines(WorldServer world, Siege siege, Settlement settlement, BlockPos center, BlockPos waveOrigin) {
 		int count = AWDiplomacyStatics.fullSiegeEngines;
 		if (count <= 0) {
 			return;
@@ -475,7 +475,6 @@ public class Sieges {
 		List<String> types = new ArrayList<>();
 		List<Integer> weights = new ArrayList<>();
 		parseWeights(AWDiplomacyStatics.fullSiegeEngineTypes, FALLBACK_ENGINE, types, weights);
-		BlockPos center = settlement.getCenter();
 		double dx = waveOrigin.getX() - center.getX();
 		double dz = waveOrigin.getZ() - center.getZ();
 		double length = Math.sqrt(dx * dx + dz * dz);
@@ -486,8 +485,7 @@ public class Sieges {
 		}
 		dx /= length;
 		dz /= length;
-		double halfSize = Math.max(settlement.getMax().getX() - settlement.getMin().getX(), settlement.getMax().getZ() - settlement.getMin().getZ()) / 2D;
-		double distance = Math.min(Math.max(AWDiplomacyStatics.fullSiegeEngineDistance, halfSize + 4D), MAX_ATTACKER_DISTANCE - 16D);
+		double distance = Math.min(AWDiplomacyStatics.fullSiegeEngineDistance, length);
 		int spawned = 0;
 		for (int i = 0; i < count; i++) {
 			double offset = (i - (count - 1) / 2D) * ENGINE_SPACING;
@@ -606,17 +604,16 @@ public class Sieges {
 	}
 
 	/**
-	 * @return a loaded surface position outside the city (siege_spawn_min/max_distance from the center), or closer if none is found
+	 * @return a loaded surface position siege_spawn_min/max_distance from the city leader, or closer if none is found.
+	 * The leader and not the center of the city bounds: Ancient Warfare towns can be hundreds of blocks wide.
 	 */
 	@Nullable
-	private static BlockPos findSpawnPos(World world, Settlement settlement) {
-		BlockPos center = settlement.getCenter();
-		double halfSize = Math.max(settlement.getMax().getX() - settlement.getMin().getX(), settlement.getMax().getZ() - settlement.getMin().getZ()) / 2D;
+	private static BlockPos findSpawnPos(World world, BlockPos center) {
 		int minDistance = AWDiplomacyStatics.siegeSpawnMinDistance;
 		int maxDistance = Math.max(minDistance, AWDiplomacyStatics.siegeSpawnMaxDistance);
 		for (double scale : new double[] {1D, 0.5D}) {
 			for (int attempt = 0; attempt < SPAWN_ATTEMPTS; attempt++) {
-				double distance = Math.max(minDistance + world.rand.nextDouble() * (maxDistance - minDistance), halfSize + 8D);
+				double distance = minDistance + world.rand.nextDouble() * (maxDistance - minDistance);
 				distance = Math.min(distance, MAX_ATTACKER_DISTANCE - 16D) * scale;
 				double angle = world.rand.nextDouble() * Math.PI * 2D;
 				BlockPos column = new BlockPos(center.getX() + MathHelper.cos((float) angle) * distance, 64, center.getZ() + MathHelper.sin((float) angle) * distance);

@@ -134,9 +134,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		siegeMaxTicks = config.get(serverOptions, "siege_max_ticks", siegeMaxTicks, "Siege duration\nDefault=" + siegeMaxTicks + "\n" + "Ticks (20 per second) after which a siege is lifted and its attackers leave. Time only runs while the city is loaded.", 1200, 720000).getInt();
 
-		siegeSpawnMinDistance = config.get(serverOptions, "siege_spawn_min_distance", siegeSpawnMinDistance, "Wave distance (minimum)\nDefault=" + siegeSpawnMinDistance + "\n" + "Minimum distance in blocks from the city center (and at least 8 blocks outside its bounds) where waves spawn.", 8, 128).getInt();
+		siegeSpawnMinDistance = config.get(serverOptions, "siege_spawn_min_distance", siegeSpawnMinDistance, "Wave distance (minimum)\nDefault=" + siegeSpawnMinDistance + "\n" + "Minimum distance in blocks from the city leader where waves spawn.", 8, 112).getInt();
 
-		siegeSpawnMaxDistance = config.get(serverOptions, "siege_spawn_max_distance", siegeSpawnMaxDistance, "Wave distance (maximum)\nDefault=" + siegeSpawnMaxDistance + "\n" + "Maximum distance in blocks from the city center where waves spawn.", 8, 128).getInt();
+		siegeSpawnMaxDistance = config.get(serverOptions, "siege_spawn_max_distance", siegeSpawnMaxDistance, "Wave distance (maximum)\nDefault=" + siegeSpawnMaxDistance + "\n" + "Maximum distance in blocks from the city leader where waves spawn.", 8, 112).getInt();
 
 		announceSieges = config.get(serverOptions, "announce_sieges", announceSieges, "Announce raids and sieges\nDefault=" + announceSieges + "\n" + "If true, all players are told in chat when a raid or siege starts and ends.").getBoolean();
 
@@ -172,7 +172,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		fullSiegeEngineLevel = config.get(serverOptions, "full_siege_engine_level", fullSiegeEngineLevel, "Siege engine material level\nDefault=" + fullSiegeEngineLevel + "\n" + "Material level of the siege engines (0 = weakest).", 0, 10).getInt();
 
-		fullSiegeEngineDistance = config.get(serverOptions, "full_siege_engine_distance", fullSiegeEngineDistance, "Siege engine distance\nDefault=" + fullSiegeEngineDistance + "\n" + "Distance in blocks from the city center (and at least 4 blocks outside its bounds) where siege engines are placed.", 8, 120).getInt();
+		fullSiegeEngineDistance = config.get(serverOptions, "full_siege_engine_distance", fullSiegeEngineDistance, "Siege engine distance\nDefault=" + fullSiegeEngineDistance + "\n" + "Distance in blocks from the city leader where siege engines are placed, on the side the first wave comes from.", 8, 112).getInt();
 
 		// replaced by the raid_* and full_siege_* settings
 		for (String obsolete : new String[] {"siege_strength_ratio", "siege_min_attackers", "siege_max_attackers", "siege_waves", "siege_unit_weights"}) {

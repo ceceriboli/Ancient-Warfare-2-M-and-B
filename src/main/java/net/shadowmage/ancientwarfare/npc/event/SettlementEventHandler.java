@@ -19,7 +19,7 @@ public class SettlementEventHandler {
 
 	@SubscribeEvent
 	public void onLivingDeath(LivingDeathEvent evt) {
-		Settlements.onLivingDeath(evt.getEntityLiving());
+		Settlements.onLivingDeath(evt.getEntityLiving(), evt.getSource());
 	}
 
 	@SubscribeEvent
