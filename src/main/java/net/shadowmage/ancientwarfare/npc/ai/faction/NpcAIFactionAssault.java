@@ -7,6 +7,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.IRangedAttackMob;
+import net.minecraft.entity.passive.AbstractHorse;
 import net.minecraft.pathfinding.Path;
 import net.minecraft.pathfinding.PathPoint;
 import net.minecraft.util.EnumFacing;
@@ -166,7 +167,7 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 			continueBreach();
 			return;
 		}
-		if (breachAllowed && checkNoProgress() && startBreach()) {
+		if (checkNoProgress() && (dismount() || breachAllowed && startBreach())) {
 			return;
 		}
 		if (repathDelay > 0) {
@@ -299,6 +300,20 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * A rider that cannot get any closer goes on foot: paths are computed for the rider (0.6 blocks wide) but followed by the horse
+	 * (1.4 blocks wide), which gets stuck in doors, alleys and breaches. The horse stays where it is.
+	 */
+	private boolean dismount() {
+		if (!(npc.getRidingEntity() instanceof AbstractHorse)) {
+			return false;
+		}
+		npc.dismountRidingEntity();
+		npc.getNavigator().clearPath();
+		repathDelay = 0;
+		return true;
 	}
 
 	/**

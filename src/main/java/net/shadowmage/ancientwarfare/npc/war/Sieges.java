@@ -3,6 +3,8 @@ package net.shadowmage.ancientwarfare.npc.war;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.IRangedAttackMob;
+import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.EntityAITasks;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -498,6 +500,10 @@ public class Sieges {
 				restorePost(defender);
 				continue;
 			}
+			if (defender instanceof IRangedAttackMob) {
+				commandRangedDefender(defender, enemies, perimeter);
+				continue;
+			}
 			EntityLivingBase current = defender.getAttackTarget();
 			// keeps fighting an enemy inside the perimeter (an attacker, or a player helping them), otherwise the nearest attacker
 			boolean keep = current != null && current.isEntityAlive() && (enemies.contains(current) || perimeter.contains(current.getPositionVector()));
@@ -507,6 +513,28 @@ public class Sieges {
 			}
 			savePost(defender);
 			defender.setHomePosAndDistance(enemy.getPosition(), defender.getHomeRange());
+		}
+	}
+
+	/**
+	 * Archers hold their post (walls, towers) and shoot at the nearest attacker they can see within their range.
+	 */
+	private static void commandRangedDefender(NpcFaction archer, List<NpcFaction> enemies, AxisAlignedBB perimeter) {
+		restorePost(archer);
+		EntityLivingBase current = archer.getAttackTarget();
+		if (current != null && current.isEntityAlive() && perimeter.contains(current.getPositionVector()) && archer.getEntitySenses().canSee(current)) {
+			return;
+		}
+		double range = archer.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).getAttributeValue();
+		NpcFaction nearest = null;
+		for (NpcFaction enemy : enemies) {
+			double distSq = enemy.getDistanceSq(archer);
+			if (distSq <= range * range && archer.getEntitySenses().canSee(enemy) && (nearest == null || distSq < nearest.getDistanceSq(archer))) {
+				nearest = enemy;
+			}
+		}
+		if (nearest != null) {
+			archer.setAttackTarget(nearest);
 		}
 	}
 
