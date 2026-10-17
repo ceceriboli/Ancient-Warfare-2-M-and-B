@@ -303,7 +303,7 @@ public class Settlements {
 
 		String name = SettlementNames.generate(world.rand, data.getAll());
 		Settlement settlement = Settlement.createFactionCity(data.getNextId(), dimension, name, structureName, leader.getFaction(), min, max,
-				leader.getUniqueID(), pos, 0, world.getTotalWorldTime() / DAY_TICKS);
+				leader.getUniqueID(), pos, 0, getDay(world));
 		// no siege right after the founding (siege_cooldown_days)
 		settlement.setLastSiegeEnd(world.getTotalWorldTime());
 		settlement.setLastFullSiegeEnd(world.getTotalWorldTime());
@@ -448,9 +448,20 @@ public class Settlements {
 		return world.getHeight(pos);
 	}
 
+	private static long getDay(World world) {
+		return world.getWorldTime() / DAY_TICKS;
+	}
+
 	private static void regenerateManpower(World world, SettlementData data, Settlement settlement) {
-		long day = world.getTotalWorldTime() / DAY_TICKS;
-		if (day <= settlement.getLastRegenDay()) {
+		// Minecraft days of the world time (they follow /time and sleeping, like the days of the diplomacy)
+		long day = getDay(world);
+		if (day < settlement.getLastRegenDay()) {
+			// the time was set back (or the day was counted on the total world time before)
+			settlement.setLastRegenDay(day);
+			data.markDirty();
+			return;
+		}
+		if (day == settlement.getLastRegenDay()) {
 			return;
 		}
 		long days = day - settlement.getLastRegenDay();
@@ -553,7 +564,7 @@ public class Settlements {
 		long now = world.getTotalWorldTime();
 		settlement.setLastSiegeEnd(now);
 		settlement.setLastFullSiegeEnd(now);
-		settlement.setLastRegenDay(now / DAY_TICKS);
+		settlement.setLastRegenDay(getDay(world));
 
 		NpcFactionLeader governor = spawnGovernor(world, settlement, winner);
 		settlement.setLeader(governor == null ? null : governor.getUniqueID(), governor == null ? settlement.getLastLeaderPos() : governor.getPosition());
