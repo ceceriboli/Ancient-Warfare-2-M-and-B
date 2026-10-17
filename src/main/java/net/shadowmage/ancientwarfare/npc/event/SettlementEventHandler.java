@@ -6,6 +6,7 @@ import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
+import net.shadowmage.ancientwarfare.npc.war.Armies;
 import net.shadowmage.ancientwarfare.npc.war.Sieges;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
@@ -19,6 +20,7 @@ public class SettlementEventHandler {
 	@SubscribeEvent
 	public void onEntityJoinWorld(EntityJoinWorldEvent evt) {
 		Settlements.onEntityJoinWorld(evt.getEntity());
+		Armies.onEntityJoinWorld(evt.getEntity());
 	}
 
 	@SubscribeEvent
@@ -41,6 +43,7 @@ public class SettlementEventHandler {
 		if (evt.phase == TickEvent.Phase.END && evt.world instanceof WorldServer) {
 			Settlements.tick((WorldServer) evt.world);
 			Diplomacy.tick((WorldServer) evt.world);
+			Armies.tick((WorldServer) evt.world);
 		}
 	}
 }

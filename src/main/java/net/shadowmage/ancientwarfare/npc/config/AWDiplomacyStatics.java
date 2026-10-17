@@ -17,6 +17,11 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static double leaderDirectionsChance = 0.25;
 	public static boolean announceRelationChanges = true;
 	public static boolean announceMembershipChanges = true;
+	public static boolean armiesEnabled = true;
+	public static int armySize = 10;
+	public static String[] armyUnitWeights = {"faction.soldier=4", "faction.archer=3", "faction.soldier.elite=2", "faction.archer.elite=1", "faction.cavalry=2"};
+	public static int armyChargeRange = 96;
+	public static int armyOwnedNpcRange = 32;
 	public static boolean diplomacyEnabled = true;
 	public static String[] eternalEnemies = {"brigand", "pirate", "monster", "beast", "undead", "demon", "vampire"};
 	public static int exhaustionUnitKilled = 1;
@@ -127,6 +132,16 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		announceRelationChanges = config.get(serverOptions, "announce_relation_changes", announceRelationChanges, "Announce relation changes\nDefault=" + announceRelationChanges + "\n" + "If true, all players are told in chat when two factions go to war, make peace or form an alliance.").getBoolean();
 
 		announceMembershipChanges = config.get(serverOptions, "announce_membership_changes", announceMembershipChanges, "Announce membership changes\nDefault=" + announceMembershipChanges + "\n" + "If true, all players are told in chat when a player joins, leaves or is expelled from a faction.").getBoolean();
+
+		armiesEnabled = config.get(serverOptions, "armies_enabled", armiesEnabled, "Player armies\nDefault=" + armiesEnabled + "\n" + "If true, a member of a faction can raise an army from the ruler of a city of its faction (the soldiers are taken from\n" + "the city's manpower), and lead it and its own Ancient Warfare soldiers that follow it against an enemy city\n" + "(/awarmy raise | charge | follow | disband | status).").getBoolean();
+
+		armySize = config.get(serverOptions, "army_size", armySize, "Army size\nDefault=" + armySize + "\n" + "Soldiers raised from a city (at most its manpower, which goes down by as much).", 1, 200).getInt();
+
+		armyUnitWeights = config.get(serverOptions, "army_unit_weights", armyUnitWeights, "Army units\n" + "Units of a raised army, as npc type=weight (types the faction does not have are replaced).").getStringList();
+
+		armyChargeRange = config.get(serverOptions, "army_charge_range", armyChargeRange, "Charge range\nDefault=" + armyChargeRange + "\n" + "/awarmy charge attacks the nearest enemy city whose center is within this many blocks of the player.", 8, 512).getInt();
+
+		armyOwnedNpcRange = config.get(serverOptions, "army_owned_npc_range", armyOwnedNpcRange, "Own soldiers in a charge\nDefault=" + armyOwnedNpcRange + "\n" + "On /awarmy charge, the player's own Ancient Warfare combat npcs within this many blocks that follow it (shift + right\n" + "click with an empty hand) join the assault.", 0, 256).getInt();
 
 		diplomacyEnabled = config.get(serverOptions, "diplomacy_enabled", diplomacyEnabled, "Dynamic diplomacy\nDefault=" + diplomacyEnabled + "\n" + "If true, factions hostile in factions.json start at war (once per world), and once per Minecraft day wars can end\n" + "in a truce when one side is exhausted by its losses, rivals can go to war again after the truce, and factions\n" + "with a common enemy can ally (allies may join each other's wars). If false, relations change only with /awrelation.").getBoolean();
 

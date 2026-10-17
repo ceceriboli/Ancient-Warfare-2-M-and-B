@@ -18,6 +18,8 @@ import net.shadowmage.ancientwarfare.core.network.NetworkHandler;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
+import net.shadowmage.ancientwarfare.npc.war.Settlement;
+import net.shadowmage.ancientwarfare.npc.war.Settlements;
 import net.shadowmage.ancientwarfare.npc.gamedata.FactionMembershipData;
 import net.shadowmage.ancientwarfare.npc.gamedata.FactionRelationData;
 import net.shadowmage.ancientwarfare.npc.network.PacketFactionDiplomacy;
@@ -134,6 +136,11 @@ public class FactionMembership {
 				player.sendMessage(clickable(new TextComponentTranslation("command.aw.membership.click.pledge", factionName(npcFaction)), TextFormatting.GREEN,
 						"/awmembership join " + npcFaction, new TextComponentTranslation("command.aw.membership.click.pledge.hover")));
 			} else if (playerFaction.equals(npcFaction)) {
+				Settlement city = Settlements.getSettlementOf(npc);
+				if (AWDiplomacyStatics.armiesEnabled && city != null && city.isActive() && city.getManpower() > 0) {
+					player.sendMessage(clickable(new TextComponentTranslation("command.aw.army.click.raise", Math.min(AWDiplomacyStatics.armySize, city.getManpower())),
+							TextFormatting.GOLD, "/awarmy raise", new TextComponentTranslation("command.aw.army.click.raise.hover", Settlements.displayName(city))));
+				}
 				player.sendMessage(clickable(new TextComponentTranslation("command.aw.membership.click.renounce"), TextFormatting.RED,
 						"/awmembership leave", new TextComponentTranslation("command.aw.membership.click.renounce.hover", AWDiplomacyStatics.leaveStandingPenalty, factionName(npcFaction))));
 			}

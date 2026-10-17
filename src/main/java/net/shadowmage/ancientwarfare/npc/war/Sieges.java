@@ -30,6 +30,7 @@ import net.shadowmage.ancientwarfare.npc.ai.NpcAI;
 import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionAssault;
 import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionRangedAttack;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
+import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionSiegeEngineer;
 import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
@@ -460,7 +461,7 @@ public class Sieges {
 	/**
 	 * @return the position of the city leader if it is loaded, otherwise where it was last seen
 	 */
-	private static BlockPos getTarget(WorldServer world, Settlement settlement) {
+	static BlockPos getTarget(WorldServer world, Settlement settlement) {
 		if (settlement.getLeaderId() != null) {
 			Entity leader = world.getEntityFromUuid(settlement.getLeaderId());
 			if (leader != null && leader.isEntityAlive()) {
@@ -632,7 +633,7 @@ public class Sieges {
 		}
 	}
 
-	private static NpcAIFactionAssault getOrAddAssaultAI(NpcFaction npc) {
+	static NpcAIFactionAssault getOrAddAssaultAI(NpcBase npc) {
 		for (EntityAITasks.EntityAITaskEntry entry : npc.tasks.taskEntries) {
 			if (entry.action instanceof NpcAIFactionAssault) {
 				return (NpcAIFactionAssault) entry.action;
