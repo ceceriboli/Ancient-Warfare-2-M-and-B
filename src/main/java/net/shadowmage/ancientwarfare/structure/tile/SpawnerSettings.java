@@ -261,10 +261,12 @@ public class SpawnerSettings {
 
 	private List<EntityPlayer> getPlayersWithinAABB() {
 		List<EntityPlayer> players = new ArrayList<>();
-		int range = Math.max(playerRange, AWDiplomacyStatics.spawnerMinPlayerRange);
+		// minimum range of all spawners, as a sphere: the same distance used by vanilla to despawn npcs at once (128 blocks)
+		double minRangeSq = (double) AWDiplomacyStatics.spawnerMinPlayerRange * AWDiplomacyStatics.spawnerMinPlayerRange;
 
 		for (EntityPlayer player : world.playerEntities) {
-			if (player.getEntityBoundingBox().intersects(new AxisAlignedBB(pos, pos.add(1, 1, 1)).grow(range, range, range))) {
+			if (player.getEntityBoundingBox().intersects(new AxisAlignedBB(pos, pos.add(1, 1, 1)).grow(playerRange, playerRange, playerRange))
+					|| player.getDistanceSq(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D) < minRangeSq) {
 //				if(AWCoreStatics.spawnersRequireLineOfSight) {
 //					// LOS check to player
 //					if(player.world.rayTraceBlocks(new Vec3d(player.posX, player.posY + (double)player.getEyeHeight(), player.posZ), new Vec3d(pos.getX(), pos.getY()+1, pos.getZ()), false, true, false) == null) {
