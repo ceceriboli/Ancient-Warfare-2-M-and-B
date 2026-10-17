@@ -20,6 +20,8 @@ import net.minecraft.world.WorldServer;
 import net.shadowmage.ancientwarfare.core.gamedata.AWGameData;
 import net.shadowmage.ancientwarfare.npc.AncientWarfareNPC;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
+import net.minecraft.entity.player.EntityPlayer;
+import net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
@@ -117,6 +119,9 @@ public class Settlements {
 			if (settlement == null) {
 				data.removeTag(TAG_SETTLEMENT);
 				data.removeTag(TAG_ROLE);
+			} else if (settlement.isActive() && !settlement.getFaction().equals(npc.getFaction())) {
+				// old garrison of a city conquered while it was not loaded
+				leaveFallenCity(npc, now + 20 + npc.world.rand.nextInt(100));
 			} else if (settlement.isActive()) {
 				// units tagged before they were made persistent, and the ruler flag that is not saved
 				npc.enablePersistence();
@@ -166,8 +171,8 @@ public class Settlements {
 			AncientWarfareNPC.LOG.info("Leader of city {} killed at {} by {} ({}{})", settlement.getId(), npc.getPosition(), source.getDamageType(),
 					killer == null ? "no entity" : killer.getName(), killer instanceof NpcFaction ? ", faction " + ((NpcFaction) killer).getFaction()
 							+ (isSiegeOrArmyUnit(killer) ? ", attacker" : "") : "");
-			collapse(npc.world, data, settlement);
-		} else if ((ROLE_GARRISON.equals(role) || ROLE_CAPTAIN.equals(role)) && settlement.getManpower() > 0) {
+			onLeaderKilled(npc.world, data, settlement, source);
+		} else if (isDefender(npc, settlement) && settlement.getManpower() > 0) {
 			NBTTagCompound entityTag = snapshotForRespawn(npc);
 			if (entityTag != null) {
 				settlement.setManpower(settlement.getManpower() - 1);
@@ -234,6 +239,11 @@ public class Settlements {
 		int dimension = world.provider.getDimension();
 		BlockPos pos = leader.getPosition();
 		Settlement existing = data.getActiveAt(dimension, pos, Settlement.Type.FACTION_CITY);
+		if (existing == null && data.getAt(dimension, pos, Settlement.Type.FACTION_CITY) != null) {
+			// the ruins of a fallen city without winner: cities are not founded again
+			leader.setRuler(true);
+			return;
+		}
 		if (existing != null) {
 			// already inside an active city: one ruling leader per city
 			if (!existing.getFaction().equals(leader.getFaction())) {
@@ -314,7 +324,8 @@ public class Settlements {
 	public static boolean isDefender(NpcFaction npc, Settlement settlement) {
 		NBTTagCompound data = npc.getEntityData();
 		String role = data.getString(TAG_ROLE);
-		return data.hasKey(TAG_SETTLEMENT) && data.getInteger(TAG_SETTLEMENT) == settlement.getId() && (ROLE_GARRISON.equals(role) || ROLE_CAPTAIN.equals(role));
+		return data.hasKey(TAG_SETTLEMENT) && data.getInteger(TAG_SETTLEMENT) == settlement.getId() && (ROLE_GARRISON.equals(role) || ROLE_CAPTAIN.equals(role))
+				&& settlement.getFaction().equals(npc.getFaction());
 	}
 
 	private static boolean isLeaderPresent(WorldServer world, Settlement settlement) {
@@ -454,12 +465,112 @@ public class Settlements {
 		settlement.setAbandoned();
 		data.markDirty();
 		Sieges.onSettlementFallen(world, settlement);
+		announce(world, new TextComponentTranslation("command.aw.settlement.announce.fallen", displayName(settlement)));
+		releaseGarrison(world, settlement);
+		AncientWarfareNPC.LOG.info("City {} of faction {} has fallen", settlement.getId(), settlement.getFaction());
+	}
+
+	/**
+	 * The leader died: the city passes to the winner (the faction attacking it, otherwise the faction of the killer), or is abandoned
+	 * when there is no winner. A fallen city is never founded again.
+	 */
+	private static void onLeaderKilled(World world, SettlementData data, Settlement settlement, DamageSource source) {
+		String winner = getWinner(world, settlement, source.getTrueSource());
+		if (winner == null) {
+			collapse(world, data, settlement);
+		} else {
+			conquer(world, data, settlement, winner);
+		}
+	}
+
+	@Nullable
+	private static String getWinner(World world, Settlement settlement, @Nullable Entity killer) {
+		Siege siege = Sieges.getSiegeOf(world, settlement);
+		String winner = null;
+		if (siege != null) {
+			winner = siege.getAttackerFaction();
+		} else if (killer instanceof NpcFaction) {
+			winner = ((NpcFaction) killer).getFaction();
+		} else if (killer instanceof EntityPlayer) {
+			winner = FactionMembership.getFaction(world, killer.getUniqueID());
+		} else if (killer instanceof NpcPlayerOwned) {
+			winner = FactionMembership.getFaction(world, ((NpcPlayerOwned) killer).getOwner().getUUID());
+		}
+		return winner == null || winner.equals(settlement.getFaction()) || !FactionRegistry.getFactionNames().contains(winner) ? null : winner;
+	}
+
+	/**
+	 * The city passes to the winning faction: the old garrison leaves (bandits), the attackers inside the city become its garrison and
+	 * a governor of the winners takes the place of the dead leader. The city keeps its name.
+	 */
+	private static void conquer(World world, SettlementData data, Settlement settlement, String winner) {
+		String oldFaction = settlement.getFaction();
+		List<NpcFaction> newGarrison = Sieges.onSettlementConquered(world, settlement);
+		releaseGarrison(world, settlement);
+		settlement.setFaction(winner);
+		settlement.getPendingRespawns().clear();
+		settlement.missingLeaderChecks = 0;
+		long now = world.getTotalWorldTime();
+		settlement.setLastSiegeEnd(now);
+		settlement.setLastFullSiegeEnd(now);
+		settlement.setLastRegenDay(now / DAY_TICKS);
+
+		NpcFactionLeader governor = spawnGovernor(world, settlement, winner);
+		settlement.setLeader(governor == null ? null : governor.getUniqueID(), governor == null ? settlement.getLastLeaderPos() : governor.getPosition());
+		if (governor != null) {
+			tag(governor, settlement, ROLE_LEADER);
+		}
+		for (NpcFaction npc : newGarrison) {
+			tag(npc, settlement, npc instanceof NpcFactionLeader ? ROLE_CAPTAIN : ROLE_GARRISON);
+			npc.setHomeAreaAtCurrentPosition();
+		}
+		int manpower = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(newGarrison.size() * AWDiplomacyStatics.manpowerPerUnit));
+		settlement.setManpower(manpower);
+		settlement.setMaxManpower(manpower);
+		data.markDirty();
+		announce(world, new TextComponentTranslation("command.aw.settlement.announce.conquered", settlement.getName().isEmpty() ? "#" + settlement.getId()
+				: settlement.getName(), FactionMembership.factionName(winner), FactionMembership.factionName(oldFaction)));
+		AncientWarfareNPC.LOG.info("City {} ({}) of faction {} conquered by {}: governor {}, {} garrison units, {} manpower", settlement.getId(), settlement.getName(),
+				oldFaction, winner, governor == null ? "none" : governor.getUniqueID(), newGarrison.size(), manpower);
+	}
+
+	@Nullable
+	private static NpcFactionLeader spawnGovernor(World world, Settlement settlement, String faction) {
+		Entity entity = EntityList.createEntityByIDFromName(new ResourceLocation("ancientwarfarenpc", "faction.leader"), world);
+		if (!(entity instanceof NpcFactionLeader)) {
+			return null;
+		}
+		NpcFactionLeader governor = (NpcFactionLeader) entity;
+		governor.setFactionNameAndDefaults(faction);
+		BlockPos pos = settlement.getLastLeaderPos();
+		for (int dy = 0; dy < 6; dy++) {
+			BlockPos candidate = pos.up(dy);
+			if (world.isAirBlock(candidate) && world.isAirBlock(candidate.up())) {
+				pos = candidate;
+				break;
+			}
+		}
+		governor.setLocationAndAngles(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, world.rand.nextFloat() * 360F, 0F);
+		governor.setHomeAreaAtCurrentPosition();
+		governor.setHealth(governor.getMaxHealth());
+		// tagged before it joins the world, so that it is not taken for a leader founding a city
+		governor.getEntityData().setInteger(TAG_SETTLEMENT, settlement.getId());
+		governor.getEntityData().setString(TAG_ROLE, ROLE_LEADER);
+		return world.spawnEntity(governor) ? governor : null;
+	}
+
+	private static void announce(World world, ITextComponent message) {
 		MinecraftServer server = world.getMinecraftServer();
 		if (AWDiplomacyStatics.announceSettlementChanges && server != null) {
-			ITextComponent message = new TextComponentTranslation("command.aw.settlement.announce.fallen", displayName(settlement));
 			message.getStyle().setColor(TextFormatting.GOLD);
 			server.getPlayerList().sendMessage(message);
 		}
+	}
+
+	/**
+	 * The units of the city leave (see fallen_garrison) and the hostile spawners of the city are removed.
+	 */
+	private static void releaseGarrison(World world, Settlement settlement) {
 		long now = world.getTotalWorldTime();
 		for (Entity entity : new ArrayList<>(world.loadedEntityList)) {
 			if (entity instanceof NpcFaction && entity.isEntityAlive() && entity.getEntityData().hasKey(TAG_SETTLEMENT)
@@ -474,7 +585,6 @@ public class Settlements {
 				world.setBlockToAir(tile.getPos());
 			}
 		}
-		AncientWarfareNPC.LOG.info("City {} of faction {} has fallen", settlement.getId(), settlement.getFaction());
 	}
 
 	/**

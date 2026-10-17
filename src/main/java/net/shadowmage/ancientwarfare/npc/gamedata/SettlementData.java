@@ -64,6 +64,23 @@ public class SettlementData extends WorldSavedData {
 		return null;
 	}
 
+	/**
+	 * @return a settlement of the given type containing pos, active or abandoned (the active one first), or null
+	 */
+	@Nullable
+	public Settlement getAt(int dimension, BlockPos pos, Settlement.Type type) {
+		Settlement active = getActiveAt(dimension, pos, type);
+		if (active != null) {
+			return active;
+		}
+		for (Settlement settlement : settlements.values()) {
+			if (settlement.getType() == type && settlement.contains(dimension, pos)) {
+				return settlement;
+			}
+		}
+		return null;
+	}
+
 	public void addSiege(Siege siege) {
 		sieges.put(siege.getId(), siege);
 		markDirty();

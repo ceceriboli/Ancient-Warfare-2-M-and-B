@@ -172,6 +172,39 @@ public class Sieges {
 	}
 
 	/**
+	 * The city was taken by the attackers: those inside the defended perimeter stay as its new garrison (returned, no longer attackers),
+	 * the siege ends and the others leave.
+	 */
+	static List<NpcFaction> onSettlementConquered(World world, Settlement settlement) {
+		List<NpcFaction> garrison = new ArrayList<>();
+		if (!isBesieged(settlement)) {
+			return garrison;
+		}
+		SettlementData data = Settlements.getData(world);
+		Siege siege = data.getSiege(settlement.getActiveSiegeId());
+		if (siege == null) {
+			settlement.setActiveSiegeId(0);
+			return garrison;
+		}
+		AxisAlignedBB perimeter = settlement.getAABB().grow(AWDiplomacyStatics.defenderPerimeterMargin);
+		for (NpcFaction npc : siege.getLoadedAttackers()) {
+			if (perimeter.contains(npc.getPositionVector()) && npc.getFaction().equals(siege.getAttackerFaction())) {
+				siege.removeAttacker(npc);
+				npc.getEntityData().removeTag(Settlements.TAG_SIEGE);
+				npc.setAttackTarget(null);
+				for (EntityAITasks.EntityAITaskEntry entry : npc.tasks.taskEntries) {
+					if (entry.action instanceof NpcAIFactionAssault) {
+						((NpcAIFactionAssault) entry.action).setTarget(null);
+					}
+				}
+				garrison.add(npc);
+			}
+		}
+		end(world, data, siege, Outcome.TAKEN);
+		return garrison;
+	}
+
+	/**
 	 * An attacker was loaded (or spawned): it joins its siege again, or leaves if the siege is over.
 	 */
 	static void onAttackerJoinWorld(NpcFaction npc) {

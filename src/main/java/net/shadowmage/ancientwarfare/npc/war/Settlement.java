@@ -124,6 +124,10 @@ public class Settlement {
 		return faction;
 	}
 
+	void setFaction(String faction) {
+		this.faction = faction;
+	}
+
 	public BlockPos getCenter() {
 		return center;
 	}
@@ -150,7 +154,7 @@ public class Settlement {
 		return leaderId;
 	}
 
-	void setLeader(UUID leaderId, BlockPos pos) {
+	void setLeader(@Nullable UUID leaderId, BlockPos pos) {
 		this.leaderId = leaderId;
 		this.lastLeaderPos = pos;
 	}
