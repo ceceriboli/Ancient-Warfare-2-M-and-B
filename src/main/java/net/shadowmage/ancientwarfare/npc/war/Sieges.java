@@ -6,6 +6,7 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.ai.EntityAITasks;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.play.server.SPacketSoundEffect;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ResourceLocation;
@@ -64,6 +65,8 @@ public class Sieges {
 	}
 
 	private static final String BAR_PREFIX = "siege:";
+	private static final String TAG_POST = "awPost";
+	private static final String TAG_POST_RANGE = "awPostRange";
 	private static final double MAX_ATTACKER_DISTANCE = 128D;
 	private static final double ENGINE_TARGET_RANGE = 96D;
 	private static final int ENGINE_SPACING = 6;
@@ -245,6 +248,7 @@ public class Sieges {
 
 		BlockPos target = getTarget(world, settlement);
 		BlockPos center = settlement.getCenter();
+		boolean breach = isBreachAllowed(siege);
 		for (NpcFaction npc : siege.getLoadedAttackers()) {
 			if (npc.getDistanceSq(target) > MAX_ATTACKER_DISTANCE * MAX_ATTACKER_DISTANCE) {
 				siege.removeAttacker(npc);
@@ -252,9 +256,10 @@ public class Sieges {
 			} else if (isEngineer(npc)) {
 				commandEngineer(world, npc, settlement);
 			} else {
-				aim(npc, target);
+				aim(npc, target, breach);
 			}
 		}
+		commandDefenders(world, siege, settlement, target);
 
 		if (siege.getTotalTicks() >= AWDiplomacyStatics.siegeMaxTicks) {
 			end(world, data, siege, Outcome.LIFTED);
@@ -343,6 +348,9 @@ public class Sieges {
 			Settlements.disband(npc, now + 100 + world.rand.nextInt(300));
 		}
 		for (Entity entity : new ArrayList<>(world.loadedEntityList)) {
+			if (settlement != null && entity instanceof NpcFaction && Settlements.isDefender((NpcFaction) entity, settlement)) {
+				restorePost((NpcFaction) entity);
+			}
 			if (entity instanceof VehicleBase && entity.getEntityData().getInteger(Settlements.TAG_SIEGE) == siege.getId()) {
 				entity.getEntityData().removeTag(Settlements.TAG_SIEGE);
 				if (outcome.removesEngines()) {
@@ -417,11 +425,115 @@ public class Sieges {
 		return settlement.getLastLeaderPos();
 	}
 
-	private static void aim(NpcFaction npc, BlockPos target) {
+	private static void aim(NpcFaction npc, BlockPos target, boolean breach) {
 		// the home is saved with the npc (Ancient Warfare sets one when saving an npc without home), keep it on the target
 		// so that the move home AI pushes the attacker towards the city as well
 		npc.setHomePosAndDistance(target, npc.getHomeRange());
-		getOrAddAssaultAI(npc).setTarget(target);
+		NpcAIFactionAssault ai = getOrAddAssaultAI(npc);
+		ai.setTarget(target);
+		ai.setBreachAllowed(breach);
+	}
+
+	private static boolean isBreachAllowed(Siege siege) {
+		return "all".equals(AWDiplomacyStatics.attackerBreach) || "siege".equals(AWDiplomacyStatics.attackerBreach) && siege.getKind() == Siege.Kind.SIEGE;
+	}
+
+	/**
+	 * The garrison goes out after the attackers inside the defended perimeter, except the guards posted close to the leader.
+	 * An npc going out gets its home moved onto its enemy (Ancient Warfare npcs return home when too far, and shorten their attack range
+	 * the farther they are from home), the post is saved and given back when there are no attackers left in the perimeter.
+	 */
+	private static void commandDefenders(WorldServer world, Siege siege, Settlement settlement, BlockPos leaderPos) {
+		AxisAlignedBB perimeter = settlement.getAABB().grow(AWDiplomacyStatics.defenderPerimeterMargin);
+		List<NpcFaction> enemies = new ArrayList<>();
+		for (NpcFaction npc : siege.getLoadedAttackers()) {
+			if (perimeter.contains(npc.getPositionVector())) {
+				enemies.add(npc);
+			}
+		}
+		double guardRadiusSq = (double) AWDiplomacyStatics.defenderGuardRadius * AWDiplomacyStatics.defenderGuardRadius;
+		for (NpcFaction defender : world.getEntitiesWithinAABB(NpcFaction.class, perimeter)) {
+			if (!defender.isEntityAlive() || !Settlements.isDefender(defender, settlement)) {
+				continue;
+			}
+			if (getPost(defender).distanceSq(leaderPos) <= guardRadiusSq) {
+				continue; // guards the leader
+			}
+			if (enemies.isEmpty()) {
+				restorePost(defender);
+				continue;
+			}
+			EntityLivingBase current = defender.getAttackTarget();
+			// keeps fighting an enemy inside the perimeter (an attacker, or a player helping them), otherwise the nearest attacker
+			boolean keep = current != null && current.isEntityAlive() && (enemies.contains(current) || perimeter.contains(current.getPositionVector()));
+			EntityLivingBase enemy = keep ? current : nearest(defender, enemies);
+			if (enemy != current) {
+				defender.setAttackTarget(enemy);
+			}
+			savePost(defender);
+			defender.setHomePosAndDistance(enemy.getPosition(), defender.getHomeRange());
+		}
+	}
+
+	private static NpcFaction nearest(Entity from, List<NpcFaction> candidates) {
+		NpcFaction nearest = candidates.get(0);
+		for (NpcFaction candidate : candidates) {
+			if (candidate.getDistanceSq(from) < nearest.getDistanceSq(from)) {
+				nearest = candidate;
+			}
+		}
+		return nearest;
+	}
+
+	private static BlockPos getPost(NpcFaction npc) {
+		NBTTagCompound data = npc.getEntityData();
+		return data.hasKey(TAG_POST) ? BlockPos.fromLong(data.getLong(TAG_POST)) : npc.getHomePosition();
+	}
+
+	private static void savePost(NpcFaction npc) {
+		NBTTagCompound data = npc.getEntityData();
+		if (!data.hasKey(TAG_POST)) {
+			data.setLong(TAG_POST, npc.getHomePosition().toLong());
+			data.setInteger(TAG_POST_RANGE, npc.getHomeRange());
+		}
+	}
+
+	/**
+	 * Gives back the home a defender had before going out after the attackers.
+	 */
+	static void restorePost(NpcFaction npc) {
+		NBTTagCompound data = npc.getEntityData();
+		if (data.hasKey(TAG_POST)) {
+			npc.setHomePosAndDistance(BlockPos.fromLong(data.getLong(TAG_POST)), data.getInteger(TAG_POST_RANGE));
+			data.removeTag(TAG_POST);
+			data.removeTag(TAG_POST_RANGE);
+		}
+	}
+
+	/**
+	 * An attacker or a city unit was hurt: its companions nearby without an enemy go after the one who hurt it.
+	 */
+	public static void onNpcHurt(NpcFaction victim, @Nullable Entity source) {
+		if (AWDiplomacyStatics.groupAlertRange <= 0 || !(source instanceof EntityLivingBase) || !source.isEntityAlive()) {
+			return;
+		}
+		EntityLivingBase aggressor = (EntityLivingBase) source;
+		NBTTagCompound victimData = victim.getEntityData();
+		boolean attacker = victimData.hasKey(Settlements.TAG_SIEGE);
+		Settlement settlement = attacker ? null : Settlements.getSettlementOf(victim);
+		if (!attacker && (settlement == null || !settlement.isActive())) {
+			return;
+		}
+		for (NpcFaction companion : victim.world.getEntitiesWithinAABB(NpcFaction.class, victim.getEntityBoundingBox().grow(AWDiplomacyStatics.groupAlertRange))) {
+			if (companion == victim || companion == aggressor || !companion.isEntityAlive() || companion.getAttackTarget() != null) {
+				continue;
+			}
+			boolean sameSide = attacker ? companion.getEntityData().getInteger(Settlements.TAG_SIEGE) == victimData.getInteger(Settlements.TAG_SIEGE)
+					&& companion.getEntityData().hasKey(Settlements.TAG_SIEGE) : Settlements.isDefender(companion, settlement);
+			if (sameSide && !isEngineer(companion) && companion.isHostileTowards(aggressor)) {
+				companion.setAttackTarget(aggressor);
+			}
+		}
 	}
 
 	/**
@@ -486,7 +598,7 @@ public class Sieges {
 			npc.setHealth(npc.getMaxHealth());
 			if (world.spawnEntity(npc)) {
 				siege.addAttacker(npc);
-				aim(npc, target);
+				aim(npc, target, isBreachAllowed(siege));
 				health += npc.getMaxHealth();
 				spawned++;
 			}

@@ -1,14 +1,27 @@
 package net.shadowmage.ancientwarfare.npc.ai.faction;
 
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockDoor;
+import net.minecraft.block.SoundType;
+import net.minecraft.block.material.Material;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.IRangedAttackMob;
 import net.minecraft.pathfinding.Path;
 import net.minecraft.pathfinding.PathPoint;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumHand;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
+import net.minecraftforge.event.ForgeEventFactory;
 import net.shadowmage.ancientwarfare.npc.ai.NpcAI;
+import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
 
 import javax.annotation.Nullable;
+import java.util.Arrays;
 import java.util.Random;
 
 /**
@@ -20,6 +33,9 @@ import java.util.Random;
  * The target is often not reachable directly (a leader on an upper floor of a tower, or beyond the path finding range): the npc then moves
  * in steps to the reachable position closest to the target, and walks around the obstacle when no step brings it closer.
  * Runs above the move home AIs of Ancient Warfare (archers stay at home with priority 2).
+ * <p>
+ * When breaching is allowed (see Sieges), a melee npc that does not move for a while breaks the block in front of it towards the target,
+ * within the limits of the config (hardness, blacklist, mobGriefing): walls, iron doors, gates.
  */
 public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	public static final int PRIORITY = 1;
@@ -34,12 +50,25 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	private static final int MIN_REPATH_TICKS = 20;
 	private static final int STUCK_TICKS = 60;
 	private static final int PUSH_TICKS = 100;
+	private static final int PROGRESS_CHECK_TICKS = 40;
+	private static final int NO_PROGRESS_CHECKS = 2;
+	private static final int MIN_BREACH_TICKS = 20;
+	private static final double BREACH_REACH_SQ = 3D * 3D;
 
 	@Nullable
 	private BlockPos target;
 	private int repathDelay;
 	private long stuckSince = -1;
 	private long pushUntil;
+	private boolean breachAllowed;
+	@Nullable
+	private BlockPos breachPos;
+	private int breachTicks;
+	private int breachTotalTicks;
+	@Nullable
+	private BlockPos progressCheckPos;
+	private long progressCheckTick;
+	private int noProgressChecks;
 
 	public NpcAIFactionAssault(NpcBase npc) {
 		super(npc);
@@ -105,6 +134,13 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	@Override
 	public void updateTask() {
 		if (target == null) {
+			return;
+		}
+		if (breachPos != null) {
+			continueBreach();
+			return;
+		}
+		if (breachAllowed && checkNoProgress() && startBreach()) {
 			return;
 		}
 		if (repathDelay > 0) {
@@ -219,8 +255,102 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 		return npc.getNavigator().setPath(path, moveSpeed);
 	}
 
+	/**
+	 * @return true when the npc has been standing still (within a block) for two progress checks while not at the target
+	 */
+	private boolean checkNoProgress() {
+		long now = npc.world.getTotalWorldTime();
+		if (now - progressCheckTick < PROGRESS_CHECK_TICKS) {
+			return false;
+		}
+		progressCheckTick = now;
+		BlockPos pos = npc.getPosition();
+		boolean stuck = progressCheckPos != null && progressCheckPos.distanceSq(pos) <= 2D && getDistanceSqToTarget() > ARRIVED_DIST_SQ;
+		progressCheckPos = pos;
+		noProgressChecks = stuck ? noProgressChecks + 1 : 0;
+		if (noProgressChecks >= NO_PROGRESS_CHECKS) {
+			noProgressChecks = 0;
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Melee npcs that cannot get any closer break the block in front of them, towards the target (a wall, an iron door).
+	 */
+	private boolean startBreach() {
+		if (npc instanceof IRangedAttackMob || !ForgeEventFactory.getMobGriefingEvent(npc.world, npc)) {
+			return false;
+		}
+		//noinspection ConstantConditions
+		EnumFacing facing = EnumFacing.getFacingFromVector((float) (target.getX() + 0.5D - npc.posX), 0F, (float) (target.getZ() + 0.5D - npc.posZ));
+		BlockPos front = npc.getPosition().offset(facing);
+		for (BlockPos candidate : new BlockPos[] {front.up(), front, target.getY() > npc.posY + 1 ? npc.getPosition().up(2) : null}) {
+			if (candidate != null && canBreach(npc.world, candidate)) {
+				breachPos = candidate;
+				breachTicks = 0;
+				breachTotalTicks = Math.max(MIN_BREACH_TICKS,
+						(int) (npc.world.getBlockState(candidate).getBlockHardness(npc.world, candidate) * AWDiplomacyStatics.breachTicksPerHardness));
+				npc.getNavigator().clearPath();
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static boolean canBreach(World world, BlockPos pos) {
+		IBlockState state = world.getBlockState(pos);
+		Block block = state.getBlock();
+		if (state.getMaterial() == Material.AIR || state.getMaterial().isLiquid()) {
+			return false;
+		}
+		float hardness = state.getBlockHardness(world, pos);
+		if (hardness < 0 || hardness > AWDiplomacyStatics.breachMaxHardness) {
+			return false;
+		}
+		if (block.hasTileEntity(state) && !(block instanceof BlockDoor)) {
+			return false; // chests, spawners and other blocks with contents
+		}
+		ResourceLocation name = block.getRegistryName();
+		return name == null || !Arrays.asList(AWDiplomacyStatics.breachBlockBlacklist).contains(name.toString());
+	}
+
+	private void continueBreach() {
+		//noinspection ConstantConditions
+		if (!canBreach(npc.world, breachPos) || npc.getDistanceSqToCenter(breachPos) > BREACH_REACH_SQ) {
+			stopBreach();
+			return;
+		}
+		npc.getLookHelper().setLookPosition(breachPos.getX() + 0.5D, breachPos.getY() + 0.5D, breachPos.getZ() + 0.5D, 30F, 30F);
+		breachTicks++;
+		if (breachTicks % 10 == 0) {
+			npc.swingArm(EnumHand.MAIN_HAND);
+			IBlockState state = npc.world.getBlockState(breachPos);
+			SoundType sound = state.getBlock().getSoundType(state, npc.world, breachPos, npc);
+			npc.world.playSound(null, breachPos, sound.getHitSound(), SoundCategory.HOSTILE, sound.getVolume() * 0.5F, sound.getPitch() * 0.8F);
+		}
+		npc.world.sendBlockBreakProgress(npc.getEntityId(), breachPos, breachTicks * 10 / breachTotalTicks);
+		if (breachTicks >= breachTotalTicks) {
+			npc.world.destroyBlock(breachPos, false);
+			stopBreach();
+			repathDelay = 0;
+		}
+	}
+
+	private void stopBreach() {
+		if (breachPos != null) {
+			npc.world.sendBlockBreakProgress(npc.getEntityId(), breachPos, -1);
+			breachPos = null;
+		}
+	}
+
+	public void setBreachAllowed(boolean breachAllowed) {
+		this.breachAllowed = breachAllowed;
+	}
+
 	@Override
 	public void resetTask() {
+		stopBreach();
 		npc.removeAITask(TASK_MOVE);
 		npc.getNavigator().clearPath();
 	}

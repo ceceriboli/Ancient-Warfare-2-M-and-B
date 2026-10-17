@@ -3,6 +3,9 @@ package net.shadowmage.ancientwarfare.npc.event;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
+import net.shadowmage.ancientwarfare.npc.war.Sieges;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.shadowmage.ancientwarfare.npc.war.Settlements;
@@ -20,6 +23,13 @@ public class SettlementEventHandler {
 	@SubscribeEvent
 	public void onLivingDeath(LivingDeathEvent evt) {
 		Settlements.onLivingDeath(evt.getEntityLiving(), evt.getSource());
+	}
+
+	@SubscribeEvent
+	public void onLivingHurt(LivingHurtEvent evt) {
+		if (!evt.getEntityLiving().world.isRemote && evt.getEntityLiving() instanceof NpcFaction) {
+			Sieges.onNpcHurt((NpcFaction) evt.getEntityLiving(), evt.getSource().getTrueSource());
+		}
 	}
 
 	@SubscribeEvent

@@ -120,6 +120,10 @@ public class Settlements {
 			} else if (settlement.isActive()) {
 				// units tagged before they were made persistent, and the ruler flag that is not saved
 				npc.enablePersistence();
+				if (!Sieges.isBesieged(settlement)) {
+					// went out after attackers when the siege ended while it was not loaded
+					Sieges.restorePost(npc);
+				}
 				if (npc instanceof NpcFactionLeader) {
 					((NpcFactionLeader) npc).setRuler(ROLE_LEADER.equals(data.getString(TAG_ROLE)) && npc.getUniqueID().equals(settlement.getLeaderId()));
 				}
@@ -304,6 +308,15 @@ public class Settlements {
 				settlement.getFaction(), pos, garrison.size(), captains, manpower);
 	}
 
+	/**
+	 * @return true for the garrison units and captains of the settlement (not its ruling leader)
+	 */
+	public static boolean isDefender(NpcFaction npc, Settlement settlement) {
+		NBTTagCompound data = npc.getEntityData();
+		String role = data.getString(TAG_ROLE);
+		return data.hasKey(TAG_SETTLEMENT) && data.getInteger(TAG_SETTLEMENT) == settlement.getId() && (ROLE_GARRISON.equals(role) || ROLE_CAPTAIN.equals(role));
+	}
+
 	private static boolean isLeaderPresent(WorldServer world, Settlement settlement) {
 		if (settlement.getLeaderId() == null) {
 			return false;
@@ -375,8 +388,12 @@ public class Settlements {
 	@Nullable
 	private static BlockPos getRespawnPos(World world, Settlement settlement, NBTTagCompound entityTag) {
 		BlockPos pos = settlement.getCenter();
-		if (entityTag.hasKey("home")) {
-			BlockPos home = BlockPos.fromLong(entityTag.getLong("home"));
+		NBTTagCompound forgeData = entityTag.getCompoundTag("ForgeData");
+		// the post of a defender that died while out after the attackers, otherwise its home
+		String homeKey = forgeData.hasKey("awPost") ? "awPost" : "home";
+		NBTTagCompound homeTag = forgeData.hasKey("awPost") ? forgeData : entityTag;
+		if (homeTag.hasKey(homeKey)) {
+			BlockPos home = BlockPos.fromLong(homeTag.getLong(homeKey));
 			if (settlement.contains(world.provider.getDimension(), home)) {
 				pos = home;
 			}
