@@ -38,6 +38,7 @@ public class Settlement {
 	private Status status = Status.ACTIVE;
 	private int dimension;
 	private String name = "";
+	private String structureName = "";
 	private String faction = "";
 	private BlockPos center = BlockPos.ORIGIN;
 	private BlockPos min = BlockPos.ORIGIN;
@@ -48,6 +49,8 @@ public class Settlement {
 	private int manpower;
 	private int maxManpower;
 	private long lastRegenDay;
+	private int activeSiegeId;
+	private long lastSiegeEnd;
 	private final List<PendingRespawn> pendingRespawns = new ArrayList<>();
 
 	// not saved: consecutive checks where the leader could not be found although its area was loaded
@@ -57,12 +60,13 @@ public class Settlement {
 		this.id = id;
 	}
 
-	public static Settlement createFactionCity(int id, int dimension, String name, String faction, BlockPos min, BlockPos max, UUID leaderId, BlockPos leaderPos,
-			int manpower, long day) {
+	public static Settlement createFactionCity(int id, int dimension, String name, String structureName, String faction, BlockPos min, BlockPos max,
+			UUID leaderId, BlockPos leaderPos, int manpower, long day) {
 		Settlement settlement = new Settlement(id);
 		settlement.type = Type.FACTION_CITY;
 		settlement.dimension = dimension;
 		settlement.name = name;
+		settlement.structureName = structureName;
 		settlement.faction = faction;
 		settlement.min = min;
 		settlement.max = max;
@@ -102,6 +106,17 @@ public class Settlement {
 
 	public String getName() {
 		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	/**
+	 * @return the name of the Ancient Warfare structure the city was founded in, or an empty string
+	 */
+	public String getStructureName() {
+		return structureName;
 	}
 
 	public String getFaction() {
@@ -166,6 +181,25 @@ public class Settlement {
 		this.lastRegenDay = lastRegenDay;
 	}
 
+	/**
+	 * @return the id of the siege against this settlement, 0 if there is none
+	 */
+	public int getActiveSiegeId() {
+		return activeSiegeId;
+	}
+
+	void setActiveSiegeId(int activeSiegeId) {
+		this.activeSiegeId = activeSiegeId;
+	}
+
+	public long getLastSiegeEnd() {
+		return lastSiegeEnd;
+	}
+
+	void setLastSiegeEnd(long lastSiegeEnd) {
+		this.lastSiegeEnd = lastSiegeEnd;
+	}
+
 	public List<PendingRespawn> getPendingRespawns() {
 		return pendingRespawns;
 	}
@@ -176,6 +210,7 @@ public class Settlement {
 		tag.setString("status", status.getName());
 		tag.setInteger("dimension", dimension);
 		tag.setString("name", name);
+		tag.setString("structureName", structureName);
 		tag.setString("faction", faction);
 		tag.setLong("center", center.toLong());
 		tag.setLong("min", min.toLong());
@@ -187,6 +222,8 @@ public class Settlement {
 		tag.setInteger("manpower", manpower);
 		tag.setInteger("maxManpower", maxManpower);
 		tag.setLong("lastRegenDay", lastRegenDay);
+		tag.setInteger("activeSiege", activeSiegeId);
+		tag.setLong("lastSiegeEnd", lastSiegeEnd);
 		NBTTagList respawnList = new NBTTagList();
 		for (PendingRespawn respawn : pendingRespawns) {
 			NBTTagCompound respawnTag = new NBTTagCompound();
@@ -203,7 +240,13 @@ public class Settlement {
 		settlement.type = Type.PLAYER_TOWN.getName().equals(tag.getString("type")) ? Type.PLAYER_TOWN : Type.FACTION_CITY;
 		settlement.status = Status.ABANDONED.getName().equals(tag.getString("status")) ? Status.ABANDONED : Status.ACTIVE;
 		settlement.dimension = tag.getInteger("dimension");
-		settlement.name = tag.getString("name");
+		if (tag.hasKey("structureName")) {
+			settlement.name = tag.getString("name");
+			settlement.structureName = tag.getString("structureName");
+		} else {
+			// saved before cities had their own names: "name" was the structure name
+			settlement.structureName = tag.getString("name");
+		}
 		settlement.faction = tag.getString("faction");
 		settlement.center = BlockPos.fromLong(tag.getLong("center"));
 		settlement.min = BlockPos.fromLong(tag.getLong("min"));
@@ -213,6 +256,8 @@ public class Settlement {
 		settlement.manpower = tag.getInteger("manpower");
 		settlement.maxManpower = tag.getInteger("maxManpower");
 		settlement.lastRegenDay = tag.getLong("lastRegenDay");
+		settlement.activeSiegeId = tag.getInteger("activeSiege");
+		settlement.lastSiegeEnd = tag.getLong("lastSiegeEnd");
 		NBTTagList respawnList = tag.getTagList("pendingRespawns", Constants.NBT.TAG_COMPOUND);
 		for (int i = 0; i < respawnList.tagCount(); i++) {
 			NBTTagCompound respawnTag = respawnList.getCompoundTagAt(i);

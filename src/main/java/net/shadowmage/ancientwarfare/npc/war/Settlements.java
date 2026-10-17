@@ -79,10 +79,17 @@ public class Settlements {
 	}
 
 	public static void onEntityJoinWorld(Entity entity) {
-		if (!AWDiplomacyStatics.settlementsEnabled || entity.world.isRemote || !(entity instanceof NpcFaction) || isSiegeOrArmyUnit(entity)) {
+		if (!AWDiplomacyStatics.settlementsEnabled || entity.world.isRemote || !(entity instanceof NpcFaction)) {
 			return;
 		}
 		NpcFaction npc = (NpcFaction) entity;
+		if (npc.getEntityData().hasKey(TAG_SIEGE)) {
+			Sieges.onAttackerJoinWorld(npc);
+			return;
+		}
+		if (isSiegeOrArmyUnit(npc)) {
+			return;
+		}
 		long now = npc.world.getTotalWorldTime();
 		NBTTagCompound data = npc.getEntityData();
 		if (data.hasKey(TAG_SETTLEMENT)) {
@@ -154,6 +161,7 @@ public class Settlements {
 				checkLeader(world, data, settlement);
 			}
 		}
+		Sieges.tick(world, data, now);
 		ManpowerBars.update(world, data);
 	}
 
@@ -164,8 +172,8 @@ public class Settlements {
 	}
 
 	public static ITextComponent displayName(Settlement settlement) {
-		String name = settlement.getName().isEmpty() ? "" : " (" + settlement.getName() + ")";
-		return new TextComponentTranslation("command.aw.settlement.name", settlement.getId(), name, FactionMembership.factionName(settlement.getFaction()));
+		String name = settlement.getName().isEmpty() ? "#" + settlement.getId() : settlement.getName();
+		return new TextComponentTranslation("command.aw.settlement.name", name, FactionMembership.factionName(settlement.getFaction()));
 	}
 
 	private static void processPendingLeaders(WorldServer world, long now) {
@@ -193,7 +201,7 @@ public class Settlements {
 
 		BlockPos min;
 		BlockPos max;
-		String name;
+		String structureName;
 		Optional<TownEntry> town = Optional.empty();
 		Optional<StructureEntry> structure = Optional.empty();
 		if (AWDiplomacyStatics.settlementUseStructureBounds) {
@@ -203,23 +211,26 @@ public class Settlements {
 		if (town.isPresent()) {
 			min = town.get().getBB().min;
 			max = town.get().getBB().max;
-			name = "";
+			structureName = "";
 		} else if (structure.isPresent()) {
 			min = structure.get().getBB().min;
 			max = structure.get().getBB().max;
-			name = structure.get().getName();
+			structureName = structure.get().getName();
 		} else {
 			int radius = AWDiplomacyStatics.settlementDefaultRadius;
 			min = pos.add(-radius, 0, -radius);
 			max = pos.add(radius, 0, radius);
-			name = "";
+			structureName = "";
 		}
 		// structure bounds can be flat, make sure npcs on the floors around the leader are included
 		min = new BlockPos(min.getX(), Math.max(0, Math.min(min.getY(), pos.getY() - MIN_BOUNDS_BELOW)), min.getZ());
 		max = new BlockPos(max.getX(), Math.min(255, Math.max(max.getY(), pos.getY() + MIN_BOUNDS_ABOVE)), max.getZ());
 
-		Settlement settlement = Settlement.createFactionCity(data.getNextId(), dimension, name, leader.getFaction(), min, max, leader.getUniqueID(), pos, 0,
-				world.getTotalWorldTime() / DAY_TICKS);
+		String name = SettlementNames.generate(world.rand, data.getAll());
+		Settlement settlement = Settlement.createFactionCity(data.getNextId(), dimension, name, structureName, leader.getFaction(), min, max,
+				leader.getUniqueID(), pos, 0, world.getTotalWorldTime() / DAY_TICKS);
+		// no siege right after the founding (siege_cooldown_days)
+		settlement.setLastSiegeEnd(world.getTotalWorldTime());
 		List<NpcFaction> garrison = new ArrayList<>();
 		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, settlement.getAABB())) {
 			if (npc != leader && !(npc instanceof NpcFactionLeader) && !npc.isPassive() && leader.getFaction().equals(npc.getFaction())
@@ -233,8 +244,8 @@ public class Settlements {
 		data.add(settlement);
 		tag(leader, settlement, ROLE_LEADER);
 		garrison.forEach(npc -> tag(npc, settlement, ROLE_GARRISON));
-		AncientWarfareNPC.LOG.info("Founded city {} of faction {} at {} with {} garrison units and {} manpower", settlement.getId(), settlement.getFaction(), pos,
-				garrison.size(), manpower);
+		AncientWarfareNPC.LOG.info("Founded city {} ({}) of faction {} at {} with {} garrison units and {} manpower", settlement.getId(), name,
+				settlement.getFaction(), pos, garrison.size(), manpower);
 	}
 
 	private static boolean isInActiveSettlement(SettlementData data, NpcFaction npc) {

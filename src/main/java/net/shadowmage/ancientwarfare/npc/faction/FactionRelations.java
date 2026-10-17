@@ -15,6 +15,9 @@ import net.shadowmage.ancientwarfare.npc.gamedata.FactionRelationData;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Hostility between factions: relations set during the game first, faction registry as fallback.
@@ -60,6 +63,26 @@ public class FactionRelations {
 			server.getPlayerList().sendMessage(new TextComponentTranslation(messageKey, faction, otherFaction));
 		}
 		FactionMembership.sendDiplomacyToAll(server);
+	}
+
+	/**
+	 * @return the factions with a war declared against the given faction in this world (relations set during the game,
+	 * not the hostility of the faction registry)
+	 */
+	public static List<String> getDeclaredEnemies(World world, String faction) {
+		List<String> enemies = new ArrayList<>();
+		for (Map.Entry<String, FactionRelation> entry : getData(world).getAll().entrySet()) {
+			if (entry.getValue() != FactionRelation.WAR) {
+				continue;
+			}
+			String[] factions = FactionRelationData.splitKey(entry.getKey());
+			if (factions[0].equals(faction)) {
+				enemies.add(factions[1]);
+			} else if (factions[1].equals(faction)) {
+				enemies.add(factions[0]);
+			}
+		}
+		return enemies;
 	}
 
 	private static void clearTargetsIfNotHostile(World world, String faction, String otherFaction) {

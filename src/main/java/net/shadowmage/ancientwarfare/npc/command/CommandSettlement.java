@@ -11,22 +11,28 @@ import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
+import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.gamedata.SettlementData;
 import net.shadowmage.ancientwarfare.npc.war.Settlement;
 import net.shadowmage.ancientwarfare.npc.war.Settlements;
+import net.shadowmage.ancientwarfare.npc.war.Siege;
+import net.shadowmage.ancientwarfare.npc.war.Sieges;
 
 import javax.annotation.Nullable;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * /awsettlement list | info [id] | setmanpower (id) (amount), for operators
+ * /awsettlement list | info [id] | setmanpower (id) (amount) | rename (id) (name), for operators
  */
 public class CommandSettlement extends CommandBase {
 	private static final String LIST = "list";
 	private static final String INFO = "info";
 	private static final String SET_MANPOWER = "setmanpower";
+	private static final String RENAME = "rename";
+	private static final int MAX_NAME_LENGTH = 32;
 
 	@Override
 	public String getName() {
@@ -68,7 +74,25 @@ public class CommandSettlement extends CommandBase {
 				Settlement target = get(data, args[1]);
 				int manpower = parseInt(args[2], 0);
 				Settlements.setManpower(world, target, manpower);
-				sender.sendMessage(new TextComponentTranslation("command.aw.settlement.manpower_set", target.getId(), manpower));
+				sender.sendMessage(new TextComponentTranslation("command.aw.settlement.manpower_set", Settlements.displayName(target), manpower));
+				break;
+			case RENAME:
+				if (args.length < 3) {
+					throw new WrongUsageException(getUsage(sender));
+				}
+				Settlement renamed = get(data, args[1]);
+				String name = String.join(" ", Arrays.copyOfRange(args, 2, args.length)).trim();
+				if (name.isEmpty() || name.length() > MAX_NAME_LENGTH) {
+					throw new CommandException("command.aw.settlement.rename.invalid", MAX_NAME_LENGTH);
+				}
+				for (Settlement other : data.getAll()) {
+					if (other != renamed && other.getName().equalsIgnoreCase(name)) {
+						throw new CommandException("command.aw.settlement.rename.taken", name);
+					}
+				}
+				renamed.setName(name);
+				data.markDirty();
+				sender.sendMessage(new TextComponentTranslation("command.aw.settlement.renamed", renamed.getId(), Settlements.displayName(renamed)));
 				break;
 			default:
 				throw new WrongUsageException(getUsage(sender));
@@ -90,14 +114,23 @@ public class CommandSettlement extends CommandBase {
 		}
 		for (Settlement settlement : data.getAll()) {
 			BlockPos center = settlement.getCenter();
-			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.list.entry", Settlements.displayName(settlement), settlement.getStatus().getName(),
+			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.list.entry", settlement.getId(), Settlements.displayName(settlement),
+					settlement.getStatus().getName(),
 					settlement.getManpower(), settlement.getMaxManpower(), center.getX(), center.getY(), center.getZ(), settlement.getDimension()));
 		}
 	}
 
 	private void info(MinecraftServer server, ICommandSender sender, Settlement settlement) {
-		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.header", Settlements.displayName(settlement), settlement.getType().getName(),
-				settlement.getStatus().getName()));
+		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.header", settlement.getId(), Settlements.displayName(settlement),
+				settlement.getType().getName(), settlement.getStatus().getName()));
+		if (!settlement.getStructureName().isEmpty()) {
+			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.structure", settlement.getStructureName()));
+		}
+		Siege siege = Sieges.getSiegeOf(server.getWorld(settlement.getDimension()), settlement);
+		if (siege != null) {
+			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.siege", siege.getId(),
+					FactionMembership.factionName(siege.getAttackerFaction()), siege.getWavesSpawned(), siege.getTotalWaves()));
+		}
 		BlockPos min = settlement.getMin();
 		BlockPos max = settlement.getMax();
 		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.bounds", min.getX(), min.getY(), min.getZ(), max.getX(), max.getY(), max.getZ()));
@@ -127,7 +160,7 @@ public class CommandSettlement extends CommandBase {
 	@Override
 	public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
 		if (args.length == 1) {
-			return CommandBase.getListOfStringsMatchingLastWord(args, LIST, INFO, SET_MANPOWER);
+			return CommandBase.getListOfStringsMatchingLastWord(args, LIST, INFO, SET_MANPOWER, RENAME);
 		}
 		return Collections.emptyList();
 	}

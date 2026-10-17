@@ -27,6 +27,22 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int manpowerRegenPerDay = 1;
 	public static int respawnDelayTicks = 600;
 	public static boolean announceSettlementChanges = true;
+	public static boolean siegesEnabled = true;
+	public static int siegeCheckInterval = 2400;
+	public static double siegeChance = 0.25;
+	public static int siegePlayerRange = 96;
+	public static int siegeCooldownDays = 2;
+	public static int maxActiveSieges = 1;
+	public static double siegeStrengthRatio = 0.5;
+	public static int siegeMinAttackers = 3;
+	public static int siegeMaxAttackers = 24;
+	public static int siegeWaves = 3;
+	public static int siegeWarmupTicks = 300;
+	public static int siegeMaxTicks = 24000;
+	public static int siegeSpawnMinDistance = 40;
+	public static int siegeSpawnMaxDistance = 60;
+	public static String[] siegeUnitWeights = {"faction.soldier=5", "faction.archer=3", "faction.soldier.elite=1", "faction.archer.elite=1"};
+	public static boolean announceSieges = true;
 
 	/* ********************************************CLIENT SETTINGS************************************************ */
 	public static boolean renderLeaderLabel = true;
@@ -83,6 +99,38 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		respawnDelayTicks = config.get(serverOptions, "respawn_delay_ticks", respawnDelayTicks, "Respawn delay\nDefault=" + respawnDelayTicks + "\n" + "Ticks (20 per second) before a killed garrison unit respawns in its city.", 20, 72000).getInt();
 
 		announceSettlementChanges = config.get(serverOptions, "announce_settlement_changes", announceSettlementChanges, "Announce fallen cities\nDefault=" + announceSettlementChanges + "\n" + "If true, all players are told in chat when a city falls because its leader died.").getBoolean();
+
+		siegesEnabled = config.get(serverOptions, "sieges_enabled", siegesEnabled, "Sieges\nDefault=" + siegesEnabled + "\n" + "If true, factions at war (declared with /awrelation war) besiege each other's cities near players: waves of\n" + "attackers spawn near the city and march on its leader. If false, sieges start only with /awsiege start.").getBoolean();
+
+		siegeCheckInterval = config.get(serverOptions, "siege_check_interval", siegeCheckInterval, "Siege check interval\nDefault=" + siegeCheckInterval + "\n" + "Ticks (20 per second) between two checks for a new siege. At each check at most one siege starts.", 20, 720000).getInt();
+
+		siegeChance = config.get(serverOptions, "siege_chance", siegeChance, "Siege chance\nDefault=" + siegeChance + "\n" + "Chance (0.0 to 1.0) that a city that can be besieged is besieged at a check.", 0.0D, 1.0D).getDouble();
+
+		siegePlayerRange = config.get(serverOptions, "siege_player_range", siegePlayerRange, "Siege player range\nDefault=" + siegePlayerRange + "\n" + "Only cities with a player within this many blocks of their center are besieged. Players within this range\n" + "also see the siege bar.", 16, 512).getInt();
+
+		siegeCooldownDays = config.get(serverOptions, "siege_cooldown_days", siegeCooldownDays, "Siege cooldown\nDefault=" + siegeCooldownDays + "\n" + "Minecraft days after a siege ends (or after the city is founded) before the city can be besieged again.", 0, 1000).getInt();
+
+		maxActiveSieges = config.get(serverOptions, "max_active_sieges", maxActiveSieges, "Maximum sieges\nDefault=" + maxActiveSieges + "\n" + "Maximum number of sieges at the same time started by the automatic check (not counting /awsiege start).", 0, 100).getInt();
+
+		siegeStrengthRatio = config.get(serverOptions, "siege_strength_ratio", siegeStrengthRatio, "Siege size\nDefault=" + siegeStrengthRatio + "\n" + "Total attackers of a siege = (garrison units loaded + manpower of the city) x this value,\n" + "limited by siege_min_attackers and siege_max_attackers, and split into siege_waves waves.", 0.0D, 100.0D).getDouble();
+
+		siegeMinAttackers = config.get(serverOptions, "siege_min_attackers", siegeMinAttackers, "Minimum attackers\nDefault=" + siegeMinAttackers + "\n" + "Minimum total number of attackers of a siege.", 1, 1000).getInt();
+
+		siegeMaxAttackers = config.get(serverOptions, "siege_max_attackers", siegeMaxAttackers, "Maximum attackers\nDefault=" + siegeMaxAttackers + "\n" + "Maximum total number of attackers of a siege.", 1, 1000).getInt();
+
+		siegeWaves = config.get(serverOptions, "siege_waves", siegeWaves, "Siege waves\nDefault=" + siegeWaves + "\n" + "Number of waves of a siege. The next wave comes when the previous one is wiped out.", 1, 100).getInt();
+
+		siegeWarmupTicks = config.get(serverOptions, "siege_warmup_ticks", siegeWarmupTicks, "Siege warm up\nDefault=" + siegeWarmupTicks + "\n" + "Ticks (20 per second) of warning before the first wave and between two waves.", 20, 72000).getInt();
+
+		siegeMaxTicks = config.get(serverOptions, "siege_max_ticks", siegeMaxTicks, "Siege duration\nDefault=" + siegeMaxTicks + "\n" + "Ticks (20 per second) after which a siege is lifted and its attackers leave. Time only runs while the city is loaded.", 1200, 720000).getInt();
+
+		siegeSpawnMinDistance = config.get(serverOptions, "siege_spawn_min_distance", siegeSpawnMinDistance, "Wave distance (minimum)\nDefault=" + siegeSpawnMinDistance + "\n" + "Minimum distance in blocks from the city center (and at least 8 blocks outside its bounds) where waves spawn.", 8, 128).getInt();
+
+		siegeSpawnMaxDistance = config.get(serverOptions, "siege_spawn_max_distance", siegeSpawnMaxDistance, "Wave distance (maximum)\nDefault=" + siegeSpawnMaxDistance + "\n" + "Maximum distance in blocks from the city center where waves spawn.", 8, 128).getInt();
+
+		siegeUnitWeights = config.get(serverOptions, "siege_unit_weights", siegeUnitWeights, "Siege units\n" + "Units of the attacking faction in a wave, as npc type=weight. Types are the faction npc names without the\n" + "'ancientwarfarenpc:' prefix, e.g. faction.soldier, faction.archer, faction.soldier.elite, faction.archer.elite,\n" + "faction.cavalry, faction.mounted_archer.").getStringList();
+
+		announceSieges = config.get(serverOptions, "announce_sieges", announceSieges, "Announce sieges\nDefault=" + announceSieges + "\n" + "If true, all players are told in chat when a siege starts and ends.").getBoolean();
 
 		renderLeaderLabel = config.get(clientOptions, "render_leader_label", renderLeaderLabel, "Render leader label\nDefault=" + renderLeaderLabel + "\n" + "If true, faction leaders show a 'Leader of the ...' label above their head, even when nameplates are disabled.").getBoolean();
 
