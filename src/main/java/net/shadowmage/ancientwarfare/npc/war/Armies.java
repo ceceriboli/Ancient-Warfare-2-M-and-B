@@ -48,6 +48,10 @@ public class Armies {
 	private Armies() {}
 
 	private static final String TAG_ARMY_ORIGIN = "awArmyOrigin";
+	/**
+	 * A newly raised soldier waits at the gathering point until its commander comes within 8 blocks, then follows it
+	 */
+	public static final String TAG_ARMY_WAITING = "awArmyWaiting";
 	private static final String TAG_CHARGE = "awCharge";
 	private static final String TAG_CHARGE_HOME = "awChargeHome";
 	private static final String TAG_CHARGE_HOME_RANGE = "awChargeHomeRange";
@@ -158,6 +162,7 @@ public class Armies {
 			unit.setHealth(unit.getMaxHealth());
 			unit.getEntityData().setString(Settlements.TAG_ARMY, commander.toString());
 			unit.getEntityData().setInteger(TAG_ARMY_ORIGIN, city.getId());
+			unit.getEntityData().setBoolean(TAG_ARMY_WAITING, true);
 			if (world.spawnEntity(unit)) {
 				raised++;
 				if (world instanceof WorldServer) {
@@ -370,7 +375,8 @@ public class Armies {
 			for (NpcBase npc : list) {
 				// charging: the home follows the soldier (Ancient Warfare shortens the attack range of an npc far from home); following:
 				// the home is on the commander, so that the move home AIs (archers stay at home) do not pull the soldier back
-				BlockPos home = target == null && player != null ? player.getPosition() : npc.getPosition();
+				boolean waiting = npc.getEntityData().getBoolean(TAG_ARMY_WAITING);
+				BlockPos home = target == null && player != null && !waiting ? player.getPosition() : npc.getPosition();
 				npc.setHomePosAndDistance(home, npc.getHomeRange());
 				NpcAIFactionAssault ai = Sieges.getOrAddAssaultAI(npc);
 				ai.setTarget(leaderPos);

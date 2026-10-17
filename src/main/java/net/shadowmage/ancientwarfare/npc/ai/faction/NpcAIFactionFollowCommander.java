@@ -23,6 +23,7 @@ public class NpcAIFactionFollowCommander extends NpcAI<NpcBase> {
 	private static final double TELEPORT_DIST_SQ = 12D * 12D;
 	private static final int REPATH_TICKS = 10;
 	private static final int STUCK_TICKS = 40;
+	private static final double JOIN_DIST_SQ = 8D * 8D;
 
 	@Nullable
 	private EntityPlayer commander;
@@ -44,6 +45,13 @@ public class NpcAIFactionFollowCommander extends NpcAI<NpcBase> {
 		commander = Armies.getCommander(npc);
 		if (commander == null || commander.isSpectator()) {
 			return false;
+		}
+		if (npc.getEntityData().getBoolean(Armies.TAG_ARMY_WAITING)) {
+			// a newly raised soldier waits at the gathering point until its commander comes to it
+			if (npc.getDistanceSq(commander) > JOIN_DIST_SQ) {
+				return false;
+			}
+			npc.getEntityData().removeTag(Armies.TAG_ARMY_WAITING);
 		}
 		if (npc.getAttackTarget() != null && npc.getAttackTarget().isEntityAlive()) {
 			// fights near its commander, comes back when it gets too far
