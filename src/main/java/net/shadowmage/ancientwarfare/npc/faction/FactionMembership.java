@@ -70,7 +70,12 @@ public class FactionMembership {
 	}
 
 	public static void join(MinecraftServer server, EntityPlayerMP player, String faction, boolean announce) {
-		getData(server.getEntityWorld()).set(player.getUniqueID(), player.getName(), faction);
+		World world = server.getEntityWorld();
+		getData(world).set(player.getUniqueID(), player.getName(), faction);
+		// a member is well regarded by its faction
+		if (FactionTracker.INSTANCE.getStandingFor(world, player.getName(), faction) < AWDiplomacyStatics.memberStanding) {
+			FactionTracker.INSTANCE.setStandingFor(world, player.getName(), faction, AWDiplomacyStatics.memberStanding);
+		}
 		if (announce) {
 			announce(server, player.getUniqueID(), "command.aw.membership.announce.join", player.getName(), faction);
 		}
@@ -78,7 +83,13 @@ public class FactionMembership {
 	}
 
 	/**
-	 * Removes the player from their faction, takes standingPenalty from their standing with it and announces it with announceKey (if not null).
+	 * Standing penalty value for a player renouncing its faction on its own: its standing with the faction goes back to 0 if positive.
+	 */
+	public static final int RENOUNCE = -1;
+
+	/**
+	 * Removes the player from their faction, takes standingPenalty from their standing with it (or resets a positive standing to 0 with
+	 * {@link #RENOUNCE}) and announces it with announceKey (if not null).
 	 *
 	 * @return the faction the player left, or null if they were not a member of any
 	 */
@@ -93,6 +104,10 @@ public class FactionMembership {
 		data.remove(playerId);
 		if (standingPenalty > 0) {
 			FactionTracker.INSTANCE.adjustStandingFor(world, playerName, faction, -standingPenalty);
+		}
+		if (standingPenalty == RENOUNCE && FactionTracker.INSTANCE.getStandingFor(world, playerName, faction) > 0) {
+			// renouncing on one's own: back to neutral (not hostile), a negative standing stays as it is
+			FactionTracker.INSTANCE.setStandingFor(world, playerName, faction, 0);
 		}
 		if (announceKey != null) {
 			announce(server, playerId, announceKey, playerName, faction);
@@ -142,7 +157,7 @@ public class FactionMembership {
 							TextFormatting.GOLD, "/awarmy raise", new TextComponentTranslation("command.aw.army.click.raise.hover", Settlements.displayName(city))));
 				}
 				player.sendMessage(clickable(new TextComponentTranslation("command.aw.membership.click.renounce"), TextFormatting.RED,
-						"/awmembership leave", new TextComponentTranslation("command.aw.membership.click.renounce.hover", AWDiplomacyStatics.leaveStandingPenalty, factionName(npcFaction))));
+						"/awmembership leave", new TextComponentTranslation("command.aw.membership.click.renounce.hover", factionName(npcFaction))));
 			}
 		} else if (AWDiplomacyStatics.leaderDirectionsRange > 0 && npc.world.rand.nextDouble() < AWDiplomacyStatics.leaderDirectionsChance) {
 			findNearestLeader(npc.world, npc, npcFaction, AWDiplomacyStatics.leaderDirectionsRange).ifPresent(leader -> {

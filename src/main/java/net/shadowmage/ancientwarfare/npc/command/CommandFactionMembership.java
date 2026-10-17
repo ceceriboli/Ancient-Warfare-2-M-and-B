@@ -115,7 +115,7 @@ public class CommandFactionMembership extends CommandBase {
 	}
 
 	private void leave(MinecraftServer server, EntityPlayerMP player) throws CommandException {
-		String faction = FactionMembership.leave(server, player.getUniqueID(), player.getName(), AWDiplomacyStatics.leaveStandingPenalty, "command.aw.membership.announce.leave");
+		String faction = FactionMembership.leave(server, player.getUniqueID(), player.getName(), FactionMembership.RENOUNCE, "command.aw.membership.announce.leave");
 		if (faction == null) {
 			throw new CommandException("command.aw.membership.not_member");
 		}

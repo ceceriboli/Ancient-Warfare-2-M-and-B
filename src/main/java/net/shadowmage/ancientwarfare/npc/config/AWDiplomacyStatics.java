@@ -9,7 +9,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	/* ********************************************SERVER SETTINGS************************************************ */
 	public static boolean membershipEnabled = true;
 	public static int joinMinStanding = 0;
-	public static int leaveStandingPenalty = 50;
+	public static int memberStanding = 100;
 	public static boolean expelOnKillingOwnFaction = true;
 	public static int expelStandingPenalty = 50;
 	public static int leaderJoinRange = 8;
@@ -117,7 +117,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		joinMinStanding = config.get(serverOptions, "join_min_standing", joinMinStanding, "Minimum standing to join a faction\nDefault=" + joinMinStanding + "\n" + "Standing the player needs with a faction to pledge allegiance to it.", -10000, 10000).getInt();
 
-		leaveStandingPenalty = config.get(serverOptions, "leave_standing_penalty", leaveStandingPenalty, "Standing lost when leaving a faction\nDefault=" + leaveStandingPenalty + "\n" + "Standing the player loses with the faction they renounce.", 0, 10000).getInt();
+		memberStanding = config.get(serverOptions, "member_standing", memberStanding, "Member standing\nDefault=" + memberStanding + "\n" + "When a player joins a faction, its standing with it is raised to at least this value. When it renounces the faction,\n" + "a positive standing goes back to 0 (not hostile); a negative one stays as it is.", 0, 10000).getInt();
+		// replaced by member_standing (renouncing resets the standing to 0 instead of taking a penalty)
+		config.getCategory(serverOptions).remove("leave_standing_penalty");
 
 		expelOnKillingOwnFaction = config.get(serverOptions, "expel_on_killing_own_faction", expelOnKillingOwnFaction, "Expel members who kill their own faction\nDefault=" + expelOnKillingOwnFaction + "\n" + "If true, a player who kills a member of their own faction (or whose npcs do) is expelled from it.").getBoolean();
 
