@@ -37,6 +37,7 @@ import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.faction.FactionRelations;
 import net.shadowmage.ancientwarfare.npc.gamedata.SettlementData;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
+import net.shadowmage.ancientwarfare.npc.registry.NpcDefaultsRegistry;
 import net.shadowmage.ancientwarfare.vehicle.config.AWVehicleStatics;
 import net.shadowmage.ancientwarfare.vehicle.entity.IVehicleType;
 import net.shadowmage.ancientwarfare.vehicle.entity.VehicleBase;
@@ -665,7 +666,7 @@ public class Sieges {
 		float health = 0;
 		int spawned = 0;
 		for (int i = 0; i < siege.getAttackersPerWave(); i++) {
-			NpcFaction npc = createUnit(world, pickWeighted(world.rand, types, weights), siege.getAttackerFaction());
+			NpcFaction npc = createWeightedUnit(world, types, weights, siege.getAttackerFaction());
 			if (npc == null) {
 				continue;
 			}
@@ -789,8 +790,31 @@ public class Sieges {
 		}
 		NpcFaction npc = (NpcFaction) entity;
 		npc.setFactionNameAndDefaults(faction);
+		if (!NpcDefaultsRegistry.getFactionNpcDefault(npc).isEnabled()) {
+			// the faction has no such unit (e.g. giant archers): Ancient Warfare would show it with the plain player skin and the size of
+			// the faction
+			return null;
+		}
 		npc.enablePersistence();
 		return npc;
+	}
+
+	/**
+	 * @return a unit of one of the weighted types that the faction has (an enabled one), or a soldier, or null if it has none of them
+	 */
+	@Nullable
+	static NpcFaction createWeightedUnit(World world, List<String> types, List<Integer> weights, String faction) {
+		NpcFaction npc = createUnit(world, pickWeighted(world.rand, types, weights), faction);
+		if (npc != null) {
+			return npc;
+		}
+		for (String type : types) {
+			npc = createUnit(world, type, faction);
+			if (npc != null) {
+				return npc;
+			}
+		}
+		return createUnit(world, FALLBACK_UNIT, faction);
 	}
 
 	static void parseWeights(String[] entries, String fallback, List<String> types, List<Integer> weights) {

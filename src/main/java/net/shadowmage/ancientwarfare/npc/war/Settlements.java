@@ -588,7 +588,7 @@ public class Settlements {
 		Sieges.parseWeights(AWDiplomacyStatics.occupationUnitWeights, "faction.soldier", types, weights);
 		int added = 0;
 		for (int i = garrison.size(); i < AWDiplomacyStatics.occupationGarrison; i++) {
-			NpcFaction unit = Sieges.createUnit(world, Sieges.pickWeighted(world.rand, types, weights), faction);
+			NpcFaction unit = Sieges.createWeightedUnit(world, types, weights, faction);
 			if (unit == null) {
 				continue;
 			}
@@ -627,7 +627,7 @@ public class Settlements {
 		List<String> types = new ArrayList<>();
 		List<Integer> weights = new ArrayList<>();
 		Sieges.parseWeights(AWDiplomacyStatics.occupationUnitWeights, "faction.soldier", types, weights);
-		NpcFaction unit = Sieges.createUnit(world, Sieges.pickWeighted(world.rand, types, weights), settlement.getFaction());
+		NpcFaction unit = Sieges.createWeightedUnit(world, types, weights, settlement.getFaction());
 		if (unit == null) {
 			return;
 		}
