@@ -29,7 +29,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int manpowerRegenPerDay = 1;
 	public static int respawnDelayTicks = 600;
 	public static boolean announceSettlementChanges = true;
-	public static String fallenGarrison = "bandits";
+	public static String fallenGarrison = "flee";
+	public static int occupationGarrison = 6;
+	public static String[] occupationUnitWeights = {"faction.soldier=3", "faction.archer=2"};
 	public static String banditFaction = "brigand";
 	public static int banditFleeTicks = 6000;
 	public static boolean siegesEnabled = true;
@@ -129,11 +131,15 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		announceSettlementChanges = config.get(serverOptions, "announce_settlement_changes", announceSettlementChanges, "Announce fallen cities\nDefault=" + announceSettlementChanges + "\n" + "If true, all players are told in chat when a city falls because its leader died.").getBoolean();
 
-		fallenGarrison = config.get(serverOptions, "fallen_garrison", fallenGarrison, "Garrison of a fallen city\nDefault=" + fallenGarrison + "\n" + "What the remaining units of a city do when its leader dies:\n" + "bandits = they stay where they are as npcs of bandit_faction (no city, no respawn), to be cleared out\n" + "stay = they stay in their own faction, without city and without respawn\n" + "disband = they vanish", new String[] {"bandits", "stay", "disband"}).getString();
+		fallenGarrison = config.get(serverOptions, "fallen_garrison", fallenGarrison, "Garrison of a fallen city\nDefault=" + fallenGarrison + "\n" + "What the remaining units of a city do when its leader dies (or the city is conquered):\n" + "flee = they keep their faction and run away for bandit_flee_ticks without attacking, then stay where they are, without city\n" + "bandits = like flee, but they join bandit_faction (they keep their equipment)\n" + "stay = they stay where they are in their own faction, without city and without respawn\n" + "disband = they vanish", new String[] {"flee", "bandits", "stay", "disband"}).getString();
+
+		occupationGarrison = config.get(serverOptions, "occupation_garrison", occupationGarrison, "Occupation garrison\nDefault=" + occupationGarrison + "\n" + "When a city is conquered, the attackers inside it become its garrison. If they are fewer than this, units of the\n" + "winning faction appear at once around the new governor up to this number. 0 = none.", 0, 100).getInt();
+
+		occupationUnitWeights = config.get(serverOptions, "occupation_unit_weights", occupationUnitWeights, "Occupation units\n" + "Units of the occupation garrison, as npc type=weight (same types as raid_unit_weights).").getStringList();
 
 		banditFaction = config.get(serverOptions, "bandit_faction", banditFaction, "Bandit faction\nDefault=" + banditFaction + "\n" + "Faction the remaining units of a fallen city join with fallen_garrison=bandits. They keep their equipment.").getString();
 
-		banditFleeTicks = config.get(serverOptions, "bandit_flee_ticks", banditFleeTicks, "Bandits flee\nDefault=" + banditFleeTicks + "\n" + "Ticks (20 per second) the new bandits of a fallen city run away from the city and from anyone close, without\n" + "attacking anyone. Then they settle where they are and behave as bandits. 0 = they never flee.", 0, 720000).getInt();
+		banditFleeTicks = config.get(serverOptions, "bandit_flee_ticks", banditFleeTicks, "Survivors flee\nDefault=" + banditFleeTicks + "\n" + "Ticks (20 per second) the survivors of a fallen city (fallen_garrison flee or bandits) run away from the city and\n" + "from anyone close, without attacking anyone. Then they settle where they are. 0 = they never flee.", 0, 720000).getInt();
 
 		siegesEnabled = config.get(serverOptions, "sieges_enabled", siegesEnabled, "Raids and sieges\nDefault=" + siegesEnabled + "\n" + "If true, factions at war (declared with /awrelation war) attack each other's cities near players: waves of\n" + "attackers spawn near the city and march on its leader. Most attacks are raids (raid_* settings), some are full\n" + "sieges with siege engines (full_siege_* settings). If false, attacks start only with /awsiege start.").getBoolean();
 

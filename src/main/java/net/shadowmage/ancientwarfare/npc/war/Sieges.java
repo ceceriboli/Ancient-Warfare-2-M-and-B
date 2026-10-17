@@ -742,7 +742,7 @@ public class Sieges {
 	}
 
 	@Nullable
-	private static NpcFaction createUnit(World world, String type, String faction) {
+	static NpcFaction createUnit(World world, String type, String faction) {
 		Entity entity = EntityList.createEntityByIDFromName(new ResourceLocation(UNIT_PREFIX, type), world);
 		if (!(entity instanceof NpcFaction)) {
 			AncientWarfareNPC.LOG.warn("Unit type {} is not a faction npc, using {}", type, FALLBACK_UNIT);
@@ -757,7 +757,7 @@ public class Sieges {
 		return npc;
 	}
 
-	private static void parseWeights(String[] entries, String fallback, List<String> types, List<Integer> weights) {
+	static void parseWeights(String[] entries, String fallback, List<String> types, List<Integer> weights) {
 		for (String entry : entries) {
 			String[] parts = entry.split("=");
 			int weight = 1;
@@ -780,7 +780,7 @@ public class Sieges {
 		}
 	}
 
-	private static String pickWeighted(Random rand, List<String> types, List<Integer> weights) {
+	static String pickWeighted(Random rand, List<String> types, List<Integer> weights) {
 		int total = 0;
 		for (int weight : weights) {
 			total += weight;

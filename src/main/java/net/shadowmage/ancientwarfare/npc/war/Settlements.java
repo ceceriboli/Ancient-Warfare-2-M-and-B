@@ -520,6 +520,8 @@ public class Settlements {
 		if (governor != null) {
 			tag(governor, settlement, ROLE_LEADER);
 		}
+		int occupation = spawnOccupationGarrison(world, settlement, winner, governor != null ? governor.getPosition() : settlement.getLastLeaderPos(),
+				newGarrison);
 		for (NpcFaction npc : newGarrison) {
 			tag(npc, settlement, npc instanceof NpcFactionLeader ? ROLE_CAPTAIN : ROLE_GARRISON);
 			npc.setHomeAreaAtCurrentPosition();
@@ -530,8 +532,57 @@ public class Settlements {
 		data.markDirty();
 		announce(world, new TextComponentTranslation("command.aw.settlement.announce.conquered", settlement.getName().isEmpty() ? "#" + settlement.getId()
 				: settlement.getName(), FactionMembership.factionName(winner), FactionMembership.factionName(oldFaction)));
-		AncientWarfareNPC.LOG.info("City {} ({}) of faction {} conquered by {}: governor {}, {} garrison units, {} manpower", settlement.getId(), settlement.getName(),
-				oldFaction, winner, governor == null ? "none" : governor.getUniqueID(), newGarrison.size(), manpower);
+		AncientWarfareNPC.LOG.info("City {} ({}) of faction {} conquered by {}: governor {}, {} garrison units ({} of the occupation garrison), {} manpower",
+				settlement.getId(), settlement.getName(), oldFaction, winner, governor == null ? "none" : governor.getUniqueID(), newGarrison.size(), occupation,
+				manpower);
+	}
+
+	/**
+	 * Units of the winners appear around the governor until the garrison has occupation_garrison units.
+	 *
+	 * @return the number of units added to the garrison list
+	 */
+	private static int spawnOccupationGarrison(World world, Settlement settlement, String faction, BlockPos around, List<NpcFaction> garrison) {
+		List<String> types = new ArrayList<>();
+		List<Integer> weights = new ArrayList<>();
+		Sieges.parseWeights(AWDiplomacyStatics.occupationUnitWeights, "faction.soldier", types, weights);
+		int added = 0;
+		for (int i = garrison.size(); i < AWDiplomacyStatics.occupationGarrison; i++) {
+			NpcFaction unit = Sieges.createUnit(world, Sieges.pickWeighted(world.rand, types, weights), faction);
+			if (unit == null) {
+				continue;
+			}
+			BlockPos pos = findStandableNear(world, around, settlement);
+			unit.setLocationAndAngles(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, world.rand.nextFloat() * 360F, 0F);
+			unit.setHomeAreaAtCurrentPosition();
+			unit.setHealth(unit.getMaxHealth());
+			if (world.spawnEntity(unit)) {
+				if (world instanceof WorldServer) {
+					((WorldServer) world).spawnParticle(EnumParticleTypes.CLOUD, unit.posX, unit.posY + 1D, unit.posZ, 10, 0.3D, 0.5D, 0.3D, 0.02D);
+				}
+				garrison.add(unit);
+				added++;
+			}
+		}
+		return added;
+	}
+
+	/**
+	 * @return a free position inside the city within a few blocks of pos, or pos itself
+	 */
+	private static BlockPos findStandableNear(World world, BlockPos pos, Settlement settlement) {
+		int dimension = world.provider.getDimension();
+		for (int attempt = 0; attempt < 16; attempt++) {
+			BlockPos column = pos.add(world.rand.nextInt(13) - 6, 0, world.rand.nextInt(13) - 6);
+			for (int dy = 4; dy >= -4; dy--) {
+				BlockPos candidate = column.up(dy);
+				if (settlement.contains(dimension, candidate) && world.isAirBlock(candidate) && world.isAirBlock(candidate.up())
+						&& world.getBlockState(candidate.down()).isFullBlock()) {
+					return candidate;
+				}
+			}
+		}
+		return pos;
 	}
 
 	@Nullable
@@ -599,9 +650,16 @@ public class Settlements {
 			case "stay":
 				untag(npc);
 				break;
-			default:
+			case "bandits":
 				turningBandits.add(new Scheduled<>(npc, dueTick));
 				break;
+			default: {
+				// flee: they keep their faction, run away from the fallen city and then stay where they are, without city
+				Settlement settlement = getSettlementOf(npc);
+				untag(npc);
+				startFleeing(npc.world, npc, settlement != null ? settlement.getLastLeaderPos() : npc.getPosition());
+				break;
+			}
 		}
 	}
 
