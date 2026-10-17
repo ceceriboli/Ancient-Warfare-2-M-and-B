@@ -1485,6 +1485,7 @@ command.aw.membership.leader_location=Our leader can be found at %s, %s, %s
 gui.ancientwarfarenpc.leader_title=Leader of the %s
 command.aw.settlement.usage=/awsettlement (list | info [id] | setmanpower (id) (amount))
 command.aw.settlement.name=city #%s%s of the %s
+command.aw.settlement.bar=City #%s%s of the %s - Manpower %s/%s
 command.aw.settlement.list.empty=There are no cities yet: a city is founded when a faction leader is loaded
 command.aw.settlement.list.entry=%s: %s, manpower %s/%s, center %s %s %s (dimension %s)
 command.aw.settlement.info.header=%s (%s, %s)

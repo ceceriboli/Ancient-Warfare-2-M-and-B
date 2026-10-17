@@ -154,6 +154,7 @@ public class Settlements {
 				checkLeader(world, data, settlement);
 			}
 		}
+		ManpowerBars.update(world, data);
 	}
 
 	public static void setManpower(World world, Settlement settlement, int manpower) {
@@ -193,8 +194,12 @@ public class Settlements {
 		BlockPos min;
 		BlockPos max;
 		String name;
-		Optional<TownEntry> town = AWGameData.INSTANCE.getPerWorldData(world, TownMap.class).getTownAt(pos);
-		Optional<StructureEntry> structure = AWGameData.INSTANCE.getPerWorldData(world, StructureMap.class).getStructureAt(world, pos);
+		Optional<TownEntry> town = Optional.empty();
+		Optional<StructureEntry> structure = Optional.empty();
+		if (AWDiplomacyStatics.settlementUseStructureBounds) {
+			town = AWGameData.INSTANCE.getPerWorldData(world, TownMap.class).getTownAt(pos);
+			structure = AWGameData.INSTANCE.getPerWorldData(world, StructureMap.class).getStructureAt(world, pos);
+		}
 		if (town.isPresent()) {
 			min = town.get().getBB().min;
 			max = town.get().getBB().max;

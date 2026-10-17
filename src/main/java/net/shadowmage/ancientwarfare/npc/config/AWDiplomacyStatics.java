@@ -19,6 +19,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean announceMembershipChanges = true;
 	public static boolean settlementsEnabled = true;
 	public static int settlementDefaultRadius = 48;
+	public static boolean settlementUseStructureBounds = true;
+	public static boolean manpowerBarEnabled = true;
+	public static int manpowerBarRange = 16;
 	public static double manpowerPerUnit = 2.0;
 	public static int manpowerMin = 10;
 	public static int manpowerRegenPerDay = 1;
@@ -63,7 +66,13 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		settlementsEnabled = config.get(serverOptions, "settlements_enabled", settlementsEnabled, "Faction cities and manpower\nDefault=" + settlementsEnabled + "\n" + "If true, every faction leader founds a city with the faction npcs around it. While the leader lives, killed units respawn\n" + "using the city's manpower; when the leader dies the city falls and is abandoned.").getBoolean();
 
-		settlementDefaultRadius = config.get(serverOptions, "settlement_default_radius", settlementDefaultRadius, "City radius outside structures\nDefault=" + settlementDefaultRadius + "\n" + "Cities take the bounds of the Ancient Warfare town or structure their leader is in. A leader outside of any\n" + "town or structure founds a city of this radius (in blocks) around itself.", 8, 256).getInt();
+		settlementDefaultRadius = config.get(serverOptions, "settlement_default_radius", settlementDefaultRadius, "City radius outside structures\nDefault=" + settlementDefaultRadius + "\n" + "Cities take the bounds of the Ancient Warfare town or structure their leader is in. A leader outside of any\n" + "town or structure founds a city of this radius (in blocks) around itself. With settlement_use_structure_bounds=false\n" + "every city uses this radius. Applies to cities founded after the change.", 8, 256).getInt();
+
+		settlementUseStructureBounds = config.get(serverOptions, "settlement_use_structure_bounds", settlementUseStructureBounds, "Cities use structure bounds\nDefault=" + settlementUseStructureBounds + "\n" + "If true, a city takes the bounds of the Ancient Warfare town or structure its leader is in. If false, every city is\n" + "a square of settlement_default_radius blocks around its leader.").getBoolean();
+
+		manpowerBarEnabled = config.get(serverOptions, "manpower_bar_enabled", manpowerBarEnabled, "Manpower bar\nDefault=" + manpowerBarEnabled + "\n" + "If true, players inside a city (or near it) see a boss bar with the city's remaining manpower.").getBoolean();
+
+		manpowerBarRange = config.get(serverOptions, "manpower_bar_range", manpowerBarRange, "Manpower bar range\nDefault=" + manpowerBarRange + "\n" + "The manpower bar is shown to players within this many blocks of the city bounds (0 = only inside the city).", 0, 256).getInt();
 
 		manpowerPerUnit = config.get(serverOptions, "manpower_per_unit", manpowerPerUnit, "Manpower per garrison unit\nDefault=" + manpowerPerUnit + "\n" + "Starting manpower of a city = number of units in its garrison when founded x this value (at least manpower_min).\n" + "Each respawn of a killed unit costs 1 manpower.", 0.0D, 100.0D).getDouble();
 
