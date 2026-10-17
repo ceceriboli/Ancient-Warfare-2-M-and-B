@@ -234,6 +234,7 @@ public class Settlements {
 				leader.getUniqueID(), pos, 0, world.getTotalWorldTime() / DAY_TICKS);
 		// no siege right after the founding (siege_cooldown_days)
 		settlement.setLastSiegeEnd(world.getTotalWorldTime());
+		settlement.setLastFullSiegeEnd(world.getTotalWorldTime());
 		List<NpcFaction> garrison = new ArrayList<>();
 		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, settlement.getAABB())) {
 			if (npc != leader && !(npc instanceof NpcFactionLeader) && !npc.isPassive() && leader.getFaction().equals(npc.getFaction())

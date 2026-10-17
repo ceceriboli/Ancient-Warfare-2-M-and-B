@@ -51,6 +51,7 @@ public class Settlement {
 	private long lastRegenDay;
 	private int activeSiegeId;
 	private long lastSiegeEnd;
+	private long lastFullSiegeEnd;
 	private final List<PendingRespawn> pendingRespawns = new ArrayList<>();
 
 	// not saved: consecutive checks where the leader could not be found although its area was loaded
@@ -200,6 +201,17 @@ public class Settlement {
 		this.lastSiegeEnd = lastSiegeEnd;
 	}
 
+	/**
+	 * @return the tick the last full siege (with siege engines) ended, or the city was founded
+	 */
+	public long getLastFullSiegeEnd() {
+		return lastFullSiegeEnd;
+	}
+
+	void setLastFullSiegeEnd(long lastFullSiegeEnd) {
+		this.lastFullSiegeEnd = lastFullSiegeEnd;
+	}
+
 	public List<PendingRespawn> getPendingRespawns() {
 		return pendingRespawns;
 	}
@@ -224,6 +236,7 @@ public class Settlement {
 		tag.setLong("lastRegenDay", lastRegenDay);
 		tag.setInteger("activeSiege", activeSiegeId);
 		tag.setLong("lastSiegeEnd", lastSiegeEnd);
+		tag.setLong("lastFullSiegeEnd", lastFullSiegeEnd);
 		NBTTagList respawnList = new NBTTagList();
 		for (PendingRespawn respawn : pendingRespawns) {
 			NBTTagCompound respawnTag = new NBTTagCompound();
@@ -258,6 +271,7 @@ public class Settlement {
 		settlement.lastRegenDay = tag.getLong("lastRegenDay");
 		settlement.activeSiegeId = tag.getInteger("activeSiege");
 		settlement.lastSiegeEnd = tag.getLong("lastSiegeEnd");
+		settlement.lastFullSiegeEnd = tag.getLong("lastFullSiegeEnd");
 		NBTTagList respawnList = tag.getTagList("pendingRespawns", Constants.NBT.TAG_COMPOUND);
 		for (int i = 0; i < respawnList.tagCount(); i++) {
 			NBTTagCompound respawnTag = respawnList.getCompoundTagAt(i);

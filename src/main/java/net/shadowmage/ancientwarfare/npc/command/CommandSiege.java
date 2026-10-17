@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * /awsiege start (city id) (faction) | stop (city id) | list, for operators
+ * /awsiege start (city id) (faction) [raid|siege] | stop (city id) | list, for operators
  */
 public class CommandSiege extends CommandBase {
 	private static final String START = "start";
@@ -58,12 +58,16 @@ public class CommandSiege extends CommandBase {
 				Settlement settlement = getSettlement(data, args[1]);
 				String faction = args[2].toLowerCase(Locale.ROOT);
 				WorldServer world = server.getWorld(settlement.getDimension());
+				Siege.Kind kind = args.length > 3 ? Siege.Kind.fromName(args[3].toLowerCase(Locale.ROOT)) : Siege.Kind.RAID;
+				if (kind == null) {
+					throw new WrongUsageException(getUsage(sender));
+				}
 				String error = Sieges.canStart(world, settlement, faction);
 				if (error != null) {
 					throw new CommandException(error, faction);
 				}
-				Siege siege = Sieges.start(world, data, settlement, faction);
-				sender.sendMessage(new TextComponentTranslation("command.aw.siege.started", Settlements.displayName(settlement),
+				Siege siege = Sieges.start(world, data, settlement, faction, kind);
+				sender.sendMessage(new TextComponentTranslation("command.aw." + kind.getName() + ".started", Settlements.displayName(settlement),
 						FactionMembership.factionName(faction), siege.getTotalWaves(), siege.getAttackersPerWave()));
 				break;
 			}
@@ -104,7 +108,8 @@ public class CommandSiege extends CommandBase {
 		for (Siege siege : data.getSieges()) {
 			Settlement settlement = data.get(siege.getSettlementId());
 			Object city = settlement == null ? "#" + siege.getSettlementId() : Settlements.displayName(settlement);
-			sender.sendMessage(new TextComponentTranslation("command.aw.siege.list.entry", siege.getId(), city, FactionMembership.factionName(siege.getAttackerFaction()),
+			sender.sendMessage(new TextComponentTranslation("command.aw.siege.list.entry", siege.getId(), siege.getKind().getName(), city,
+					FactionMembership.factionName(siege.getAttackerFaction()),
 					siege.getState().getName(), siege.getWavesSpawned(), siege.getTotalWaves(), siege.getLoadedAttackers().size()));
 		}
 	}
@@ -116,6 +121,9 @@ public class CommandSiege extends CommandBase {
 		}
 		if (args.length == 3 && START.equalsIgnoreCase(args[0])) {
 			return CommandBase.getListOfStringsMatchingLastWord(args, FactionRegistry.getFactionNames());
+		}
+		if (args.length == 4 && START.equalsIgnoreCase(args[0])) {
+			return CommandBase.getListOfStringsMatchingLastWord(args, Siege.Kind.RAID.getName(), Siege.Kind.SIEGE.getName());
 		}
 		return Collections.emptyList();
 	}

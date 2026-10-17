@@ -35,16 +35,28 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int siegePlayerRange = 96;
 	public static int siegeCooldownDays = 2;
 	public static int maxActiveSieges = 1;
-	public static double siegeStrengthRatio = 0.5;
-	public static int siegeMinAttackers = 3;
-	public static int siegeMaxAttackers = 24;
-	public static int siegeWaves = 3;
 	public static int siegeWarmupTicks = 300;
 	public static int siegeMaxTicks = 24000;
 	public static int siegeSpawnMinDistance = 40;
 	public static int siegeSpawnMaxDistance = 60;
-	public static String[] siegeUnitWeights = {"faction.soldier=5", "faction.archer=3", "faction.soldier.elite=1", "faction.archer.elite=1"};
 	public static boolean announceSieges = true;
+	public static double raidStrengthRatio = 0.4;
+	public static int raidMinAttackers = 3;
+	public static int raidMaxAttackers = 12;
+	public static int raidWaves = 2;
+	public static String[] raidUnitWeights = {"faction.soldier=5", "faction.archer=3", "faction.cavalry=2"};
+	public static double fullSiegeShare = 0.2;
+	public static int fullSiegeCooldownDays = 7;
+	public static double fullSiegeStrengthRatio = 1.0;
+	public static int fullSiegeMinAttackers = 8;
+	public static int fullSiegeMaxAttackers = 32;
+	public static int fullSiegeWaves = 3;
+	public static String[] fullSiegeUnitWeights = {"faction.soldier=4", "faction.archer=3", "faction.soldier.elite=2", "faction.archer.elite=1",
+			"faction.cavalry=2", "faction.mounted_archer=1"};
+	public static int fullSiegeEngines = 2;
+	public static String[] fullSiegeEngineTypes = {"catapult_mobile=3", "trebuchet_mobile=1", "ballista_mobile=2"};
+	public static int fullSiegeEngineLevel = 1;
+	public static int fullSiegeEngineDistance = 40;
 
 	/* ********************************************CLIENT SETTINGS************************************************ */
 	public static boolean renderLeaderLabel = true;
@@ -106,25 +118,17 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		banditFaction = config.get(serverOptions, "bandit_faction", banditFaction, "Bandit faction\nDefault=" + banditFaction + "\n" + "Faction the remaining units of a fallen city join with fallen_garrison=bandits. They keep their equipment.").getString();
 
-		siegesEnabled = config.get(serverOptions, "sieges_enabled", siegesEnabled, "Sieges\nDefault=" + siegesEnabled + "\n" + "If true, factions at war (declared with /awrelation war) besiege each other's cities near players: waves of\n" + "attackers spawn near the city and march on its leader. If false, sieges start only with /awsiege start.").getBoolean();
+		siegesEnabled = config.get(serverOptions, "sieges_enabled", siegesEnabled, "Raids and sieges\nDefault=" + siegesEnabled + "\n" + "If true, factions at war (declared with /awrelation war) attack each other's cities near players: waves of\n" + "attackers spawn near the city and march on its leader. Most attacks are raids (raid_* settings), some are full\n" + "sieges with siege engines (full_siege_* settings). If false, attacks start only with /awsiege start.").getBoolean();
 
-		siegeCheckInterval = config.get(serverOptions, "siege_check_interval", siegeCheckInterval, "Siege check interval\nDefault=" + siegeCheckInterval + "\n" + "Ticks (20 per second) between two checks for a new siege. At each check at most one siege starts.", 20, 720000).getInt();
+		siegeCheckInterval = config.get(serverOptions, "siege_check_interval", siegeCheckInterval, "Attack check interval\nDefault=" + siegeCheckInterval + "\n" + "Ticks (20 per second) between two checks for a new raid or siege. At each check at most one attack starts.", 20, 720000).getInt();
 
-		siegeChance = config.get(serverOptions, "siege_chance", siegeChance, "Siege chance\nDefault=" + siegeChance + "\n" + "Chance (0.0 to 1.0) that a city that can be besieged is besieged at a check.", 0.0D, 1.0D).getDouble();
+		siegeChance = config.get(serverOptions, "siege_chance", siegeChance, "Attack chance\nDefault=" + siegeChance + "\n" + "Chance (0.0 to 1.0) that a city that can be attacked is attacked (raid or full siege) at a check.", 0.0D, 1.0D).getDouble();
 
 		siegePlayerRange = config.get(serverOptions, "siege_player_range", siegePlayerRange, "Siege player range\nDefault=" + siegePlayerRange + "\n" + "Only cities with a player within this many blocks of their center are besieged. Players within this range\n" + "also see the siege bar.", 16, 512).getInt();
 
-		siegeCooldownDays = config.get(serverOptions, "siege_cooldown_days", siegeCooldownDays, "Siege cooldown\nDefault=" + siegeCooldownDays + "\n" + "Minecraft days after a siege ends (or after the city is founded) before the city can be besieged again.", 0, 1000).getInt();
+		siegeCooldownDays = config.get(serverOptions, "siege_cooldown_days", siegeCooldownDays, "Siege cooldown\nDefault=" + siegeCooldownDays + "\n" + "Minecraft days after a raid or siege ends (or after the city is founded) before the city can be attacked again.", 0, 1000).getInt();
 
 		maxActiveSieges = config.get(serverOptions, "max_active_sieges", maxActiveSieges, "Maximum sieges\nDefault=" + maxActiveSieges + "\n" + "Maximum number of sieges at the same time started by the automatic check (not counting /awsiege start).", 0, 100).getInt();
-
-		siegeStrengthRatio = config.get(serverOptions, "siege_strength_ratio", siegeStrengthRatio, "Siege size\nDefault=" + siegeStrengthRatio + "\n" + "Total attackers of a siege = (garrison units loaded + manpower of the city) x this value,\n" + "limited by siege_min_attackers and siege_max_attackers, and split into siege_waves waves.", 0.0D, 100.0D).getDouble();
-
-		siegeMinAttackers = config.get(serverOptions, "siege_min_attackers", siegeMinAttackers, "Minimum attackers\nDefault=" + siegeMinAttackers + "\n" + "Minimum total number of attackers of a siege.", 1, 1000).getInt();
-
-		siegeMaxAttackers = config.get(serverOptions, "siege_max_attackers", siegeMaxAttackers, "Maximum attackers\nDefault=" + siegeMaxAttackers + "\n" + "Maximum total number of attackers of a siege.", 1, 1000).getInt();
-
-		siegeWaves = config.get(serverOptions, "siege_waves", siegeWaves, "Siege waves\nDefault=" + siegeWaves + "\n" + "Number of waves of a siege. The next wave comes when the previous one is wiped out.", 1, 100).getInt();
 
 		siegeWarmupTicks = config.get(serverOptions, "siege_warmup_ticks", siegeWarmupTicks, "Siege warm up\nDefault=" + siegeWarmupTicks + "\n" + "Ticks (20 per second) of warning before the first wave and between two waves.", 20, 72000).getInt();
 
@@ -134,9 +138,46 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		siegeSpawnMaxDistance = config.get(serverOptions, "siege_spawn_max_distance", siegeSpawnMaxDistance, "Wave distance (maximum)\nDefault=" + siegeSpawnMaxDistance + "\n" + "Maximum distance in blocks from the city center where waves spawn.", 8, 128).getInt();
 
-		siegeUnitWeights = config.get(serverOptions, "siege_unit_weights", siegeUnitWeights, "Siege units\n" + "Units of the attacking faction in a wave, as npc type=weight. Types are the faction npc names without the\n" + "'ancientwarfarenpc:' prefix, e.g. faction.soldier, faction.archer, faction.soldier.elite, faction.archer.elite,\n" + "faction.cavalry, faction.mounted_archer.").getStringList();
+		announceSieges = config.get(serverOptions, "announce_sieges", announceSieges, "Announce raids and sieges\nDefault=" + announceSieges + "\n" + "If true, all players are told in chat when a raid or siege starts and ends.").getBoolean();
 
-		announceSieges = config.get(serverOptions, "announce_sieges", announceSieges, "Announce sieges\nDefault=" + announceSieges + "\n" + "If true, all players are told in chat when a siege starts and ends.").getBoolean();
+		String unitTypes = "Units of the attacking faction in a wave, as npc type=weight. Types are the faction npc names without the\n" + "'ancientwarfarenpc:' prefix: faction.soldier, faction.soldier.elite, faction.archer, faction.archer.elite,\n" + "faction.cavalry (mounted soldier, spawns with its horse), faction.mounted_archer.";
+
+		raidStrengthRatio = config.get(serverOptions, "raid_strength_ratio", raidStrengthRatio, "Raid size\nDefault=" + raidStrengthRatio + "\n" + "Total attackers of a raid = (garrison units loaded + manpower of the city) x this value,\n" + "limited by raid_min_attackers and raid_max_attackers, and split into raid_waves waves.", 0.0D, 100.0D).getDouble();
+
+		raidMinAttackers = config.get(serverOptions, "raid_min_attackers", raidMinAttackers, "Raid minimum attackers\nDefault=" + raidMinAttackers + "\n" + "Minimum total number of attackers of a raid.", 1, 1000).getInt();
+
+		raidMaxAttackers = config.get(serverOptions, "raid_max_attackers", raidMaxAttackers, "Raid maximum attackers\nDefault=" + raidMaxAttackers + "\n" + "Maximum total number of attackers of a raid.", 1, 1000).getInt();
+
+		raidWaves = config.get(serverOptions, "raid_waves", raidWaves, "Raid waves\nDefault=" + raidWaves + "\n" + "Number of waves of a raid. The next wave comes when the previous one is wiped out.", 1, 100).getInt();
+
+		raidUnitWeights = config.get(serverOptions, "raid_unit_weights", raidUnitWeights, "Raid units\n" + unitTypes).getStringList();
+
+		fullSiegeShare = config.get(serverOptions, "full_siege_share", fullSiegeShare, "Full siege share\nDefault=" + fullSiegeShare + "\n" + "Chance (0.0 to 1.0) that an automatic attack is a full siege instead of a raid, if the city had no full siege\n" + "for full_siege_cooldown_days.", 0.0D, 1.0D).getDouble();
+
+		fullSiegeCooldownDays = config.get(serverOptions, "full_siege_cooldown_days", fullSiegeCooldownDays, "Full siege cooldown\nDefault=" + fullSiegeCooldownDays + "\n" + "Minecraft days after a full siege ends (or after the city is founded) before the city can have another full siege.\n" + "Raids can still come in the meantime.", 0, 1000).getInt();
+
+		fullSiegeStrengthRatio = config.get(serverOptions, "full_siege_strength_ratio", fullSiegeStrengthRatio, "Full siege size\nDefault=" + fullSiegeStrengthRatio + "\n" + "Total attackers of a full siege (siege engineers not counted) = (garrison units loaded + manpower) x this value,\n" + "limited by full_siege_min_attackers and full_siege_max_attackers, and split into full_siege_waves waves.", 0.0D, 100.0D).getDouble();
+
+		fullSiegeMinAttackers = config.get(serverOptions, "full_siege_min_attackers", fullSiegeMinAttackers, "Full siege minimum attackers\nDefault=" + fullSiegeMinAttackers + "\n" + "Minimum total number of attackers of a full siege.", 1, 1000).getInt();
+
+		fullSiegeMaxAttackers = config.get(serverOptions, "full_siege_max_attackers", fullSiegeMaxAttackers, "Full siege maximum attackers\nDefault=" + fullSiegeMaxAttackers + "\n" + "Maximum total number of attackers of a full siege.", 1, 1000).getInt();
+
+		fullSiegeWaves = config.get(serverOptions, "full_siege_waves", fullSiegeWaves, "Full siege waves\nDefault=" + fullSiegeWaves + "\n" + "Number of waves of a full siege.", 1, 100).getInt();
+
+		fullSiegeUnitWeights = config.get(serverOptions, "full_siege_unit_weights", fullSiegeUnitWeights, "Full siege units\n" + unitTypes).getStringList();
+
+		fullSiegeEngines = config.get(serverOptions, "full_siege_engines", fullSiegeEngines, "Siege engines\nDefault=" + fullSiegeEngines + "\n" + "Siege engines brought by a full siege, each manned by a siege engineer of the attacking faction. They come with\n" + "the first wave and stay until the siege ends. Their shots break blocks if shots_destroys_blocks is true in the\n" + "Ancient Warfare vehicle config.", 0, 20).getInt();
+
+		fullSiegeEngineTypes = config.get(serverOptions, "full_siege_engine_types", fullSiegeEngineTypes, "Siege engine types\n" + "Siege engines of a full siege, as vehicle type=weight. Types (Ancient Warfare vehicle config names): catapult_mobile,\n" + "catapult_mobile_turret, catapult_stand, catapult_stand_turret, trebuchet_mobile, trebuchet_stand, trebuchet_stand_turret,\n" + "ballista_mobile, ballista_mobile_turret, ballista_stand, ballista_stand_turret, cannon_mobile, cannon_stand, hwacha.").getStringList();
+
+		fullSiegeEngineLevel = config.get(serverOptions, "full_siege_engine_level", fullSiegeEngineLevel, "Siege engine material level\nDefault=" + fullSiegeEngineLevel + "\n" + "Material level of the siege engines (0 = weakest).", 0, 10).getInt();
+
+		fullSiegeEngineDistance = config.get(serverOptions, "full_siege_engine_distance", fullSiegeEngineDistance, "Siege engine distance\nDefault=" + fullSiegeEngineDistance + "\n" + "Distance in blocks from the city center (and at least 4 blocks outside its bounds) where siege engines are placed.", 8, 120).getInt();
+
+		// replaced by the raid_* and full_siege_* settings
+		for (String obsolete : new String[] {"siege_strength_ratio", "siege_min_attackers", "siege_max_attackers", "siege_waves", "siege_unit_weights"}) {
+			config.getCategory(serverOptions).remove(obsolete);
+		}
 
 		renderLeaderLabel = config.get(clientOptions, "render_leader_label", renderLeaderLabel, "Render leader label\nDefault=" + renderLeaderLabel + "\n" + "If true, faction leaders show a 'Leader of the ...' label above their head, even when nameplates are disabled.").getBoolean();
 

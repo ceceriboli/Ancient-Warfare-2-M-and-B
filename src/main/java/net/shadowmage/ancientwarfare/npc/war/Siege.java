@@ -3,6 +3,7 @@ package net.shadowmage.ancientwarfare.npc.war;
 import net.minecraft.nbt.NBTTagCompound;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 
+import javax.annotation.Nullable;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -23,7 +24,29 @@ public class Siege {
 		}
 	}
 
+	/**
+	 * RAID: a small attack of infantry and cavalry. SIEGE: a full siege, bigger and rarer, with siege engines manned by siege engineers.
+	 */
+	public enum Kind {
+		RAID, SIEGE;
+
+		public String getName() {
+			return name().toLowerCase(Locale.ROOT);
+		}
+
+		@Nullable
+		public static Kind fromName(String name) {
+			for (Kind kind : values()) {
+				if (kind.getName().equals(name)) {
+					return kind;
+				}
+			}
+			return null;
+		}
+	}
+
 	private final int id;
+	private Kind kind = Kind.RAID;
 	private int settlementId;
 	private int dimension;
 	private String attackerFaction = "";
@@ -44,8 +67,9 @@ public class Siege {
 		this.id = id;
 	}
 
-	public static Siege create(int id, Settlement settlement, String attackerFaction, int totalWaves, int attackersPerWave) {
+	public static Siege create(int id, Kind kind, Settlement settlement, String attackerFaction, int totalWaves, int attackersPerWave) {
 		Siege siege = new Siege(id);
+		siege.kind = kind;
 		siege.settlementId = settlement.getId();
 		siege.dimension = settlement.getDimension();
 		siege.attackerFaction = attackerFaction;
@@ -56,6 +80,10 @@ public class Siege {
 
 	public int getId() {
 		return id;
+	}
+
+	public Kind getKind() {
+		return kind;
 	}
 
 	public int getSettlementId() {
@@ -148,6 +176,7 @@ public class Siege {
 
 	public NBTTagCompound writeToNBT(NBTTagCompound tag) {
 		tag.setInteger("id", id);
+		tag.setString("kind", kind.getName());
 		tag.setInteger("settlement", settlementId);
 		tag.setInteger("dimension", dimension);
 		tag.setString("attacker", attackerFaction);
@@ -163,6 +192,8 @@ public class Siege {
 
 	public static Siege readFromNBT(NBTTagCompound tag) {
 		Siege siege = new Siege(tag.getInteger("id"));
+		Kind kind = Kind.fromName(tag.getString("kind"));
+		siege.kind = kind == null ? Kind.RAID : kind;
 		siege.settlementId = tag.getInteger("settlement");
 		siege.dimension = tag.getInteger("dimension");
 		siege.attackerFaction = tag.getString("attacker");
