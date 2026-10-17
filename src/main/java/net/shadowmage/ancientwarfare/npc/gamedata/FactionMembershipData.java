@@ -33,6 +33,22 @@ public class FactionMembershipData extends WorldSavedData {
 		markDirty();
 	}
 
+	@Nullable
+	public Member getMember(UUID playerId) {
+		return members.get(playerId);
+	}
+
+	/**
+	 * Records a change of standing with another faction inherited from the member's faction, taken back when the member leaves.
+	 */
+	public void addInherited(UUID playerId, String otherFaction, int change) {
+		Member member = members.get(playerId);
+		if (member != null && change != 0) {
+			member.inherited.merge(otherFaction, change, Integer::sum);
+			markDirty();
+		}
+	}
+
 	public boolean remove(UUID playerId) {
 		if (members.remove(playerId) != null) {
 			markDirty();
@@ -53,7 +69,12 @@ public class FactionMembershipData extends WorldSavedData {
 			NBTTagCompound memberTag = memberList.getCompoundTagAt(i);
 			UUID playerId = memberTag.getUniqueId("player");
 			if (playerId != null) {
-				members.put(playerId, new Member(playerId, memberTag.getString("playerName"), memberTag.getString("faction")));
+				Member member = new Member(playerId, memberTag.getString("playerName"), memberTag.getString("faction"));
+				NBTTagCompound inheritedTag = memberTag.getCompoundTag("inherited");
+				for (String otherFaction : inheritedTag.getKeySet()) {
+					member.inherited.put(otherFaction, inheritedTag.getInteger(otherFaction));
+				}
+				members.put(playerId, member);
 			}
 		}
 	}
@@ -66,6 +87,9 @@ public class FactionMembershipData extends WorldSavedData {
 			memberTag.setUniqueId("player", member.playerId);
 			memberTag.setString("playerName", member.playerName);
 			memberTag.setString("faction", member.faction);
+			NBTTagCompound inheritedTag = new NBTTagCompound();
+			member.inherited.forEach(inheritedTag::setInteger);
+			memberTag.setTag("inherited", inheritedTag);
 			memberList.appendTag(memberTag);
 		}
 		tag.setTag("members", memberList);
@@ -76,6 +100,14 @@ public class FactionMembershipData extends WorldSavedData {
 		public final UUID playerId;
 		public final String playerName;
 		public final String faction;
+		/**
+		 * Standing changes inherited from the faction, per other faction
+		 */
+		private final Map<String, Integer> inherited = new HashMap<>();
+
+		public Map<String, Integer> getInherited() {
+			return Collections.unmodifiableMap(inherited);
+		}
 
 		private Member(UUID playerId, String playerName, String faction) {
 			this.playerId = playerId;

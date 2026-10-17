@@ -27,6 +27,7 @@ import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 
 import javax.annotation.Nullable;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -72,12 +73,13 @@ public class FactionMembership {
 
 	public static void join(MinecraftServer server, EntityPlayerMP player, String faction, boolean announce) {
 		World world = server.getEntityWorld();
+		revertInherited(world, player.getUniqueID()); // moved by an operator from another faction
 		getData(world).set(player.getUniqueID(), player.getName(), faction);
 		// a member is well regarded by its faction
 		if (FactionTracker.INSTANCE.getStandingFor(world, player.getName(), faction) < AWDiplomacyStatics.memberStanding) {
 			FactionTracker.INSTANCE.setStandingFor(world, player.getName(), faction, AWDiplomacyStatics.memberStanding);
 		}
-		inheritStandings(world, player.getName(), faction);
+		inheritStandings(world, player.getUniqueID(), player.getName(), faction);
 		if (announce) {
 			announce(server, player.getUniqueID(), "command.aw.membership.announce.join", player.getName(), faction);
 		}
@@ -87,10 +89,10 @@ public class FactionMembership {
 	/**
 	 * The member takes the relations of its faction as standings with every other faction.
 	 */
-	private static void inheritStandings(World world, String playerName, String faction) {
+	private static void inheritStandings(World world, UUID playerId, String playerName, String faction) {
 		for (String other : FactionRegistry.getFactionNames()) {
 			if (!other.equals(faction)) {
-				inheritStanding(world, playerName, faction, other);
+				inheritStanding(world, playerId, playerName, faction, other);
 			}
 		}
 	}
@@ -98,8 +100,9 @@ public class FactionMembership {
 	/**
 	 * At most member_enemy_standing with an enemy of the faction, at least member_ally_standing with an ally, at least 0 with the others
 	 * (a faction at peace with the member's faction is not hostile to it). Factions with a fixed standing are left as they are.
+	 * The change is recorded, so that leaving the faction takes it back.
 	 */
-	private static void inheritStanding(World world, String playerName, String faction, String other) {
+	private static void inheritStanding(World world, UUID playerId, String playerName, String faction, String other) {
 		if (!AWDiplomacyStatics.membershipEnabled || !AWDiplomacyStatics.memberInheritStandings) {
 			return;
 		}
@@ -114,6 +117,23 @@ public class FactionMembership {
 		}
 		if (inherited != standing) {
 			FactionTracker.INSTANCE.setStandingFor(world, playerName, other, inherited);
+			// what really changed (a fixed standing, or the player's team, may keep it as it was)
+			getData(world).addInherited(playerId, other, FactionTracker.INSTANCE.getStandingFor(world, playerName, other) - standing);
+		}
+	}
+
+	/**
+	 * Takes back the standings inherited from the player's faction: each one goes back to its value before joining, plus the changes the
+	 * player made on its own while a member (kills, trades).
+	 */
+	private static void revertInherited(World world, UUID playerId) {
+		FactionMembershipData.Member member = getData(world).getMember(playerId);
+		if (member == null) {
+			return;
+		}
+		for (Map.Entry<String, Integer> entry : member.getInherited().entrySet()) {
+			int standing = FactionTracker.INSTANCE.getStandingFor(world, member.playerName, entry.getKey());
+			FactionTracker.INSTANCE.setStandingFor(world, member.playerName, entry.getKey(), standing - entry.getValue());
 		}
 	}
 
@@ -123,9 +143,9 @@ public class FactionMembership {
 	static void onRelationChanged(World world, String faction, String otherFaction) {
 		for (FactionMembershipData.Member member : getData(world).getMembers()) {
 			if (member.faction.equals(faction)) {
-				inheritStanding(world, member.playerName, faction, otherFaction);
+				inheritStanding(world, member.playerId, member.playerName, faction, otherFaction);
 			} else if (member.faction.equals(otherFaction)) {
-				inheritStanding(world, member.playerName, otherFaction, faction);
+				inheritStanding(world, member.playerId, member.playerName, otherFaction, faction);
 			}
 		}
 	}
@@ -149,6 +169,7 @@ public class FactionMembership {
 		if (faction == null) {
 			return null;
 		}
+		revertInherited(world, playerId);
 		data.remove(playerId);
 		if (standingPenalty > 0) {
 			FactionTracker.INSTANCE.adjustStandingFor(world, playerName, faction, -standingPenalty);
