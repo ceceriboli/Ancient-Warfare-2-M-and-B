@@ -8,6 +8,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.WorldServer;
+import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.gamedata.SettlementData;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
@@ -111,6 +112,8 @@ public class CommandSiege extends CommandBase {
 			sender.sendMessage(new TextComponentTranslation("command.aw.siege.list.entry", siege.getId(), siege.getKind().getName(), city,
 					FactionMembership.factionName(siege.getAttackerFaction()),
 					siege.getState().getName(), siege.getWavesSpawned(), siege.getTotalWaves(), siege.getLoadedAttackers().size()));
+			sender.sendMessage(new TextComponentTranslation("command.aw.siege.list.timers", siege.getIdleTicks() / 20, AWDiplomacyStatics.siegeWaveStallTicks / 20,
+					siege.getTotalTicks() / 20, AWDiplomacyStatics.siegeMaxTicks / 20, siege.isSuspended() ? new TextComponentTranslation("command.aw.siege.list.suspended") : ""));
 		}
 	}
 

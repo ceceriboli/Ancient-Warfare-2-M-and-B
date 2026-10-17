@@ -112,8 +112,15 @@ public class Siege {
 	/**
 	 * @return ticks of the current wave without any attacker or defender killed
 	 */
-	int getIdleTicks() {
+	public int getIdleTicks() {
 		return idleTicks;
+	}
+
+	/**
+	 * @return true while the city center is not loaded: the timers of the siege do not run
+	 */
+	public boolean isSuspended() {
+		return suspended;
 	}
 
 	void addIdleTicks(int ticks) {
@@ -144,7 +151,7 @@ public class Siege {
 		return stateTicks;
 	}
 
-	int getTotalTicks() {
+	public int getTotalTicks() {
 		return totalTicks;
 	}
 
