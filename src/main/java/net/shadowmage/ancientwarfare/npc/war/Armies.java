@@ -52,6 +52,7 @@ public class Armies {
 	private static final String TAG_CHARGE_HOME = "awChargeHome";
 	private static final String TAG_CHARGE_HOME_RANGE = "awChargeHomeRange";
 	private static final String WEIGHTS_FALLBACK = "faction.soldier";
+	private static final int MAX_GATHERING_HEIGHT_DIFF = 3;
 
 	private static final Map<UUID, List<WeakReference<NpcBase>>> members = new HashMap<>();
 
@@ -441,8 +442,9 @@ public class Armies {
 				double angle = world.rand.nextDouble() * Math.PI * 2D;
 				BlockPos column = pos.add((int) (Math.cos(angle) * radius), 0, (int) (Math.sin(angle) * radius));
 				BlockPos top = world.getTopSolidOrLiquidBlock(column);
-				if (city.contains(dimension, top) && world.canSeeSky(top) && world.isAirBlock(top.up())
-						&& !world.getBlockState(top.down()).getMaterial().isLiquid()) {
+				// near the player's height: the highest block under the sky in a city is often a roof
+				if (city.contains(dimension, top) && Math.abs(top.getY() - pos.getY()) <= MAX_GATHERING_HEIGHT_DIFF && world.canSeeSky(top)
+						&& world.isAirBlock(top.up()) && !world.getBlockState(top.down()).getMaterial().isLiquid()) {
 					return top;
 				}
 			}
