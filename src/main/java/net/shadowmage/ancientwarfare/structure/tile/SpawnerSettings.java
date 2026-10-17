@@ -23,6 +23,7 @@ import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 import net.shadowmage.ancientwarfare.core.config.AWCoreStatics;
 import net.shadowmage.ancientwarfare.core.util.EntityTools;
+import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionArcher;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
@@ -259,9 +260,10 @@ public class SpawnerSettings {
 
 	private List<EntityPlayer> getPlayersWithinAABB() {
 		List<EntityPlayer> players = new ArrayList<>();
+		int range = Math.max(playerRange, AWDiplomacyStatics.spawnerMinPlayerRange);
 
 		for (EntityPlayer player : world.playerEntities) {
-			if (player.getEntityBoundingBox().intersects(new AxisAlignedBB(pos, pos.add(1, 1, 1)).grow(playerRange, playerRange, playerRange))) {
+			if (player.getEntityBoundingBox().intersects(new AxisAlignedBB(pos, pos.add(1, 1, 1)).grow(range, range, range))) {
 //				if(AWCoreStatics.spawnersRequireLineOfSight) {
 //					// LOS check to player
 //					if(player.world.rayTraceBlocks(new Vec3d(player.posX, player.posY + (double)player.getEyeHeight(), player.posZ), new Vec3d(pos.getX(), pos.getY()+1, pos.getZ()), false, true, false) == null) {

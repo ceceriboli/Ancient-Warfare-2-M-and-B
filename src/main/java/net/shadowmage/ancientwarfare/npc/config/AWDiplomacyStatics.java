@@ -17,6 +17,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static double leaderDirectionsChance = 0.25;
 	public static boolean announceRelationChanges = true;
 	public static boolean announceMembershipChanges = true;
+	public static int spawnerMinPlayerRange = 48;
 	public static boolean settlementsEnabled = true;
 	public static int settlementDefaultRadius = 48;
 	public static boolean settlementUseStructureBounds = true;
@@ -93,6 +94,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		announceRelationChanges = config.get(serverOptions, "announce_relation_changes", announceRelationChanges, "Announce relation changes\nDefault=" + announceRelationChanges + "\n" + "If true, all players are told in chat when two factions go to war, make peace or form an alliance.").getBoolean();
 
 		announceMembershipChanges = config.get(serverOptions, "announce_membership_changes", announceMembershipChanges, "Announce membership changes\nDefault=" + announceMembershipChanges + "\n" + "If true, all players are told in chat when a player joins, leaves or is expelled from a faction.").getBoolean();
+
+		spawnerMinPlayerRange = config.get(serverOptions, "spawner_min_player_range", spawnerMinPlayerRange, "Structure spawner range\nDefault=" + spawnerMinPlayerRange + "\n" + "Ancient Warfare structure spawners create their npcs (leaders included, so also cities) when a player is within\n" + "their own range, set in each structure template (often 16 blocks). This is the minimum range for all spawners,\n" + "measured as a cube around the spawner. 0 = use the range of each template. Players in creative or spectator mode\n" + "still do not trigger spawners. Keep it well below 128: npcs that can despawn vanish when no player is within 128 blocks.", 0, 112).getInt();
 
 		settlementsEnabled = config.get(serverOptions, "settlements_enabled", settlementsEnabled, "Faction cities and manpower\nDefault=" + settlementsEnabled + "\n" + "If true, every faction leader founds a city with the faction npcs around it. While the leader lives, killed units respawn\n" + "using the city's manpower; when the leader dies the city falls and is abandoned.").getBoolean();
 
