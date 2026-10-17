@@ -17,6 +17,7 @@ import net.shadowmage.ancientwarfare.structure.template.build.StructureBB;
 import net.shadowmage.ancientwarfare.structure.util.ConquerHelper;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -89,6 +90,15 @@ public class TownMap extends WorldSavedData {
 			}
 		}
 		return distance;
+	}
+
+	public Optional<TownEntry> getTownAt(BlockPos pos) {
+		for (TownEntry townEntry : townEntries) {
+			if (townEntry.getBB().contains(pos)) {
+				return Optional.of(townEntry);
+			}
+		}
+		return Optional.empty();
 	}
 
 	public boolean intersectsWithTown(StructureBB bb) {

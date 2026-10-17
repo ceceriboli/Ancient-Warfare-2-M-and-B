@@ -25,6 +25,7 @@ import net.shadowmage.ancientwarfare.npc.command.CommandDebugAI;
 import net.shadowmage.ancientwarfare.npc.command.CommandFaction;
 import net.shadowmage.ancientwarfare.npc.command.CommandFactionMembership;
 import net.shadowmage.ancientwarfare.npc.command.CommandFactionRelation;
+import net.shadowmage.ancientwarfare.npc.command.CommandSettlement;
 import net.shadowmage.ancientwarfare.npc.command.CommandTeams;
 import net.shadowmage.ancientwarfare.npc.compat.EpicSiegeCompat;
 import net.shadowmage.ancientwarfare.npc.compat.TwilightForestCompat;
@@ -48,6 +49,7 @@ import net.shadowmage.ancientwarfare.npc.container.ContainerWorkOrder;
 import net.shadowmage.ancientwarfare.npc.registry.NPCDialogue;
 import net.shadowmage.ancientwarfare.npc.entity.faction.attributes.EntityVehicleProperty;
 import net.shadowmage.ancientwarfare.npc.event.FactionMembershipEventHandler;
+import net.shadowmage.ancientwarfare.npc.event.SettlementEventHandler;
 import net.shadowmage.ancientwarfare.npc.faction.FactionTracker;
 import net.shadowmage.ancientwarfare.npc.init.AWNPCEntities;
 import net.shadowmage.ancientwarfare.npc.init.AWNPCItems;
@@ -97,6 +99,7 @@ public class AncientWarfareNPC {
 		MinecraftForge.EVENT_BUS.register(this);
 		MinecraftForge.EVENT_BUS.register(net.shadowmage.ancientwarfare.npc.event.EventHandler.INSTANCE);
 		MinecraftForge.EVENT_BUS.register(FactionMembershipEventHandler.INSTANCE);
+		MinecraftForge.EVENT_BUS.register(SettlementEventHandler.INSTANCE);
 
 		NetworkHandler.registerContainer(NetworkHandler.GUI_NPC_INVENTORY, ContainerNpcInventory.class);
 		NetworkHandler.registerContainer(NetworkHandler.GUI_NPC_WORK_ORDER, ContainerWorkOrder.class);
@@ -174,6 +177,7 @@ public class AncientWarfareNPC {
 		evt.registerServerCommand(new CommandDebugAI());
 		evt.registerServerCommand(new CommandFactionRelation());
 		evt.registerServerCommand(new CommandFactionMembership());
+		evt.registerServerCommand(new CommandSettlement());
 	}
 
 	@SubscribeEvent
