@@ -36,6 +36,7 @@ import net.minecraftforge.event.entity.living.PotionEvent;
 import net.shadowmage.ancientwarfare.core.config.AWCoreStatics;
 import net.shadowmage.ancientwarfare.core.util.NBTHelper;
 import net.shadowmage.ancientwarfare.npc.ai.AIHelper;
+import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionFlee;
 import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionFleeSun;
 import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionRestrictSun;
 import net.shadowmage.ancientwarfare.npc.registry.NPCDialogue;
@@ -282,6 +283,10 @@ public abstract class NpcFaction extends NpcBase {
 
 	@Override
 	public boolean isHostileTowards(Entity e) {
+		if (NpcAIFactionFlee.isFleeing(this)) {
+			// running away (survivor of a fallen city): attacks nobody, not even for revenge
+			return false;
+		}
 		if (e instanceof EntityPlayer || e instanceof NpcPlayerOwned) {
 			String playerName = e instanceof EntityPlayer ? e.getName() : ((NpcBase) e).getOwner().getName();
 			UUID playerUUID = e instanceof EntityPlayer ? e.getUniqueID() : ((NpcBase) e).getOwner().getUUID();

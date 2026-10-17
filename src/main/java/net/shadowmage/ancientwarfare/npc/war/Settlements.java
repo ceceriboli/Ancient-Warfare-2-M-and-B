@@ -3,6 +3,8 @@ package net.shadowmage.ancientwarfare.npc.war;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLiving;
+import net.minecraft.entity.ai.EntityAITasks;
+import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionFlee;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
@@ -101,6 +103,9 @@ public class Settlements {
 		if (npc.getEntityData().hasKey(TAG_SIEGE)) {
 			Sieges.onAttackerJoinWorld(npc);
 			return;
+		}
+		if (npc.getEntityData().hasKey(NpcAIFactionFlee.TAG_FLEE_UNTIL)) {
+			addFleeAI(npc);
 		}
 		if (isSiegeOrArmyUnit(npc) || npc.getEntityData().getBoolean(TAG_REMNANT)) {
 			return;
@@ -473,6 +478,15 @@ public class Settlements {
 		}
 	}
 
+	private static void addFleeAI(NpcFaction npc) {
+		for (EntityAITasks.EntityAITaskEntry entry : npc.tasks.taskEntries) {
+			if (entry.action instanceof NpcAIFactionFlee) {
+				return;
+			}
+		}
+		npc.tasks.addTask(NpcAIFactionFlee.PRIORITY, new NpcAIFactionFlee(npc));
+	}
+
 	private static void untag(NpcFaction npc) {
 		npc.getEntityData().removeTag(TAG_SETTLEMENT);
 		npc.getEntityData().removeTag(TAG_ROLE);
@@ -518,10 +532,16 @@ public class Settlements {
 		for (String removed : new String[] {"UUIDMost", "UUIDLeast", "Passengers", "revengePlayers"}) {
 			tag.removeTag(removed);
 		}
+		Settlement settlement = getSettlementOf(npc);
 		NBTTagCompound forgeData = tag.getCompoundTag("ForgeData");
 		forgeData.removeTag(TAG_SETTLEMENT);
 		forgeData.removeTag(TAG_ROLE);
 		forgeData.setBoolean(TAG_REMNANT, true);
+		if (AWDiplomacyStatics.banditFleeTicks > 0) {
+			// the survivors run away from the fallen city before turning to banditry
+			forgeData.setLong(NpcAIFactionFlee.TAG_FLEE_UNTIL, world.getTotalWorldTime() + AWDiplomacyStatics.banditFleeTicks);
+			forgeData.setLong(NpcAIFactionFlee.TAG_FLEE_FROM, (settlement != null ? settlement.getLastLeaderPos() : npc.getPosition()).toLong());
+		}
 		tag.setTag("ForgeData", forgeData);
 		Entity bandit = EntityList.createEntityFromNBT(tag, world);
 		if (bandit == null) {

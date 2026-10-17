@@ -31,6 +31,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean announceSettlementChanges = true;
 	public static String fallenGarrison = "bandits";
 	public static String banditFaction = "brigand";
+	public static int banditFleeTicks = 6000;
 	public static boolean siegesEnabled = true;
 	public static int siegeCheckInterval = 2400;
 	public static double siegeChance = 0.25;
@@ -124,6 +125,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		fallenGarrison = config.get(serverOptions, "fallen_garrison", fallenGarrison, "Garrison of a fallen city\nDefault=" + fallenGarrison + "\n" + "What the remaining units of a city do when its leader dies:\n" + "bandits = they stay where they are as npcs of bandit_faction (no city, no respawn), to be cleared out\n" + "stay = they stay in their own faction, without city and without respawn\n" + "disband = they vanish", new String[] {"bandits", "stay", "disband"}).getString();
 
 		banditFaction = config.get(serverOptions, "bandit_faction", banditFaction, "Bandit faction\nDefault=" + banditFaction + "\n" + "Faction the remaining units of a fallen city join with fallen_garrison=bandits. They keep their equipment.").getString();
+
+		banditFleeTicks = config.get(serverOptions, "bandit_flee_ticks", banditFleeTicks, "Bandits flee\nDefault=" + banditFleeTicks + "\n" + "Ticks (20 per second) the new bandits of a fallen city run away from the city and from anyone close, without\n" + "attacking anyone. Then they settle where they are and behave as bandits. 0 = they never flee.", 0, 720000).getInt();
 
 		siegesEnabled = config.get(serverOptions, "sieges_enabled", siegesEnabled, "Raids and sieges\nDefault=" + siegesEnabled + "\n" + "If true, factions at war (declared with /awrelation war) attack each other's cities near players: waves of\n" + "attackers spawn near the city and march on its leader. Most attacks are raids (raid_* settings), some are full\n" + "sieges with siege engines (full_siege_* settings). If false, attacks start only with /awsiege start.").getBoolean();
 
