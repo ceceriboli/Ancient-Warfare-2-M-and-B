@@ -78,6 +78,7 @@ public class Sieges {
 	private static final double ENGINE_TARGET_RANGE = 96D;
 	private static final int ENGINE_SPACING = 6;
 	private static final int RECONNECT_GRACE_TICKS = 200;
+	private static final int IDLE_RESET_LOG_TICKS = 1200;
 	private static final int DAY_TICKS = 24000;
 	private static final int SPAWN_ATTEMPTS = 20;
 	private static final int SPAWN_SPREAD = 3;
@@ -241,6 +242,11 @@ public class Sieges {
 			}
 		}
 		if (siege != null && siege.getState() == Siege.State.WAVE) {
+			if (siege.getIdleTicks() >= IDLE_RESET_LOG_TICKS) {
+				AncientWarfareNPC.LOG.info("{} {}: stalled wave timer reset after {}s by the death of {} ({}, {}) at {}", siege.getKind().getName(), siege.getId(),
+						siege.getIdleTicks() / 20, npc.getName(), npc.getFaction(), npc.getEntityData().hasKey(Settlements.TAG_SIEGE) ? "attacker" : "defender",
+						npc.getPosition());
+			}
 			siege.resetIdleTicks();
 			data.markDirty();
 		}
