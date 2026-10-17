@@ -67,7 +67,9 @@ public abstract class NpcDefault {
 
 	public void applyPathSettings(PathNavigateGround navigator) {
 		navigator.setCanSwim(canSwim);
-		navigator.setBreakDoors(canBreakDoors);
+		// setBreakDoors only lets paths go through closed wooden doors and fence gates (nothing is broken: NpcAIDoor opens them),
+		// so every npc gets it, also the faction bards, traders and civilians that have can_break_doors=false in the registry
+		navigator.setBreakDoors(true);
 	}
 
 	public void applyEquipment(NpcBase npc) {
