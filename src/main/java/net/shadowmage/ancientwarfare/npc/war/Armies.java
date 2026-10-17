@@ -144,12 +144,14 @@ public class Armies {
 		List<Integer> weights = new ArrayList<>();
 		Sieges.parseWeights(AWDiplomacyStatics.armyUnitWeights, WEIGHTS_FALLBACK, types, weights);
 		int raised = 0;
+		// the army gathers in the open (under the sky) inside the city, near the player, not in the ruler's hall among doors
+		BlockPos gathering = findOpenGround(world, city, player.getPosition());
 		for (int i = 0; i < count; i++) {
 			NpcFaction unit = Sieges.createWeightedUnit(world, types, weights, faction);
 			if (unit == null) {
 				continue;
 			}
-			BlockPos pos = findStandableNear(world, player.getPosition());
+			BlockPos pos = findStandableNear(world, gathering);
 			unit.setLocationAndAngles(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, world.rand.nextFloat() * 360F, 0F);
 			unit.setHomeAreaAtCurrentPosition();
 			unit.setHealth(unit.getMaxHealth());
@@ -164,7 +166,8 @@ public class Armies {
 		}
 		city.setManpower(city.getManpower() - raised);
 		Settlements.getData(world).markDirty();
-		player.sendMessage(new TextComponentTranslation("command.aw.army.raised", raised, Settlements.displayName(city), city.getManpower()));
+		player.sendMessage(new TextComponentTranslation("command.aw.army.raised", raised, Settlements.displayName(city), city.getManpower(),
+				gathering.getX(), gathering.getY(), gathering.getZ()));
 		AncientWarfareNPC.LOG.info("{} raised an army of {} from city {} ({})", player.getName(), raised, city.getId(), faction);
 	}
 
@@ -362,9 +365,12 @@ public class Armies {
 			}
 			BlockPos leaderPos = target == null ? null : Sieges.getTarget(world, target);
 			boolean breach = !"none".equals(AWDiplomacyStatics.attackerBreach);
+			EntityPlayer player = world.getPlayerEntityByUUID(commander);
 			for (NpcBase npc : list) {
-				// the home follows the soldier: Ancient Warfare shortens the attack range of an npc far from home
-				npc.setHomePosAndDistance(npc.getPosition(), npc.getHomeRange());
+				// charging: the home follows the soldier (Ancient Warfare shortens the attack range of an npc far from home); following:
+				// the home is on the commander, so that the move home AIs (archers stay at home) do not pull the soldier back
+				BlockPos home = target == null && player != null ? player.getPosition() : npc.getPosition();
+				npc.setHomePosAndDistance(home, npc.getHomeRange());
 				NpcAIFactionAssault ai = Sieges.getOrAddAssaultAI(npc);
 				ai.setTarget(leaderPos);
 				ai.setBreachAllowed(breach);
@@ -423,6 +429,25 @@ public class Armies {
 		if (player != null) {
 			npc.setFollowingEntity(player);
 		}
+	}
+
+	/**
+	 * @return the open ground (surface under the sky, not water) inside the city nearest to pos, searched in growing rings, or pos
+	 */
+	private static BlockPos findOpenGround(World world, Settlement city, BlockPos pos) {
+		int dimension = world.provider.getDimension();
+		for (int radius = 0; radius <= 32; radius += 4) {
+			for (int attempt = 0; attempt < 12; attempt++) {
+				double angle = world.rand.nextDouble() * Math.PI * 2D;
+				BlockPos column = pos.add((int) (Math.cos(angle) * radius), 0, (int) (Math.sin(angle) * radius));
+				BlockPos top = world.getTopSolidOrLiquidBlock(column);
+				if (city.contains(dimension, top) && world.canSeeSky(top) && world.isAirBlock(top.up())
+						&& !world.getBlockState(top.down()).getMaterial().isLiquid()) {
+					return top;
+				}
+			}
+		}
+		return pos;
 	}
 
 	private static BlockPos findStandableNear(World world, BlockPos pos) {
