@@ -426,6 +426,12 @@ public class Settlements {
 		if (day <= settlement.getLastRegenDay()) {
 			return;
 		}
+		long days = day - settlement.getLastRegenDay();
+		if (AWDiplomacyStatics.conqueredManpowerGrowthPerDay > 0 && settlement.getMaxManpower() < settlement.getManpowerCap() && !Sieges.isBesieged(settlement)) {
+			// a conquered city slowly grows back to the size it had before the conquest
+			long growth = days * AWDiplomacyStatics.conqueredManpowerGrowthPerDay;
+			settlement.setMaxManpower((int) Math.min(settlement.getManpowerCap(), settlement.getMaxManpower() + growth));
+		}
 		if (AWDiplomacyStatics.manpowerRegenPerDay > 0 && settlement.getManpower() < settlement.getMaxManpower() && !Sieges.isBesieged(settlement)) {
 			long regen = (day - settlement.getLastRegenDay()) * AWDiplomacyStatics.manpowerRegenPerDay;
 			settlement.setManpower((int) Math.min(settlement.getMaxManpower(), settlement.getManpower() + regen));
@@ -505,6 +511,8 @@ public class Settlements {
 	 */
 	private static void conquer(World world, SettlementData data, Settlement settlement, String winner) {
 		String oldFaction = settlement.getFaction();
+		// the new owners start small and slowly grow back to the size the city had (see regenerateManpower)
+		settlement.setManpowerCap(Math.max(settlement.getManpowerCap(), settlement.getMaxManpower()));
 		List<NpcFaction> newGarrison = Sieges.onSettlementConquered(world, settlement);
 		releaseGarrison(world, settlement);
 		settlement.setFaction(winner);

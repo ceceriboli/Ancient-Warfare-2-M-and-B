@@ -1497,6 +1497,7 @@ command.aw.settlement.rename.taken=Another city is already called %s
 command.aw.settlement.renamed=City #%s is now called %s
 command.aw.settlement.info.bounds=Bounds: %s %s %s to %s %s %s
 command.aw.settlement.info.manpower=Manpower: %s/%s, units waiting to respawn: %s
+command.aw.settlement.info.manpower_cap=Conquered city: the maximum manpower grows back to %s, a little every day without attacks
 command.aw.settlement.info.garrison=Garrison units loaded: %s, leader: %s
 command.aw.settlement.leader.alive=alive at %s %s %s
 command.aw.settlement.leader.dead=dead

@@ -463,9 +463,10 @@ public class Sieges {
 	}
 
 	private static void aim(NpcFaction npc, BlockPos target, boolean breach) {
-		// the home is saved with the npc (Ancient Warfare sets one when saving an npc without home), keep it on the target
-		// so that the move home AI pushes the attacker towards the city as well
-		npc.setHomePosAndDistance(target, npc.getHomeRange());
+		// the home follows the attacker: Ancient Warfare shortens the attack range of an npc the farther it is from home
+		// (NpcAIAttack.getAdjustedTargetDistance), with the home on the city leader attackers ignored defenders a few blocks away.
+		// The assault AI takes them to the leader, and the move home AIs stay idle
+		npc.setHomePosAndDistance(npc.getPosition(), npc.getHomeRange());
 		NpcAIFactionAssault ai = getOrAddAssaultAI(npc);
 		ai.setTarget(target);
 		ai.setBreachAllowed(breach);

@@ -48,6 +48,7 @@ public class Settlement {
 	private BlockPos lastLeaderPos = BlockPos.ORIGIN;
 	private int manpower;
 	private int maxManpower;
+	private int manpowerCap;
 	private long lastRegenDay;
 	private int activeSiegeId;
 	private long lastSiegeEnd;
@@ -183,6 +184,17 @@ public class Settlement {
 		this.maxManpower = Math.max(0, maxManpower);
 	}
 
+	/**
+	 * @return the maximum manpower a conquered city slowly grows back to (its maximum before the conquest), 0 if none
+	 */
+	public int getManpowerCap() {
+		return manpowerCap;
+	}
+
+	void setManpowerCap(int manpowerCap) {
+		this.manpowerCap = Math.max(0, manpowerCap);
+	}
+
 	long getLastRegenDay() {
 		return lastRegenDay;
 	}
@@ -242,6 +254,7 @@ public class Settlement {
 		tag.setLong("lastLeaderPos", lastLeaderPos.toLong());
 		tag.setInteger("manpower", manpower);
 		tag.setInteger("maxManpower", maxManpower);
+		tag.setInteger("manpowerCap", manpowerCap);
 		tag.setLong("lastRegenDay", lastRegenDay);
 		tag.setInteger("activeSiege", activeSiegeId);
 		tag.setLong("lastSiegeEnd", lastSiegeEnd);
@@ -277,6 +290,7 @@ public class Settlement {
 		settlement.lastLeaderPos = BlockPos.fromLong(tag.getLong("lastLeaderPos"));
 		settlement.manpower = tag.getInteger("manpower");
 		settlement.maxManpower = tag.getInteger("maxManpower");
+		settlement.manpowerCap = tag.getInteger("manpowerCap");
 		settlement.lastRegenDay = tag.getLong("lastRegenDay");
 		settlement.activeSiegeId = tag.getInteger("activeSiege");
 		settlement.lastSiegeEnd = tag.getLong("lastSiegeEnd");

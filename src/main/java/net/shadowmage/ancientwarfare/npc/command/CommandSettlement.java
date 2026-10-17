@@ -136,6 +136,9 @@ public class CommandSettlement extends CommandBase {
 		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.bounds", min.getX(), min.getY(), min.getZ(), max.getX(), max.getY(), max.getZ()));
 		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.manpower", settlement.getManpower(), settlement.getMaxManpower(),
 				settlement.getPendingRespawns().size()));
+		if (settlement.getManpowerCap() > settlement.getMaxManpower()) {
+			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.manpower_cap", settlement.getManpowerCap()));
+		}
 		WorldServer world = server.getWorld(settlement.getDimension());
 		int garrison = 0;
 		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, settlement.getAABB())) {
