@@ -7,6 +7,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.IRangedAttackMob;
+import net.minecraft.entity.ai.EntityAITasks;
 import net.minecraft.entity.passive.AbstractHorse;
 import net.minecraft.pathfinding.Path;
 import net.minecraft.pathfinding.PathPoint;
@@ -51,7 +52,8 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	private static final int MIN_REPATH_TICKS = 20;
 	private static final int STUCK_TICKS = 60;
 	private static final int PUSH_TICKS = 100;
-	private static final int FRUITLESS_FIGHT_TICKS = 300;
+	private static final int FRUITLESS_FIGHT_TICKS = 200;
+	private static final int GIVE_UP_TICKS = 200;
 	private static final int PROGRESS_CHECK_TICKS = 40;
 	private static final int NO_PROGRESS_CHECKS = 2;
 	private static final int MIN_BREACH_TICKS = 20;
@@ -101,10 +103,12 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 			return getDistanceSqToTarget() > ARRIVED_DIST_SQ;
 		}
 		if (isFruitlessFight(enemy, now)) {
-			// e.g. an archer shooting at a defender behind battlements: the arrows never hit
+			// e.g. an archer shooting at a defender behind battlements: the arrows never hit. The enemy is given up for a while,
+			// otherwise it would be taken again as soon as the push ends
 			stuckSince = -1;
 			fightEnemy = null;
 			pushUntil = now + PUSH_TICKS;
+			giveUp(enemy);
 			return true;
 		}
 		if (isFighting(enemy)) {
@@ -116,9 +120,22 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 		} else if (now - stuckSince >= STUCK_TICKS) {
 			stuckSince = -1;
 			pushUntil = now + PUSH_TICKS;
+			giveUp(enemy);
 			return true;
 		}
 		return false;
+	}
+
+	private void giveUp(EntityLivingBase enemy) {
+		npc.markUnreachable(enemy, GIVE_UP_TICKS);
+		// a running target task keeps its own copy of the target (EntityAITarget), reset it as well
+		for (EntityAITasks.EntityAITaskEntry entry : npc.targetTasks.taskEntries) {
+			if (entry.using) {
+				entry.action.resetTask();
+			}
+		}
+		npc.setAttackTarget(null);
+		npc.setRevengeTarget(null);
 	}
 
 	/**
