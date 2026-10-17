@@ -76,6 +76,11 @@ public class CommandFaction extends CommandBase {
 			catch (NumberFormatException e) {
 				throw new WrongUsageException(getUsage(cmd));
 			}
+			for (String faction : FactionRegistry.getFactionNames()) {
+				FactionTracker.INSTANCE.setStandingFor(world, playerName, faction, adjustment);
+			}
+			var1.sendMessage(new TextComponentTranslation("command.aw.faction.setall", playerName, adjustment));
+			return;
 		}
 		// All other commands require 2 additional args, the faction and adjustment amount
 		if (var2.length < 4) {
