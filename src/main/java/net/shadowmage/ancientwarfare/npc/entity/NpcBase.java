@@ -111,6 +111,7 @@ public abstract class NpcBase extends EntityCreature implements IEntityAdditiona
 	private Owner owner = Owner.EMPTY;
 
 	private String followingPlayerName;//set/cleared onInteract from player if player.team==this.team
+	private final java.util.Map<Integer, Long> unreachableTargets = new java.util.HashMap<>();
 	private NpcLevelingStats levelingStats;
 
 	private NpcSkinSettings skinSettings = new NpcSkinSettings();
@@ -942,6 +943,25 @@ public abstract class NpcBase extends EntityCreature implements IEntityAdditiona
 	public abstract boolean canTarget(Entity e);
 
 	public abstract boolean canBeAttackedBy(Entity e);
+
+	/**
+	 * An enemy this npc could not reach (e.g. seen on the other side of a wall) is not taken as target again for a while.
+	 */
+	public void markUnreachable(Entity target, int ticks) {
+		unreachableTargets.put(target.getEntityId(), world.getTotalWorldTime() + ticks);
+	}
+
+	public boolean isMarkedUnreachable(Entity target) {
+		Long until = unreachableTargets.get(target.getEntityId());
+		if (until == null) {
+			return false;
+		}
+		if (until < world.getTotalWorldTime()) {
+			unreachableTargets.remove(target.getEntityId());
+			return false;
+		}
+		return true;
+	}
 
 	public final EntityLivingBase getFollowingEntity() {
 		if (followingPlayerName == null) {

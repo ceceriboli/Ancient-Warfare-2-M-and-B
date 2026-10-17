@@ -20,7 +20,7 @@ public final class AIHelper {
 	public static boolean isTarget(NpcBase npc, @Nullable EntityLivingBase target, boolean checkSight) {
 		return target != null && !(target == npc || !target.isEntityAlive() || !npc.canTarget(target)
 				|| target instanceof EntityPlayer && ((EntityPlayer) target).capabilities.disableDamage
-				|| checkSight && !npc.getEntitySenses().canSee(target));
+				|| checkSight && !npc.getEntitySenses().canSee(target) || npc.isMarkedUnreachable(target));
 	}
 
 	public static boolean isWithinFollowRange(EntityLiving entity, EntityLivingBase target) {

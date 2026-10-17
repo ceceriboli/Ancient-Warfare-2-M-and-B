@@ -518,6 +518,9 @@ public class Sieges {
 			// keeps fighting an enemy inside the perimeter (an attacker, or a player helping them), otherwise the nearest attacker
 			boolean keep = current != null && current.isEntityAlive() && (enemies.contains(current) || perimeter.contains(current.getPositionVector()));
 			EntityLivingBase enemy = keep ? current : nearest(defender, enemies);
+			if (enemy == null) {
+				continue; // every attacker in the perimeter is out of its reach for now
+			}
 			if (enemy != current) {
 				defender.setAttackTarget(enemy);
 			}
@@ -548,10 +551,14 @@ public class Sieges {
 		}
 	}
 
-	private static NpcFaction nearest(Entity from, List<NpcFaction> candidates) {
-		NpcFaction nearest = candidates.get(0);
+	/**
+	 * @return the nearest candidate the npc has not found unreachable recently, or null
+	 */
+	@Nullable
+	private static NpcFaction nearest(NpcBase from, List<NpcFaction> candidates) {
+		NpcFaction nearest = null;
 		for (NpcFaction candidate : candidates) {
-			if (candidate.getDistanceSq(from) < nearest.getDistanceSq(from)) {
+			if (!from.isMarkedUnreachable(candidate) && (nearest == null || candidate.getDistanceSq(from) < nearest.getDistanceSq(from))) {
 				nearest = candidate;
 			}
 		}
@@ -603,7 +610,7 @@ public class Sieges {
 			}
 			boolean sameSide = attacker ? companion.getEntityData().getInteger(Settlements.TAG_SIEGE) == victimData.getInteger(Settlements.TAG_SIEGE)
 					&& companion.getEntityData().hasKey(Settlements.TAG_SIEGE) : Settlements.isDefender(companion, settlement);
-			if (sameSide && !isEngineer(companion) && companion.isHostileTowards(aggressor)) {
+			if (sameSide && !isEngineer(companion) && companion.isHostileTowards(aggressor) && !companion.isMarkedUnreachable(aggressor)) {
 				companion.setAttackTarget(aggressor);
 			}
 		}

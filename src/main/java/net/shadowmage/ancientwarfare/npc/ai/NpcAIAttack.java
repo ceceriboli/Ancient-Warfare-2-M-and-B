@@ -2,14 +2,27 @@ package net.shadowmage.ancientwarfare.npc.ai;
 
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.ai.EntityAITasks;
 import net.minecraft.entity.ai.attributes.IAttributeInstance;
+import net.minecraft.pathfinding.Path;
+import net.minecraft.pathfinding.PathPoint;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
 import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
 
 import java.util.Optional;
 
 public abstract class NpcAIAttack<T extends NpcBase> extends NpcAI<T> {
+	private static final int REACH_CHECK_TICKS = 20;
+	private static final int UNREACHABLE_CHECKS = 3;
+	private static final int UNREACHABLE_TICKS = 200;
+	private static final float REACH_DIST_SQ = 3F * 3F;
+
 	private EntityLivingBase target;
 	private int attackDelay = 0;
+	private int reachCheckTicks;
+	private int unreachableChecks;
+	private BlockPos lastCheckPos;
 
 	public NpcAIAttack(T npc) {
 		super(npc);
@@ -63,10 +76,44 @@ public abstract class NpcAIAttack<T extends NpcBase> extends NpcAI<T> {
 		if (shouldCloseOnTarget(distanceToEntitySq)) {
 			npc.addAITask(TASK_MOVE);
 			moveToEntity(target, distanceToEntitySq);
+			checkReachable();
 		} else {
+			unreachableChecks = 0;
 			npc.getNavigator().clearPath();
 			attackDelay--;
 			doAttack(distanceToEntitySq);
+		}
+	}
+
+	/**
+	 * When the path does not lead to the target (an enemy seen on the other side of a wall: the path ends in the corner closest to it)
+	 * and the npc does not move for a while, the target is given up and marked unreachable, so that another one is chosen.
+	 */
+	private void checkReachable() {
+		if (++reachCheckTicks < REACH_CHECK_TICKS) {
+			return;
+		}
+		reachCheckTicks = 0;
+		Path path = npc.getNavigator().getPath();
+		PathPoint end = path == null ? null : path.getFinalPathPoint();
+		boolean reaches = end != null && end.distanceToSquared(new PathPoint(MathHelper.floor(target.posX), MathHelper.floor(target.posY),
+				MathHelper.floor(target.posZ))) <= REACH_DIST_SQ;
+		BlockPos pos = npc.getPosition();
+		boolean moved = lastCheckPos == null || lastCheckPos.distanceSq(pos) > 1D;
+		lastCheckPos = pos;
+		unreachableChecks = reaches || moved ? 0 : unreachableChecks + 1;
+		if (unreachableChecks >= UNREACHABLE_CHECKS) {
+			unreachableChecks = 0;
+			npc.markUnreachable(target, UNREACHABLE_TICKS);
+			// a running target task keeps its own copy of the target (EntityAITarget), reset it as well
+			for (EntityAITasks.EntityAITaskEntry entry : npc.targetTasks.taskEntries) {
+				if (entry.using) {
+					entry.action.resetTask();
+				}
+			}
+			npc.setAttackTarget(null);
+			npc.setRevengeTarget(null);
+			npc.getNavigator().clearPath();
 		}
 	}
 
