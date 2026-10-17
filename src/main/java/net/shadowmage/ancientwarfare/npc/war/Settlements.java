@@ -21,6 +21,7 @@ import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.gamedata.SettlementData;
+import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 import net.shadowmage.ancientwarfare.structure.gamedata.StructureEntry;
 import net.shadowmage.ancientwarfare.structure.gamedata.StructureMap;
 import net.shadowmage.ancientwarfare.structure.gamedata.TownEntry;
@@ -62,6 +63,7 @@ public class Settlements {
 
 	private static final List<Scheduled<NpcFactionLeader>> pendingLeaders = new ArrayList<>();
 	private static final List<Scheduled<NpcFaction>> disbanding = new ArrayList<>();
+	private static final List<Scheduled<NpcFaction>> turningBandits = new ArrayList<>();
 
 	public static SettlementData getData(World world) {
 		return AWGameData.INSTANCE.getData(world, SettlementData.class);
@@ -99,7 +101,7 @@ public class Settlements {
 				data.removeTag(TAG_ROLE);
 			} else if (!settlement.isActive()) {
 				// loaded again after its city fell
-				disbanding.add(new Scheduled<>(npc, now + 20 + npc.world.rand.nextInt(100)));
+				leaveFallenCity(npc, now + 20 + npc.world.rand.nextInt(100));
 			}
 			return;
 		}
@@ -145,6 +147,7 @@ public class Settlements {
 			return;
 		}
 		processDisbanding(world, now);
+		processTurningBandits(world, now);
 		if (!AWDiplomacyStatics.settlementsEnabled) {
 			return;
 		}
@@ -375,9 +378,7 @@ public class Settlements {
 		for (Entity entity : new ArrayList<>(world.loadedEntityList)) {
 			if (entity instanceof NpcFaction && entity.isEntityAlive() && entity.getEntityData().hasKey(TAG_SETTLEMENT)
 					&& entity.getEntityData().getInteger(TAG_SETTLEMENT) == settlement.getId()) {
-				NpcFaction npc = (NpcFaction) entity;
-				npc.setAttackTarget(null);
-				disbanding.add(new Scheduled<>(npc, now + 100 + world.rand.nextInt(300)));
+				leaveFallenCity((NpcFaction) entity, now + 20 + world.rand.nextInt(60));
 			}
 		}
 		int dimension = world.provider.getDimension();
@@ -388,6 +389,79 @@ public class Settlements {
 			}
 		}
 		AncientWarfareNPC.LOG.info("City {} of faction {} has fallen", settlement.getId(), settlement.getFaction());
+	}
+
+	/**
+	 * A unit of a fallen city: depending on fallen_garrison it becomes a bandit, stays without city or vanishes.
+	 */
+	private static void leaveFallenCity(NpcFaction npc, long dueTick) {
+		switch (AWDiplomacyStatics.fallenGarrison) {
+			case "disband":
+				npc.setAttackTarget(null);
+				disbanding.add(new Scheduled<>(npc, dueTick));
+				break;
+			case "stay":
+				untag(npc);
+				break;
+			default:
+				turningBandits.add(new Scheduled<>(npc, dueTick));
+				break;
+		}
+	}
+
+	private static void untag(NpcFaction npc) {
+		npc.getEntityData().removeTag(TAG_SETTLEMENT);
+		npc.getEntityData().removeTag(TAG_ROLE);
+	}
+
+	private static void processTurningBandits(WorldServer world, long now) {
+		Iterator<Scheduled<NpcFaction>> it = turningBandits.iterator();
+		List<NpcFaction> due = new ArrayList<>();
+		while (it.hasNext()) {
+			Scheduled<NpcFaction> scheduled = it.next();
+			NpcFaction npc = scheduled.entity.get();
+			if (npc == null || npc.isDead) {
+				it.remove();
+			} else if (npc.world == world && scheduled.dueTick <= now) {
+				it.remove();
+				due.add(npc);
+			}
+		}
+		due.forEach(npc -> turnBandit(world, npc));
+	}
+
+	/**
+	 * Replaces the npc with a copy in the bandit faction, keeping its equipment, name and health. The npc is replaced and not just
+	 * changed because clients only receive the faction of an npc when it spawns.
+	 */
+	private static void turnBandit(WorldServer world, NpcFaction npc) {
+		String faction = AWDiplomacyStatics.banditFaction;
+		ResourceLocation key = EntityList.getKey(npc);
+		if (faction.equals(npc.getFaction()) || !FactionRegistry.getFactionNames().contains(faction) || key == null) {
+			untag(npc);
+			return;
+		}
+		NBTTagCompound tag = new NBTTagCompound();
+		npc.writeToNBT(tag);
+		tag.setString("id", key.toString());
+		tag.setString("factionName", faction);
+		for (String removed : new String[] {"UUIDMost", "UUIDLeast", "Passengers", "revengePlayers"}) {
+			tag.removeTag(removed);
+		}
+		NBTTagCompound forgeData = tag.getCompoundTag("ForgeData");
+		forgeData.removeTag(TAG_SETTLEMENT);
+		forgeData.removeTag(TAG_ROLE);
+		tag.setTag("ForgeData", forgeData);
+		Entity bandit = EntityList.createEntityFromNBT(tag, world);
+		if (bandit == null) {
+			untag(npc);
+			return;
+		}
+		bandit.setLocationAndAngles(npc.posX, npc.posY, npc.posZ, npc.rotationYaw, npc.rotationPitch);
+		npc.dismountRidingEntity();
+		npc.setDropItemsWhenDead(false);
+		npc.setDead();
+		world.spawnEntity(bandit);
 	}
 
 	/**

@@ -27,6 +27,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int manpowerRegenPerDay = 1;
 	public static int respawnDelayTicks = 600;
 	public static boolean announceSettlementChanges = true;
+	public static String fallenGarrison = "bandits";
+	public static String banditFaction = "brigand";
 	public static boolean siegesEnabled = true;
 	public static int siegeCheckInterval = 2400;
 	public static double siegeChance = 0.25;
@@ -99,6 +101,10 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		respawnDelayTicks = config.get(serverOptions, "respawn_delay_ticks", respawnDelayTicks, "Respawn delay\nDefault=" + respawnDelayTicks + "\n" + "Ticks (20 per second) before a killed garrison unit respawns in its city.", 20, 72000).getInt();
 
 		announceSettlementChanges = config.get(serverOptions, "announce_settlement_changes", announceSettlementChanges, "Announce fallen cities\nDefault=" + announceSettlementChanges + "\n" + "If true, all players are told in chat when a city falls because its leader died.").getBoolean();
+
+		fallenGarrison = config.get(serverOptions, "fallen_garrison", fallenGarrison, "Garrison of a fallen city\nDefault=" + fallenGarrison + "\n" + "What the remaining units of a city do when its leader dies:\n" + "bandits = they stay where they are as npcs of bandit_faction (no city, no respawn), to be cleared out\n" + "stay = they stay in their own faction, without city and without respawn\n" + "disband = they vanish", new String[] {"bandits", "stay", "disband"}).getString();
+
+		banditFaction = config.get(serverOptions, "bandit_faction", banditFaction, "Bandit faction\nDefault=" + banditFaction + "\n" + "Faction the remaining units of a fallen city join with fallen_garrison=bandits. They keep their equipment.").getString();
 
 		siegesEnabled = config.get(serverOptions, "sieges_enabled", siegesEnabled, "Sieges\nDefault=" + siegesEnabled + "\n" + "If true, factions at war (declared with /awrelation war) besiege each other's cities near players: waves of\n" + "attackers spawn near the city and march on its leader. If false, sieges start only with /awsiege start.").getBoolean();
 
