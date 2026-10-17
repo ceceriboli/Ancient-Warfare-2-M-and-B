@@ -39,6 +39,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int maxActiveSieges = 1;
 	public static int siegeWarmupTicks = 300;
 	public static int siegeMaxTicks = 24000;
+	public static int siegeWaveStallTicks = 6000;
 	public static int siegeSpawnMinDistance = 40;
 	public static int siegeSpawnMaxDistance = 60;
 	public static boolean announceSieges = true;
@@ -139,6 +140,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		siegeWarmupTicks = config.get(serverOptions, "siege_warmup_ticks", siegeWarmupTicks, "Siege warm up\nDefault=" + siegeWarmupTicks + "\n" + "Ticks (20 per second) of warning before the first wave and between two waves.", 20, 72000).getInt();
 
 		siegeMaxTicks = config.get(serverOptions, "siege_max_ticks", siegeMaxTicks, "Siege duration\nDefault=" + siegeMaxTicks + "\n" + "Ticks (20 per second) after which a siege is lifted and its attackers leave. Time only runs while the city is loaded.", 1200, 720000).getInt();
+
+		siegeWaveStallTicks = config.get(serverOptions, "siege_wave_stall_ticks", siegeWaveStallTicks, "Stalled wave\nDefault=" + siegeWaveStallTicks + "\n" + "Ticks (20 per second) a wave can go on without any attacker or defender killed. Then the wave withdraws and the\n" + "next one comes, or, after the last wave, the raid or siege is lifted. Time only runs while the city is loaded. 0 = never.", 0, 720000).getInt();
 
 		siegeSpawnMinDistance = config.get(serverOptions, "siege_spawn_min_distance", siegeSpawnMinDistance, "Wave distance (minimum)\nDefault=" + siegeSpawnMinDistance + "\n" + "Minimum distance in blocks from the city leader where waves spawn.", 8, 112).getInt();
 

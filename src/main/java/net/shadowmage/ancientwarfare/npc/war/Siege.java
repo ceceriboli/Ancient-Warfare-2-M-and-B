@@ -57,6 +57,7 @@ public class Siege {
 	private int stateTicks;
 	private int totalTicks;
 	private float waveMaxHealth;
+	private int idleTicks;
 
 	// not saved
 	private final List<WeakReference<NpcFaction>> attackers = new ArrayList<>();
@@ -105,6 +106,22 @@ public class Siege {
 	void setState(State state) {
 		this.state = state;
 		stateTicks = 0;
+		idleTicks = 0;
+	}
+
+	/**
+	 * @return ticks of the current wave without any attacker or defender killed
+	 */
+	int getIdleTicks() {
+		return idleTicks;
+	}
+
+	void addIdleTicks(int ticks) {
+		idleTicks += ticks;
+	}
+
+	void resetIdleTicks() {
+		idleTicks = 0;
 	}
 
 	public int getWavesSpawned() {
@@ -187,6 +204,7 @@ public class Siege {
 		tag.setInteger("stateTicks", stateTicks);
 		tag.setInteger("totalTicks", totalTicks);
 		tag.setFloat("waveMaxHealth", waveMaxHealth);
+		tag.setInteger("idleTicks", idleTicks);
 		return tag;
 	}
 
@@ -204,6 +222,7 @@ public class Siege {
 		siege.stateTicks = tag.getInteger("stateTicks");
 		siege.totalTicks = tag.getInteger("totalTicks");
 		siege.waveMaxHealth = tag.getFloat("waveMaxHealth");
+		siege.idleTicks = tag.getInteger("idleTicks");
 		return siege;
 	}
 }

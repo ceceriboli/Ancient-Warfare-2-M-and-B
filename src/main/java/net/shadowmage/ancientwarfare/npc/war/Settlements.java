@@ -138,7 +138,11 @@ public class Settlements {
 	}
 
 	public static void onLivingDeath(Entity entity, DamageSource source) {
-		if (entity.world.isRemote || !(entity instanceof NpcFaction) || !entity.getEntityData().hasKey(TAG_SETTLEMENT)) {
+		if (entity.world.isRemote || !(entity instanceof NpcFaction)) {
+			return;
+		}
+		Sieges.onNpcDeath((NpcFaction) entity);
+		if (!entity.getEntityData().hasKey(TAG_SETTLEMENT)) {
 			return;
 		}
 		NpcFaction npc = (NpcFaction) entity;

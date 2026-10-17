@@ -183,6 +183,26 @@ public class Sieges {
 		}
 	}
 
+	/**
+	 * A faction npc died: if it was an attacker, or a unit of a city under attack, the current wave is not stalled.
+	 */
+	static void onNpcDeath(NpcFaction npc) {
+		SettlementData data = Settlements.getData(npc.world);
+		Siege siege = null;
+		if (npc.getEntityData().hasKey(Settlements.TAG_SIEGE)) {
+			siege = data.getSiege(npc.getEntityData().getInteger(Settlements.TAG_SIEGE));
+		} else {
+			Settlement settlement = Settlements.getSettlementOf(npc);
+			if (settlement != null && isBesieged(settlement)) {
+				siege = data.getSiege(settlement.getActiveSiegeId());
+			}
+		}
+		if (siege != null && siege.getState() == Siege.State.WAVE) {
+			siege.resetIdleTicks();
+			data.markDirty();
+		}
+	}
+
 	private static boolean isEngineer(NpcFaction npc) {
 		return npc instanceof NpcFactionSiegeEngineer;
 	}
@@ -258,6 +278,23 @@ public class Sieges {
 				return;
 			}
 			siege.setState(Siege.State.WARMUP);
+		} else {
+			siege.addIdleTicks(20);
+			if (AWDiplomacyStatics.siegeWaveStallTicks > 0 && siege.getIdleTicks() >= AWDiplomacyStatics.siegeWaveStallTicks) {
+				// nobody killed for too long (attackers stuck or unable to reach the city): the wave withdraws
+				AncientWarfareNPC.LOG.info("{} {}: wave {}/{} stalled, it withdraws", siege.getKind().getName(), siege.getId(), siege.getWavesSpawned(),
+						siege.getTotalWaves());
+				if (siege.getWavesSpawned() >= siege.getTotalWaves()) {
+					end(world, data, siege, Outcome.LIFTED);
+					return;
+				}
+				for (NpcFaction npc : getWaveAttackers(siege)) {
+					siege.removeAttacker(npc);
+					npc.setAttackTarget(null);
+					Settlements.disband(npc, now + 20 + world.rand.nextInt(100));
+				}
+				siege.setState(Siege.State.WARMUP);
+			}
 		}
 		showBar(world, siege, settlement, barKeys);
 	}
