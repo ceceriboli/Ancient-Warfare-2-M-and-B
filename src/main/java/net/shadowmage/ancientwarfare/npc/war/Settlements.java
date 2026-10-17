@@ -5,6 +5,7 @@ import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.ai.EntityAITasks;
 import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionFlee;
+import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionHoldPost;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
@@ -63,6 +64,7 @@ public class Settlements {
 	private static final String ROLE_GARRISON = "garrison";
 
 	private static final int LEADER_REGISTRATION_DELAY = 40;
+	private static final double FLEE_RELEASE_RANGE = 48D;
 	private static final int LEADER_CHECK_INTERVAL = 1200;
 	private static final int MISSING_LEADER_CHECKS = 3;
 	private static final int DAY_TICKS = 24000;
@@ -129,6 +131,9 @@ public class Settlements {
 					// went out after attackers when the siege ended while it was not loaded
 					Sieges.restorePost(npc);
 				}
+				if (ROLE_LEADER.equals(data.getString(TAG_ROLE)) && npc.getUniqueID().equals(settlement.getLeaderId())) {
+					addHoldPostAI(npc);
+				}
 				if (npc instanceof NpcFactionLeader) {
 					((NpcFactionLeader) npc).setRuler(ROLE_LEADER.equals(data.getString(TAG_ROLE)) && npc.getUniqueID().equals(settlement.getLeaderId()));
 				}
@@ -171,6 +176,10 @@ public class Settlements {
 			AncientWarfareNPC.LOG.info("Leader of city {} killed at {} by {} ({}{})", settlement.getId(), npc.getPosition(), source.getDamageType(),
 					killer == null ? "no entity" : killer.getName(), killer instanceof NpcFaction ? ", faction " + ((NpcFaction) killer).getFaction()
 							+ (isSiegeOrArmyUnit(killer) ? ", attacker" : "") : "");
+			// the new leader of a conquered city takes the post of the old one (its home inside the city), not the place it died
+			BlockPos post = npc.hasHome() && settlement.contains(npc.world.provider.getDimension(), npc.getHomePosition()) ? npc.getHomePosition()
+					: settlement.getLastLeaderPos();
+			settlement.setLeader(settlement.getLeaderId(), post);
 			onLeaderKilled(npc.world, data, settlement, source);
 		} else if (isDefender(npc, settlement) && settlement.getManpower() > 0) {
 			NBTTagCompound entityTag = snapshotForRespawn(npc);
@@ -353,6 +362,21 @@ public class Settlements {
 		if (npc instanceof NpcFactionLeader) {
 			((NpcFactionLeader) npc).setRuler(ROLE_LEADER.equals(role));
 		}
+		if (ROLE_LEADER.equals(role)) {
+			addHoldPostAI(npc);
+		}
+	}
+
+	/**
+	 * The ruler of a city stays at its post instead of running to the front line.
+	 */
+	private static void addHoldPostAI(NpcFaction npc) {
+		for (EntityAITasks.EntityAITaskEntry entry : npc.tasks.taskEntries) {
+			if (entry.action instanceof NpcAIFactionHoldPost) {
+				return;
+			}
+		}
+		npc.tasks.addTask(NpcAIFactionHoldPost.PRIORITY, new NpcAIFactionHoldPost(npc));
 	}
 
 	@Nullable
@@ -686,6 +710,18 @@ public class Settlements {
 		npc.setAttackTarget(null);
 		npc.setRevengeTarget(null);
 		addFleeAI(npc);
+		// safe passage: npcs fighting it let it go (a fleeing npc is no target for npcs, see NpcFaction.isHostileTowards)
+		for (NpcFaction other : world.getEntitiesWithinAABB(NpcFaction.class, npc.getEntityBoundingBox().grow(FLEE_RELEASE_RANGE))) {
+			if (other.getAttackTarget() == npc || other.getRevengeTarget() == npc) {
+				for (EntityAITasks.EntityAITaskEntry entry : other.targetTasks.taskEntries) {
+					if (entry.using) {
+						entry.action.resetTask();
+					}
+				}
+				other.setAttackTarget(null);
+				other.setRevengeTarget(null);
+			}
+		}
 	}
 
 	private static void addFleeAI(NpcFaction npc) {
