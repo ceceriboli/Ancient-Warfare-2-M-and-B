@@ -562,6 +562,7 @@ public class Sieges {
 		}
 		NpcFaction npc = (NpcFaction) entity;
 		npc.setFactionNameAndDefaults(faction);
+		npc.enablePersistence();
 		return npc;
 	}
 

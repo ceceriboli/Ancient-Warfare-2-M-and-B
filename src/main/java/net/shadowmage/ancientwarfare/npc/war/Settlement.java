@@ -150,6 +150,11 @@ public class Settlement {
 		return leaderId;
 	}
 
+	void setLeader(UUID leaderId, BlockPos pos) {
+		this.leaderId = leaderId;
+		this.lastLeaderPos = pos;
+	}
+
 	public BlockPos getLastLeaderPos() {
 		return lastLeaderPos;
 	}

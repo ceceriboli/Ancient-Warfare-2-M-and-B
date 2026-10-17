@@ -100,7 +100,10 @@ public class Settlements {
 			if (settlement == null) {
 				data.removeTag(TAG_SETTLEMENT);
 				data.removeTag(TAG_ROLE);
-			} else if (!settlement.isActive()) {
+			} else if (settlement.isActive()) {
+				// units tagged before they were made persistent
+				npc.enablePersistence();
+			} else {
 				// loaded again after its city fell
 				leaveFallenCity(npc, now + 20 + npc.world.rand.nextInt(100));
 			}
@@ -202,8 +205,17 @@ public class Settlements {
 		SettlementData data = getData(world);
 		int dimension = world.provider.getDimension();
 		BlockPos pos = leader.getPosition();
-		if (data.getActiveAt(dimension, pos, Settlement.Type.FACTION_CITY) != null) {
-			// already inside an active city: one leader per city
+		Settlement existing = data.getActiveAt(dimension, pos, Settlement.Type.FACTION_CITY);
+		if (existing != null) {
+			// already inside an active city: one leader per city. A leader of the same faction takes over a city whose leader is gone
+			// (e.g. replaced by an Ancient Warfare spawner after a despawn)
+			if (existing.getFaction().equals(leader.getFaction()) && !isLeaderPresent(world, existing)) {
+				AncientWarfareNPC.LOG.info("New leader {} takes over city {} ({}) at {}", leader.getUniqueID(), existing.getId(), existing.getName(), pos);
+				existing.setLeader(leader.getUniqueID(), pos);
+				existing.missingLeaderChecks = 0;
+				data.markDirty();
+				tag(leader, existing, ROLE_LEADER);
+			}
 			return;
 		}
 
@@ -257,6 +269,14 @@ public class Settlements {
 				settlement.getFaction(), pos, garrison.size(), manpower);
 	}
 
+	private static boolean isLeaderPresent(WorldServer world, Settlement settlement) {
+		if (settlement.getLeaderId() == null) {
+			return false;
+		}
+		Entity leader = world.getEntityFromUuid(settlement.getLeaderId());
+		return leader != null && leader.isEntityAlive();
+	}
+
 	private static boolean isInActiveSettlement(SettlementData data, NpcFaction npc) {
 		if (!npc.getEntityData().hasKey(TAG_SETTLEMENT)) {
 			return false;
@@ -268,6 +288,9 @@ public class Settlements {
 	private static void tag(NpcFaction npc, Settlement settlement, String role) {
 		npc.getEntityData().setInteger(TAG_SETTLEMENT, settlement.getId());
 		npc.getEntityData().setString(TAG_ROLE, role);
+		// npcs created by Ancient Warfare spawners can despawn when no player is within 32 blocks, and the spawner then comes back
+		// and later spawns a new npc: a city keeps its units, losses go through manpower
+		npc.enablePersistence();
 	}
 
 	@Nullable
@@ -363,6 +386,8 @@ public class Settlements {
 			}
 		} else if (++settlement.missingLeaderChecks >= MISSING_LEADER_CHECKS) {
 			// the leader was removed without dying (e.g. Ancient Warfare structure conquest)
+			AncientWarfareNPC.LOG.info("Leader {} of city {} missing for {} checks around {}, the city falls", leaderId, settlement.getId(),
+					MISSING_LEADER_CHECKS, settlement.getLastLeaderPos());
 			collapse(world, data, settlement);
 		}
 	}
@@ -451,6 +476,8 @@ public class Settlements {
 		npc.writeToNBT(tag);
 		tag.setString("id", key.toString());
 		tag.setString("factionName", faction);
+		// a bandit must not despawn: its Ancient Warfare respawn data would bring back a spawner of the old faction
+		tag.setBoolean("PersistenceRequired", true);
 		for (String removed : new String[] {"UUIDMost", "UUIDLeast", "Passengers", "revengePlayers"}) {
 			tag.removeTag(removed);
 		}
