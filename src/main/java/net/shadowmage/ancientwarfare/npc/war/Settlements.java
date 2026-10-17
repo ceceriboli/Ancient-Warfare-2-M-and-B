@@ -64,7 +64,6 @@ public class Settlements {
 	private static final String ROLE_GARRISON = "garrison";
 
 	private static final int LEADER_REGISTRATION_DELAY = 40;
-	private static final double FLEE_RELEASE_RANGE = 48D;
 	private static final int LEADER_CHECK_INTERVAL = 1200;
 	private static final int MISSING_LEADER_CHECKS = 3;
 	private static final int DAY_TICKS = 24000;
@@ -747,18 +746,21 @@ public class Settlements {
 				// flee: they keep their faction, run away from the fallen city and then stay where they are, without city
 				Settlement settlement = getSettlementOf(npc);
 				untag(npc);
-				startFleeing(npc.world, npc, settlement != null ? settlement.getLastLeaderPos() : npc.getPosition());
+				startFleeing(npc.world, npc, settlement);
 				break;
 			}
 		}
 	}
 
-	private static void startFleeing(World world, NpcFaction npc, BlockPos from) {
+	private static void startFleeing(World world, NpcFaction npc, @Nullable Settlement city) {
 		if (AWDiplomacyStatics.banditFleeTicks <= 0) {
 			return;
 		}
 		npc.getEntityData().setLong(NpcAIFactionFlee.TAG_FLEE_UNTIL, world.getTotalWorldTime() + AWDiplomacyStatics.banditFleeTicks);
-		npc.getEntityData().setLong(NpcAIFactionFlee.TAG_FLEE_FROM, from.toLong());
+		npc.getEntityData().setLong(NpcAIFactionFlee.TAG_FLEE_FROM, (city != null ? city.getLastLeaderPos() : npc.getPosition()).toLong());
+		if (city != null) {
+			npc.getEntityData().setInteger(NpcAIFactionFlee.TAG_FLEE_CITY, city.getId());
+		}
 		// a running target task keeps its own copy of the target (EntityAITarget), reset it as well
 		for (EntityAITasks.EntityAITaskEntry entry : npc.targetTasks.taskEntries) {
 			if (entry.using) {
@@ -768,18 +770,6 @@ public class Settlements {
 		npc.setAttackTarget(null);
 		npc.setRevengeTarget(null);
 		addFleeAI(npc);
-		// safe passage: npcs fighting it let it go (a fleeing npc is no target for npcs, see NpcFaction.isHostileTowards)
-		for (NpcFaction other : world.getEntitiesWithinAABB(NpcFaction.class, npc.getEntityBoundingBox().grow(FLEE_RELEASE_RANGE))) {
-			if (other.getAttackTarget() == npc || other.getRevengeTarget() == npc) {
-				for (EntityAITasks.EntityAITaskEntry entry : other.targetTasks.taskEntries) {
-					if (entry.using) {
-						entry.action.resetTask();
-					}
-				}
-				other.setAttackTarget(null);
-				other.setRevengeTarget(null);
-			}
-		}
 	}
 
 	private static void addFleeAI(NpcFaction npc) {
@@ -827,7 +817,7 @@ public class Settlements {
 			// already a bandit (e.g. a fallen brigand city), or no bandit faction: it flees as it is
 			Settlement settlement = getSettlementOf(npc);
 			untag(npc);
-			startFleeing(world, npc, settlement != null ? settlement.getLastLeaderPos() : npc.getPosition());
+			startFleeing(world, npc, settlement);
 			return;
 		}
 		NBTTagCompound tag = new NBTTagCompound();
@@ -848,6 +838,9 @@ public class Settlements {
 			// the survivors run away from the fallen city before turning to banditry
 			forgeData.setLong(NpcAIFactionFlee.TAG_FLEE_UNTIL, world.getTotalWorldTime() + AWDiplomacyStatics.banditFleeTicks);
 			forgeData.setLong(NpcAIFactionFlee.TAG_FLEE_FROM, (settlement != null ? settlement.getLastLeaderPos() : npc.getPosition()).toLong());
+			if (settlement != null) {
+				forgeData.setInteger(NpcAIFactionFlee.TAG_FLEE_CITY, settlement.getId());
+			}
 		}
 		tag.setTag("ForgeData", forgeData);
 		Entity bandit = EntityList.createEntityFromNBT(tag, world);

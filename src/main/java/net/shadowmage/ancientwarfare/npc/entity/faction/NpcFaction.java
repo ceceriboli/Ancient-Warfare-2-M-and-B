@@ -283,8 +283,12 @@ public abstract class NpcFaction extends NpcBase {
 
 	@Override
 	public boolean isHostileTowards(Entity e) {
-		if (NpcAIFactionFlee.isFleeing(this) || e instanceof NpcFaction && NpcAIFactionFlee.isFleeing(e)) {
-			// running away (survivor of a fallen city): attacks nobody, not even for revenge, and npcs let it go
+		if (NpcAIFactionFlee.isFleeing(this)) {
+			// running away (survivor of a fallen city): attacks nobody, not even for revenge
+			return false;
+		}
+		if (e instanceof NpcFaction && NpcAIFactionFlee.isFleeing(e) && !NpcAIFactionFlee.isInsideFledCity(e)) {
+			// a fleeing survivor can be chased inside the fallen city, out of it npcs let it go
 			return false;
 		}
 		if (e instanceof EntityPlayer || e instanceof NpcPlayerOwned) {
