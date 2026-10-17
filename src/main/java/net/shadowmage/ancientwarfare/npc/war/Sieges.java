@@ -425,9 +425,12 @@ public class Sieges {
 			if (enemies.isEmpty() || world.rand.nextDouble() >= AWDiplomacyStatics.siegeChance) {
 				continue;
 			}
-			boolean fullSiegeAllowed = now - settlement.getLastFullSiegeEnd() >= (long) AWDiplomacyStatics.fullSiegeCooldownDays * DAY_TICKS;
+			String attacker = enemies.get(world.rand.nextInt(enemies.size()));
+			// full sieges come only from factions with a known city (in the settlement list), the others only raid
+			boolean fullSiegeAllowed = now - settlement.getLastFullSiegeEnd() >= (long) AWDiplomacyStatics.fullSiegeCooldownDays * DAY_TICKS
+					&& Diplomacy.getFactionsWithCities(world).contains(attacker);
 			Siege.Kind kind = fullSiegeAllowed && world.rand.nextDouble() < AWDiplomacyStatics.fullSiegeShare ? Siege.Kind.SIEGE : Siege.Kind.RAID;
-			start(world, data, settlement, enemies.get(world.rand.nextInt(enemies.size())), kind);
+			start(world, data, settlement, attacker, kind);
 			return;
 		}
 	}

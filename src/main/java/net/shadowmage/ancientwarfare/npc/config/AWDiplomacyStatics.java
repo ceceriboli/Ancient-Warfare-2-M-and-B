@@ -254,7 +254,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		raidUnitWeights = config.get(serverOptions, "raid_unit_weights", raidUnitWeights, "Raid units\n" + unitTypes).getStringList();
 
-		fullSiegeShare = config.get(serverOptions, "full_siege_share", fullSiegeShare, "Full siege share\nDefault=" + fullSiegeShare + "\n" + "Chance (0.0 to 1.0) that an automatic attack is a full siege instead of a raid, if the city had no full siege\n" + "for full_siege_cooldown_days.", 0.0D, 1.0D).getDouble();
+		fullSiegeShare = config.get(serverOptions, "full_siege_share", fullSiegeShare, "Full siege share\nDefault=" + fullSiegeShare + "\n" + "Chance (0.0 to 1.0) that an automatic attack is a full siege instead of a raid, if the city had no full siege\n" + "for full_siege_cooldown_days. Only factions with at least one known city (in /awsettlement list) lay full sieges,\n" + "the others only raid.", 0.0D, 1.0D).getDouble();
 
 		fullSiegeCooldownDays = config.get(serverOptions, "full_siege_cooldown_days", fullSiegeCooldownDays, "Full siege cooldown\nDefault=" + fullSiegeCooldownDays + "\n" + "Minecraft days after a full siege ends (or after the city is founded) before the city can have another full siege.\n" + "Raids can still come in the meantime.", 0, 1000).getInt();
 
