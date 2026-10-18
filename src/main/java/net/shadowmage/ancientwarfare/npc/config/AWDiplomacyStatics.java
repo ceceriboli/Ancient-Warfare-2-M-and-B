@@ -13,6 +13,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean memberInheritStandings = true;
 	public static int memberEnemyStanding = -100;
 	public static int memberAllyStanding = 50;
+	public static boolean leaveWhenFactionGone = true;
 	public static boolean expelOnKillingOwnFaction = true;
 	public static int expelStandingPenalty = 50;
 	public static int leaderJoinRange = 8;
@@ -153,6 +154,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		memberAllyStanding = config.get(serverOptions, "member_ally_standing", memberAllyStanding, "Member standing with allies\nDefault=" + memberAllyStanding + "\n" + "Lowest standing a member has with the allies of its faction.", 0, 10000).getInt();
 		// replaced by member_standing (renouncing resets the standing to 0 instead of taking a penalty)
 		config.getCategory(serverOptions).remove("leave_standing_penalty");
+
+		leaveWhenFactionGone = config.get(serverOptions, "leave_when_faction_gone", leaveWhenFactionGone, "Leave a faction that is gone\nDefault=" + leaveWhenFactionGone + "\n" + "If true, when a faction loses its last city (fallen, conquered, dropped) in the world, its members leave it at once, as with\n" + "/awmembership leave but without changing their standing. Only cities known to the game (the ones of /awsettlement list) count.").getBoolean();
 
 		expelOnKillingOwnFaction = config.get(serverOptions, "expel_on_killing_own_faction", expelOnKillingOwnFaction, "Expel members who kill their own faction\nDefault=" + expelOnKillingOwnFaction + "\n" + "If true, a player who kills a member of their own faction (or whose npcs do) is expelled from it.").getBoolean();
 

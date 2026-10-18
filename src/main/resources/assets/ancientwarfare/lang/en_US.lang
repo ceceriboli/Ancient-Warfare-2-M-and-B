@@ -1553,6 +1553,7 @@ command.aw.membership.set=%s is now a member of the %s
 command.aw.membership.cleared=%s is no longer a member of any faction
 command.aw.membership.announce.join=%s pledged allegiance to the %s
 command.aw.membership.announce.leave=%s renounced their allegiance to the %s
+command.aw.membership.announce.faction_gone=The %2$s have lost their last city: %1$s is released from the oath
 command.aw.membership.announce.expel=%s was expelled from the %s for killing one of their own
 command.aw.membership.click.pledge=[Pledge allegiance to the %s]
 command.aw.membership.click.pledge.hover=Join this faction: its enemies become your enemies, its allies your friends

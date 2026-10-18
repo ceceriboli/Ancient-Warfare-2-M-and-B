@@ -24,6 +24,7 @@ import net.shadowmage.ancientwarfare.npc.network.PacketFactionDiplomacy;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
@@ -184,6 +185,21 @@ public class FactionMembership {
 			sendDiplomacy(player);
 		}
 		return faction;
+	}
+
+	/**
+	 * The faction has lost its last city: its members are released from their oath, without penalty (the standings they inherited from
+	 * it are given back, the standing with the faction stays as it is).
+	 */
+	public static void onFactionGone(MinecraftServer server, String faction) {
+		if (!AWDiplomacyStatics.membershipEnabled || !AWDiplomacyStatics.leaveWhenFactionGone) {
+			return;
+		}
+		for (FactionMembershipData.Member member : new ArrayList<>(getData(server.getEntityWorld()).getMembers())) {
+			if (member.faction.equals(faction)) {
+				leave(server, member.playerId, member.playerName, 0, "command.aw.membership.announce.faction_gone");
+			}
+		}
 	}
 
 	public static void sendDiplomacy(EntityPlayerMP player) {

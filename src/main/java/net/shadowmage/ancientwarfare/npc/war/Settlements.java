@@ -784,9 +784,10 @@ public class Settlements {
 			} else if (++settlement.missingLeaderChecks >= AWAITING_LEADER_CHECKS) {
 				AncientWarfareNPC.LOG.info("City {} ({}) of faction {}: its leader did not come in {} minutes (spawner at {}), the city is dropped", settlement.getId(),
 						settlement.getName(), settlement.getFaction(), AWAITING_LEADER_CHECKS * LEADER_CHECK_INTERVAL / 1200, settlement.getLastLeaderPos());
+				// no announcement and the spawners of the structure stay, as in plain Ancient Warfare
 				settlement.setAbandoned();
 				data.markDirty();
-				releaseGarrison(world, settlement);
+				checkFactionGone(world, settlement.getFaction());
 			}
 			return;
 		}
@@ -819,6 +820,19 @@ public class Settlements {
 		announce(world, new TextComponentTranslation("command.aw.settlement.announce.fallen", displayName(settlement)));
 		releaseGarrison(world, settlement);
 		AncientWarfareNPC.LOG.info("City {} of faction {} has fallen", settlement.getId(), settlement.getFaction());
+		checkFactionGone(world, settlement.getFaction());
+	}
+
+	/**
+	 * A city of the faction is gone (fallen, conquered or dropped): if the faction has no active city left in the world, its members
+	 * are released from their oath (leave_when_faction_gone).
+	 */
+	private static void checkFactionGone(World world, String faction) {
+		MinecraftServer server = world.getMinecraftServer();
+		if (server != null && !Diplomacy.getFactionsWithCities(world).contains(faction)) {
+			AncientWarfareNPC.LOG.info("The faction {} has no city left", faction);
+			FactionMembership.onFactionGone(server, faction);
+		}
 	}
 
 	/**
@@ -866,6 +880,7 @@ public class Settlements {
 		List<NpcFaction> newGarrison = Sieges.onSettlementConquered(world, settlement);
 		releaseGarrison(world, settlement);
 		settlement.setFaction(winner);
+		checkFactionGone(world, oldFaction);
 		settlement.getPendingRespawns().clear();
 		settlement.missingLeaderChecks = 0;
 		long now = world.getTotalWorldTime();
