@@ -560,6 +560,15 @@ public class Sieges {
 				count++;
 			}
 		}
+		if (settlement.getOwnerId() != null) {
+			// the capital of a player kingdom: the owner's own soldiers defend it too
+			for (net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned npc : world.getEntitiesWithinAABB(net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned.class,
+					settlement.getAABB())) {
+				if (npc.isEntityAlive() && !npc.isPassive() && settlement.getOwnerId().equals(npc.getOwner().getUUID())) {
+					count++;
+				}
+			}
+		}
 		return count;
 	}
 

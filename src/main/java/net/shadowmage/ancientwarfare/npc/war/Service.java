@@ -26,6 +26,7 @@ import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.faction.FactionRelations;
 import net.shadowmage.ancientwarfare.npc.faction.FactionTracker;
+import net.shadowmage.ancientwarfare.npc.faction.Kingdoms;
 import net.shadowmage.ancientwarfare.npc.gamedata.FactionMembershipData;
 import net.shadowmage.ancientwarfare.npc.gamedata.SettlementData;
 
@@ -475,6 +476,11 @@ public class Service {
 	}
 
 	private static void strike(MinecraftServer server, World world, FactionMembershipData.Member member, @Nullable EntityPlayerMP player, ITextComponent city) {
+		if (Kingdoms.isOwner(world, member.playerId, member.faction)) {
+			// the ruler of a kingdom does not desert its own kingdom
+			AncientWarfareNPC.LOG.info("{} missed the call to arms of their own kingdom {}: no strike", member.playerName, member.faction);
+			return;
+		}
 		int strikes = member.getStrikes() + 1;
 		getMembership(world).setStrikes(member.playerId, strikes, Diplomacy.getDay(world));
 		int penalty = AWDiplomacyStatics.serviceMissPenalty * strikes;
@@ -542,7 +548,7 @@ public class Service {
 		}
 		FactionMembershipData.Member member = getMembership(world).getMember(player.getUniqueID());
 		long day = Diplomacy.getDay(world);
-		if (member != null && member.getLastProposalDay() != Long.MIN_VALUE && day >= member.getLastProposalDay()
+		if (member != null && !Kingdoms.isOwner(world, player.getUniqueID(), faction) && member.getLastProposalDay() != Long.MIN_VALUE && day >= member.getLastProposalDay()
 				&& day - member.getLastProposalDay() < AWDiplomacyStatics.campaignProposalCooldownDays) {
 			throw new CommandException("command.aw.service.propose.cooldown", AWDiplomacyStatics.campaignProposalCooldownDays - (day - member.getLastProposalDay()));
 		}
@@ -654,10 +660,12 @@ public class Service {
 		}
 		int standing = FactionTracker.INSTANCE.getStandingFor(world, player.getName(), faction);
 		int needed = proposalStanding(kind);
+		// the owner of a kingdom orders its campaigns: no standing needed, no standing lost if they fail
+		boolean owner = Kingdoms.isOwner(world, player.getUniqueID(), faction);
 		if (data.getSieges().size() >= AWDiplomacyStatics.maxActiveSieges) {
 			return new TextComponentTranslation("command.aw.service.propose.refused.busy");
 		}
-		if (standing < needed) {
+		if (!owner && standing < needed) {
 			return new TextComponentTranslation("command.aw.service.propose.refused.standing", standing, needed);
 		}
 		int exhaustion = Diplomacy.getData(world).get(faction, city.getFaction()).getExhaustion(faction, city.getFaction());
@@ -669,7 +677,7 @@ public class Service {
 		ITextComponent answer = new TextComponentTranslation("command.aw.service.propose.accepted." + kind.getName(), Settlements.displayName(city));
 		Siege siege = Sieges.start(world, data, city, faction, kind, Siege.Origin.OFFENSIVE);
 		// the proposer answers for the result: if the campaign is lost (see onSiegeEnded) it loses standing
-		siege.setProposal(player.getUniqueID(), proposalPenalty(kind));
+		siege.setProposal(player.getUniqueID(), owner ? 0 : proposalPenalty(kind));
 		data.markDirty();
 		return answer;
 	}

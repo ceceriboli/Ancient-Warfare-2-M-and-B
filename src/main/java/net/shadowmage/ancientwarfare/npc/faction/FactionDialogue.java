@@ -16,6 +16,7 @@ import net.shadowmage.ancientwarfare.core.network.NetworkHandler;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
+import net.shadowmage.ancientwarfare.npc.gamedata.KingdomData;
 import net.shadowmage.ancientwarfare.npc.network.PacketFactionDialogue;
 import net.shadowmage.ancientwarfare.npc.war.Service;
 import net.shadowmage.ancientwarfare.npc.war.Settlement;
@@ -43,6 +44,19 @@ public class FactionDialogue {
 	private static final String TARGET_PREFIX = "target:";
 	private static final String PROPOSE_PREFIX = "propose:";
 	private static final int MAX_TARGETS = 6;
+	// the owner of a kingdom at its governor
+	private static final String KINGDOM_PREFIX = "k:";
+	private static final String K_PARTNERS = "partners:";
+	private static final String K_PARTNER = "partner:";
+	private static final String K_WAR_ASK = "war_ask:";
+	private static final String K_WAR = "war:";
+	private static final String K_PEACE = "peace:";
+	private static final String K_ALLY = "ally:";
+	private static final String K_BREAK = "break:";
+	private static final String K_REALM = "realm";
+	private static final String K_CULTURES = "cultures:";
+	private static final String K_CULTURE = "culture:";
+	private static final int PAGE_SIZE = 6;
 	private static final double EXTRA_RANGE = 4D;
 
 	/**
@@ -80,7 +94,10 @@ public class FactionDialogue {
 		String npcFaction = npc.getFaction();
 		String playerFaction = FactionMembership.getFaction(player.world, player.getUniqueID());
 		boolean member = npcFaction.equals(playerFaction);
-		if (PLEDGE.equals(action) && playerFaction == null) {
+		boolean owner = member && Kingdoms.isOwner(player.world, player.getUniqueID(), npcFaction);
+		if (owner && action.startsWith(KINGDOM_PREFIX)) {
+			handleKingdomAction(player, npc, action.substring(KINGDOM_PREFIX.length()));
+		} else if (PLEDGE.equals(action) && playerFaction == null) {
 			runCommand(player, "awmembership join " + npcFaction);
 			if (npcFaction.equals(FactionMembership.getFaction(player.world, player.getUniqueID()))) {
 				sendMainPage(player, npc, new TextComponentTranslation("gui.aw.dialogue.welcome", FactionMembership.factionName(npcFaction)));
@@ -89,10 +106,10 @@ public class FactionDialogue {
 			}
 		} else if (BACK.equals(action)) {
 			sendMainPage(player, npc, new TextComponentTranslation("gui.aw.dialogue.anything_else"));
-		} else if (RENOUNCE.equals(action) && member) {
+		} else if (RENOUNCE.equals(action) && member && !owner) {
 			sendPage(player, npc, new TextComponentTranslation("gui.aw.dialogue.renounce.confirm", FactionMembership.factionName(npcFaction)),
 					button(new TextComponentTranslation("gui.aw.dialogue.renounce.yes"), RENOUNCE_CONFIRM), button(new TextComponentTranslation("gui.aw.dialogue.no"), BACK));
-		} else if (RENOUNCE_CONFIRM.equals(action) && member) {
+		} else if (RENOUNCE_CONFIRM.equals(action) && member && !owner) {
 			runCommand(player, "awmembership leave");
 			sendClose(player);
 		} else if (PROPOSE.equals(action) && member) {
@@ -127,14 +144,175 @@ public class FactionDialogue {
 			buttons.add(button(new TextComponentTranslation("gui.aw.dialogue.pledge", FactionMembership.factionName(npcFaction)), PLEDGE)
 					.hover(new TextComponentTranslation("command.aw.membership.click.pledge.hover")));
 		} else if (playerFaction.equals(npcFaction)) {
-			if (AWDiplomacyStatics.serviceEnabled && AWDiplomacyStatics.siegesEnabled) {
-				buttons.add(button(new TextComponentTranslation("gui.aw.dialogue.propose"), PROPOSE)
-						.hover(new TextComponentTranslation("command.aw.service.click.propose.hover")));
+			boolean owner = Kingdoms.isOwner(player.world, player.getUniqueID(), npcFaction);
+			if (owner) {
+				buttons.add(button(new TextComponentTranslation("gui.aw.kingdom.diplomacy"), KINGDOM_PREFIX + K_PARTNERS + "0"));
+				buttons.add(button(new TextComponentTranslation("gui.aw.kingdom.realm"), KINGDOM_PREFIX + K_REALM));
 			}
-			buttons.add(button(new TextComponentTranslation("gui.aw.dialogue.renounce"), RENOUNCE));
+			if (AWDiplomacyStatics.serviceEnabled && AWDiplomacyStatics.siegesEnabled) {
+				buttons.add(button(new TextComponentTranslation(owner ? "gui.aw.kingdom.campaign" : "gui.aw.dialogue.propose"), PROPOSE)
+						.hover(new TextComponentTranslation(owner ? "gui.aw.kingdom.campaign.hover" : "command.aw.service.click.propose.hover")));
+			}
+			if (!owner) {
+				buttons.add(button(new TextComponentTranslation("gui.aw.dialogue.renounce"), RENOUNCE));
+			}
 		}
 		buttons.add(button(new TextComponentTranslation("gui.aw.dialogue.farewell"), CLOSE));
 		sendPage(player, npc, text, buttons.toArray(new Button[0]));
+	}
+
+	/**
+	 * Pages of the owner of a kingdom: diplomacy with each faction that has cities, the state of the kingdom and its culture.
+	 */
+	private static void handleKingdomAction(EntityPlayerMP player, NpcFaction npc, String action) {
+		MinecraftServer server = player.getServer();
+		String kingdom = npc.getFaction();
+		if (server == null) {
+			sendClose(player);
+			return;
+		}
+		if (action.startsWith(K_PARTNERS)) {
+			sendPartnersPage(player, npc, parseId(action.substring(K_PARTNERS.length())));
+		} else if (action.startsWith(K_PARTNER)) {
+			sendPartnerPage(player, npc, action.substring(K_PARTNER.length()), null);
+		} else if (action.startsWith(K_WAR_ASK)) {
+			String other = action.substring(K_WAR_ASK.length());
+			sendPage(player, npc, new TextComponentTranslation("gui.aw.kingdom.war.confirm", FactionMembership.factionName(other)),
+					button(new TextComponentTranslation("gui.aw.kingdom.war.yes"), KINGDOM_PREFIX + K_WAR + other),
+					button(new TextComponentTranslation("gui.aw.dialogue.no"), KINGDOM_PREFIX + K_PARTNER + other));
+		} else if (action.startsWith(K_WAR)) {
+			String other = action.substring(K_WAR.length());
+			sendPartnerPage(player, npc, other, isPartner(player, kingdom, other) ? KingdomDiplomacy.declareWar(server, kingdom, other) : null);
+		} else if (action.startsWith(K_PEACE)) {
+			String other = action.substring(K_PEACE.length());
+			sendPartnerPage(player, npc, other, isPartner(player, kingdom, other) ? KingdomDiplomacy.proposePeace(server, kingdom, other) : null);
+		} else if (action.startsWith(K_ALLY)) {
+			String other = action.substring(K_ALLY.length());
+			sendPartnerPage(player, npc, other, isPartner(player, kingdom, other) ? KingdomDiplomacy.proposeAlliance(server, kingdom, other) : null);
+		} else if (action.startsWith(K_BREAK)) {
+			String other = action.substring(K_BREAK.length());
+			sendPartnerPage(player, npc, other, isPartner(player, kingdom, other) ? KingdomDiplomacy.breakAlliance(server, kingdom, other) : null);
+		} else if (action.equals(K_REALM)) {
+			sendRealmPage(player, npc, null);
+		} else if (action.startsWith(K_CULTURES)) {
+			sendCulturesPage(player, npc, parseId(action.substring(K_CULTURES.length())));
+		} else if (action.startsWith(K_CULTURE)) {
+			String culture = action.substring(K_CULTURE.length());
+			KingdomData.Kingdom data = Kingdoms.get(player.world, kingdom);
+			if (data != null && Kingdoms.getCultures().contains(culture)) {
+				Kingdoms.setCulture(player.world, data, culture);
+				sendRealmPage(player, npc, new TextComponentTranslation("command.aw.kingdom.culture_set", FactionMembership.factionName(culture)));
+			} else {
+				sendRealmPage(player, npc, null);
+			}
+		} else {
+			sendClose(player);
+		}
+	}
+
+	private static boolean isPartner(EntityPlayerMP player, String kingdom, String other) {
+		return KingdomDiplomacy.getPartners(player.world, kingdom).contains(other);
+	}
+
+	private static void sendPartnersPage(EntityPlayerMP player, NpcFaction npc, int page) {
+		List<String> partners = KingdomDiplomacy.getPartners(player.world, npc.getFaction());
+		if (partners.isEmpty()) {
+			sendPage(player, npc, new TextComponentTranslation("gui.aw.kingdom.no_partners"), button(new TextComponentTranslation("gui.aw.dialogue.back"), BACK));
+			return;
+		}
+		int pages = (partners.size() + PAGE_SIZE - 1) / PAGE_SIZE;
+		page = Math.max(0, Math.min(pages - 1, page));
+		List<Button> buttons = new ArrayList<>();
+		for (String other : partners.subList(page * PAGE_SIZE, Math.min(partners.size(), (page + 1) * PAGE_SIZE))) {
+			buttons.add(button(KingdomDiplomacy.label(player.world, npc.getFaction(), other), KINGDOM_PREFIX + K_PARTNER + other));
+		}
+		if (pages > 1) {
+			buttons.add(button(new TextComponentTranslation("gui.aw.kingdom.more", page + 1, pages), KINGDOM_PREFIX + K_PARTNERS + ((page + 1) % pages)));
+		}
+		buttons.add(button(new TextComponentTranslation("gui.aw.dialogue.back"), BACK));
+		sendPage(player, npc, new TextComponentTranslation("gui.aw.kingdom.partners"), buttons.toArray(new Button[0]));
+	}
+
+	private static void sendPartnerPage(EntityPlayerMP player, NpcFaction npc, String other, @Nullable ITextComponent answer) {
+		String kingdom = npc.getFaction();
+		if (!isPartner(player, kingdom, other)) {
+			sendPartnersPage(player, npc, 0);
+			return;
+		}
+		ITextComponent text = KingdomDiplomacy.describe(player.world, kingdom, other);
+		if (answer != null) {
+			ITextComponent full = answer.createCopy();
+			full.getStyle().setColor(TextFormatting.YELLOW);
+			text = full.appendText("\n\n").appendSibling(text);
+		}
+		FactionRelation relation = KingdomDiplomacy.getRelation(player.world, kingdom, other);
+		List<Button> buttons = new ArrayList<>();
+		if (relation == FactionRelation.WAR) {
+			buttons.add(button(new TextComponentTranslation("gui.aw.kingdom.propose_peace"), KINGDOM_PREFIX + K_PEACE + other)
+					.hover(new TextComponentTranslation("gui.aw.kingdom.propose_peace.hover", AWDiplomacyStatics.minWarDays, AWDiplomacyStatics.peaceExhaustion)));
+		} else if (relation == FactionRelation.ALLIANCE) {
+			buttons.add(button(new TextComponentTranslation("gui.aw.kingdom.break_alliance"), KINGDOM_PREFIX + K_BREAK + other));
+		} else {
+			Button war = button(new TextComponentTranslation("gui.aw.kingdom.declare_war"), KINGDOM_PREFIX + K_WAR_ASK + other);
+			war.enabled = KingdomDiplomacy.getTruceDaysLeft(player.world, kingdom, other) == 0;
+			buttons.add(war.hover(new TextComponentTranslation("gui.aw.kingdom.declare_war.hover")));
+			buttons.add(button(new TextComponentTranslation("gui.aw.kingdom.propose_alliance"), KINGDOM_PREFIX + K_ALLY + other)
+					.hover(new TextComponentTranslation("gui.aw.kingdom.propose_alliance.hover")));
+		}
+		buttons.add(button(new TextComponentTranslation("gui.aw.dialogue.back"), KINGDOM_PREFIX + K_PARTNERS + "0"));
+		sendPage(player, npc, text, buttons.toArray(new Button[0]));
+	}
+
+	private static void sendRealmPage(EntityPlayerMP player, NpcFaction npc, @Nullable ITextComponent answer) {
+		KingdomData.Kingdom kingdom = Kingdoms.get(player.world, npc.getFaction());
+		if (kingdom == null) {
+			sendClose(player);
+			return;
+		}
+		Settlement city = Kingdoms.getCity(player.world, kingdom);
+		int wars = 0;
+		int alliances = 0;
+		for (String other : KingdomDiplomacy.getPartners(player.world, kingdom.id)) {
+			FactionRelation relation = KingdomDiplomacy.getRelation(player.world, kingdom.id, other);
+			wars += relation == FactionRelation.WAR ? 1 : 0;
+			alliances += relation == FactionRelation.ALLIANCE ? 1 : 0;
+		}
+		ITextComponent text = new TextComponentString(kingdom.name);
+		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.capital", city == null ? new TextComponentString("-") : Settlements.displayName(city)));
+		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.manpower", city == null ? 0 : city.getManpower(), city == null ? 0 : city.getMaxManpower()));
+		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.culture", FactionMembership.factionName(kingdom.culture)));
+		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.relations", wars, alliances));
+		if (answer != null) {
+			ITextComponent full = answer.createCopy();
+			full.getStyle().setColor(TextFormatting.YELLOW);
+			text = full.appendText("\n\n").appendSibling(text);
+		}
+		sendPage(player, npc, text,
+				button(new TextComponentTranslation("gui.aw.kingdom.change_culture"), KINGDOM_PREFIX + K_CULTURES + "0")
+						.hover(new TextComponentTranslation("gui.aw.kingdom.change_culture.hover")),
+				button(new TextComponentTranslation("gui.aw.dialogue.back"), BACK));
+	}
+
+	private static void sendCulturesPage(EntityPlayerMP player, NpcFaction npc, int page) {
+		KingdomData.Kingdom kingdom = Kingdoms.get(player.world, npc.getFaction());
+		List<String> cultures = Kingdoms.getCultures();
+		if (kingdom == null || cultures.isEmpty()) {
+			sendRealmPage(player, npc, null);
+			return;
+		}
+		int pages = (cultures.size() + PAGE_SIZE - 1) / PAGE_SIZE;
+		page = Math.max(0, Math.min(pages - 1, page));
+		List<Button> buttons = new ArrayList<>();
+		for (String culture : cultures.subList(page * PAGE_SIZE, Math.min(cultures.size(), (page + 1) * PAGE_SIZE))) {
+			Button button = button(FactionMembership.factionName(culture), KINGDOM_PREFIX + K_CULTURE + culture);
+			button.enabled = !culture.equals(kingdom.culture);
+			buttons.add(button);
+		}
+		if (pages > 1) {
+			buttons.add(button(new TextComponentTranslation("gui.aw.kingdom.more", page + 1, pages), KINGDOM_PREFIX + K_CULTURES + ((page + 1) % pages)));
+		}
+		buttons.add(button(new TextComponentTranslation("gui.aw.dialogue.back"), KINGDOM_PREFIX + K_REALM));
+		sendPage(player, npc, new TextComponentTranslation("gui.aw.kingdom.cultures", FactionMembership.factionName(kingdom.culture)), buttons.toArray(new Button[0]));
 	}
 
 	private static void sendTargetsPage(EntityPlayerMP player, NpcFaction npc) {

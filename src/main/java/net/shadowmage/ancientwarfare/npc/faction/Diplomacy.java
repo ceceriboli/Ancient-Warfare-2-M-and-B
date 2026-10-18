@@ -45,7 +45,7 @@ public class Diplomacy {
 		return AWGameData.INSTANCE.getData(world, DiplomacyData.class);
 	}
 
-	private static FactionRelationData getRelations(World world) {
+	static FactionRelationData getRelations(World world) {
 		return AWGameData.INSTANCE.getData(world, FactionRelationData.class);
 	}
 
@@ -236,7 +236,9 @@ public class Diplomacy {
 			for (int j = i + 1; j < active.size(); j++) {
 				String a = active.get(i);
 				String b = active.get(j);
-				if (relations.get(a, b) == FactionRelation.WAR && canMakePeace(data, a, b, day) && rand.nextDouble() < getPeaceChance(data, a, b)) {
+				// a player kingdom makes peace only when its owner proposes it (at its governor)
+				if (relations.get(a, b) == FactionRelation.WAR && !Kingdoms.isKingdom(a) && !Kingdoms.isKingdom(b) && canMakePeace(data, a, b, day)
+						&& rand.nextDouble() < getPeaceChance(data, a, b)) {
 					makePeace(server, world, a, b, "command.aw.diplomacy.announce.peace");
 				}
 			}
@@ -258,7 +260,7 @@ public class Diplomacy {
 			for (int j = i + 1; j < active.size(); j++) {
 				String a = active.get(i);
 				String b = active.get(j);
-				if (isEternalEnemy(a) || isEternalEnemy(b) || isHostile(relations, a, b) || relations.get(a, b) == FactionRelation.ALLIANCE
+				if (Kingdoms.isKingdom(a) || Kingdoms.isKingdom(b) || isEternalEnemy(a) || isEternalEnemy(b) || isHostile(relations, a, b) || relations.get(a, b) == FactionRelation.ALLIANCE
 						|| !isTruceOver(data, a, b, day) || countAlliances(relations, a, factions) >= AWDiplomacyStatics.maxAlliances
 						|| countAlliances(relations, b, factions) >= AWDiplomacyStatics.maxAlliances) {
 					continue;
@@ -279,7 +281,8 @@ public class Diplomacy {
 				}
 				callToArms(server, world, relations, data, a, b, withCities, day);
 				callToArms(server, world, relations, data, b, a, withCities, day);
-				if (day - data.get(a, b).getSince() >= AWDiplomacyStatics.allianceMinDays && findCommonEnemy(relations, a, b, withCities) == null
+				if (!Kingdoms.isKingdom(a) && !Kingdoms.isKingdom(b) && day - data.get(a, b).getSince() >= AWDiplomacyStatics.allianceMinDays
+						&& findCommonEnemy(relations, a, b, withCities) == null
 						&& rand.nextDouble() < AWDiplomacyStatics.allianceBreakChancePerDay) {
 					FactionRelations.setRelation(server, a, b, FactionRelation.PEACE, "command.aw.diplomacy.announce.alliance_end");
 					data.get(a, b).setTruceUntil(day + AWDiplomacyStatics.truceDays);
@@ -294,6 +297,9 @@ public class Diplomacy {
 	 */
 	private static void callToArms(MinecraftServer server, World world, FactionRelationData relations, DiplomacyData data, String faction, String ally,
 			Set<String> withCities, long day) {
+		if (Kingdoms.isKingdom(ally)) {
+			return; // a player kingdom goes to war only when its owner declares it
+		}
 		for (String enemy : new ArrayList<>(withCities)) {
 			if (enemy.equals(faction) || enemy.equals(ally) || relations.get(faction, enemy) != FactionRelation.WAR || isHostile(relations, ally, enemy)
 					|| relations.get(ally, enemy) == FactionRelation.ALLIANCE || !isTruceOver(data, ally, enemy, day)) {
@@ -305,14 +311,14 @@ public class Diplomacy {
 		}
 	}
 
-	private static void makePeace(MinecraftServer server, World world, String a, String b, String announceKey) {
+	static void makePeace(MinecraftServer server, World world, String a, String b, String announceKey) {
 		FactionRelations.setRelation(server, a, b, FactionRelation.PEACE, announceKey);
 		DiplomacyData data = getData(world);
 		data.get(a, b).setTruceUntil(getDay(world) + AWDiplomacyStatics.truceDays);
 		data.markDirty();
 	}
 
-	private static boolean canMakePeace(DiplomacyData data, String a, String b, long day) {
+	static boolean canMakePeace(DiplomacyData data, String a, String b, long day) {
 		DiplomacyData.Entry entry = data.get(a, b);
 		return !isEternalEnemy(a) && !isEternalEnemy(b) && day - entry.getSince() >= AWDiplomacyStatics.minWarDays
 				&& entry.getMaxExhaustion() >= AWDiplomacyStatics.peaceExhaustion;
@@ -323,7 +329,7 @@ public class Diplomacy {
 		return Math.min(MAX_PEACE_CHANCE, AWDiplomacyStatics.peaceChancePerDay + over * PEACE_CHANCE_PER_POINT);
 	}
 
-	private static boolean isTruceOver(DiplomacyData data, String a, String b, long day) {
+	static boolean isTruceOver(DiplomacyData data, String a, String b, long day) {
 		return day >= data.get(a, b).getTruceUntil();
 	}
 
@@ -345,7 +351,7 @@ public class Diplomacy {
 		return count;
 	}
 
-	private static int countAlliances(FactionRelationData relations, String faction, List<String> factions) {
+	static int countAlliances(FactionRelationData relations, String faction, List<String> factions) {
 		int count = 0;
 		for (String other : factions) {
 			if (!other.equals(faction) && relations.get(faction, other) == FactionRelation.ALLIANCE) {
@@ -356,7 +362,7 @@ public class Diplomacy {
 	}
 
 	@Nullable
-	private static String findCommonEnemy(FactionRelationData relations, String a, String b, Set<String> withCities) {
+	static String findCommonEnemy(FactionRelationData relations, String a, String b, Set<String> withCities) {
 		for (String enemy : new TreeSet<>(withCities)) {
 			if (!enemy.equals(a) && !enemy.equals(b) && relations.get(a, enemy) == FactionRelation.WAR && relations.get(b, enemy) == FactionRelation.WAR) {
 				return enemy;

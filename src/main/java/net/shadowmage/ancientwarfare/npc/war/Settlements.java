@@ -31,6 +31,7 @@ import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
 import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
+import net.shadowmage.ancientwarfare.npc.faction.Kingdoms;
 import net.shadowmage.ancientwarfare.npc.gamedata.SettlementData;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 import net.shadowmage.ancientwarfare.structure.gamedata.StructureEntry;
@@ -1004,7 +1005,11 @@ public class Settlements {
 		MinecraftServer server = world.getMinecraftServer();
 		if (server != null && !Diplomacy.getFactionsWithCities(world).contains(faction)) {
 			AncientWarfareNPC.LOG.info("The faction {} has no city left", faction);
-			FactionMembership.onFactionGone(server, faction);
+			if (Kingdoms.isKingdom(faction)) {
+				Kingdoms.destroy(server, faction); // its owner and members leave it, whatever leave_when_faction_gone says
+			} else {
+				FactionMembership.onFactionGone(server, faction);
+			}
 		}
 	}
 

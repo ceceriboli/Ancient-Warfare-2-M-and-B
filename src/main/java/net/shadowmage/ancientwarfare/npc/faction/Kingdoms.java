@@ -15,7 +15,11 @@ import net.minecraftforge.common.util.Constants;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.war.Settlement;
 import net.shadowmage.ancientwarfare.npc.war.Settlements;
+import net.shadowmage.ancientwarfare.npc.gamedata.FactionMembershipData;
+import net.shadowmage.ancientwarfare.npc.gamedata.FactionRelationData;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeSet;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.shadowmage.ancientwarfare.core.gamedata.AWGameData;
 import net.shadowmage.ancientwarfare.core.network.NetworkHandler;
@@ -149,6 +153,84 @@ public class Kingdoms {
 			}
 		}
 		Diplomacy.getData(world).markDirty();
+	}
+
+	/**
+	 * @return true if the player owns the kingdom (a kingdom faction not destroyed)
+	 */
+	public static boolean isOwner(World world, UUID playerId, @Nullable String faction) {
+		KingdomData.Kingdom kingdom = faction == null || !isKingdom(faction) ? null : get(world, faction);
+		return kingdom != null && !kingdom.destroyed && playerId.equals(kingdom.ownerId);
+	}
+
+	/**
+	 * @return the cultures a kingdom can choose: kingdom_cultures, or every faction that is not an eternal enemy when the list is empty
+	 */
+	public static List<String> getCultures() {
+		List<String> ret = new ArrayList<>();
+		for (String culture : AWDiplomacyStatics.kingdomCultures) {
+			if (isValidCulture(culture.trim())) {
+				ret.add(culture.trim());
+			}
+		}
+		if (ret.isEmpty()) {
+			for (String faction : new TreeSet<>(FactionRegistry.getFactionNames())) {
+				if (isValidCulture(faction) && !Diplomacy.isEternalEnemy(faction)) {
+					ret.add(faction);
+				}
+			}
+		}
+		return ret;
+	}
+
+	/**
+	 * The kingdom has lost its city (conquered, fallen, disbanded): it is marked destroyed (its faction stays registered, so that its npcs
+	 * can still be loaded), its relations are removed and its owner and members leave it.
+	 */
+	public static void destroy(MinecraftServer server, String id) {
+		World world = server.getEntityWorld();
+		KingdomData.Kingdom kingdom = get(world, id);
+		if (kingdom == null || kingdom.destroyed) {
+			return;
+		}
+		kingdom.destroyed = true;
+		getData(world).markDirty();
+		FactionRelationData relations = AWGameData.INSTANCE.getData(world, FactionRelationData.class);
+		for (String other : new ArrayList<>(FactionRegistry.getFactionNames())) {
+			if (!other.equals(id) && relations.get(id, other) != null) {
+				relations.reset(id, other);
+			}
+		}
+		for (FactionMembershipData.Member member : new ArrayList<>(AWGameData.INSTANCE.getData(world, FactionMembershipData.class).getMembers())) {
+			if (member.faction.equals(id)) {
+				FactionMembership.leave(server, member.playerId, member.playerName, 0, null);
+			}
+		}
+		FactionMembership.sendDiplomacyToAll(server);
+		server.getPlayerList().sendMessage(colored(new TextComponentTranslation("command.aw.kingdom.announce.destroyed", kingdom.name), TextFormatting.GOLD));
+		AncientWarfareNPC.LOG.info("Kingdom {} ({}) of {} is destroyed", id, kingdom.name, kingdom.ownerName);
+	}
+
+	/**
+	 * The owner gives up the kingdom: its city is abandoned (the governor and garrison leave) and the kingdom is destroyed.
+	 */
+	public static void disband(MinecraftServer server, KingdomData.Kingdom kingdom) {
+		World world = server.getEntityWorld();
+		Settlement city = kingdom.cityId < 0 ? null : Settlements.getData(world).get(kingdom.cityId);
+		if (city != null && city.isActive() && kingdom.id.equals(city.getFaction())) {
+			WorldServer cityWorld = server.getWorld(city.getDimension());
+			Settlements.collapse(cityWorld, Settlements.getData(world), city);
+		}
+		destroy(server, kingdom.id);
+	}
+
+	@Nullable
+	public static Settlement getCity(World world, @Nullable KingdomData.Kingdom kingdom) {
+		if (kingdom == null || kingdom.destroyed) {
+			return null;
+		}
+		Settlement city = kingdom.cityId < 0 ? null : Settlements.getData(world).get(kingdom.cityId);
+		return city != null && city.isActive() && kingdom.id.equals(city.getFaction()) ? city : null;
 	}
 
 	private static ITextComponent colored(ITextComponent text, TextFormatting color) {

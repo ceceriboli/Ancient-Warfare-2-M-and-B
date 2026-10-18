@@ -11,6 +11,7 @@ import net.minecraft.util.text.TextComponentTranslation;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.faction.FactionTracker;
+import net.shadowmage.ancientwarfare.npc.faction.Kingdoms;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 import net.shadowmage.ancientwarfare.npc.war.Service;
 
@@ -105,6 +106,9 @@ public class CommandFactionMembership extends CommandBase {
 		if (currentFaction != null) {
 			throw new CommandException("command.aw.membership.already_member", FactionMembership.factionName(currentFaction));
 		}
+		if (Kingdoms.isKingdom(faction) && Kingdoms.getCity(player.world, Kingdoms.get(player.world, faction)) == null) {
+			throw new CommandException("command.aw.kingdom.gone", FactionMembership.factionName(faction));
+		}
 		int standing = FactionTracker.INSTANCE.getStandingFor(player.world, player.getName(), faction);
 		if (standing < AWDiplomacyStatics.joinMinStanding) {
 			throw new CommandException("command.aw.membership.standing_too_low", FactionMembership.factionName(faction), AWDiplomacyStatics.joinMinStanding, standing);
@@ -116,6 +120,10 @@ public class CommandFactionMembership extends CommandBase {
 	}
 
 	private void leave(MinecraftServer server, EntityPlayerMP player) throws CommandException {
+		String current = FactionMembership.getFaction(player.world, player.getUniqueID());
+		if (Kingdoms.isOwner(player.world, player.getUniqueID(), current)) {
+			throw new CommandException("command.aw.kingdom.owner_cannot_leave");
+		}
 		String faction = FactionMembership.leave(server, player.getUniqueID(), player.getName(), FactionMembership.RENOUNCE, "command.aw.membership.announce.leave");
 		if (faction == null) {
 			throw new CommandException("command.aw.membership.not_member");

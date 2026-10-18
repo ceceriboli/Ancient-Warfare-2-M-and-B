@@ -238,8 +238,10 @@ public class FactionMembership {
 					player.sendMessage(clickable(new TextComponentTranslation("command.aw.service.click.propose"), TextFormatting.GOLD, "/awservice propose",
 							new TextComponentTranslation("command.aw.service.click.propose.hover")));
 				}
-				player.sendMessage(clickable(new TextComponentTranslation("command.aw.membership.click.renounce"), TextFormatting.RED,
-						"/awmembership leave", new TextComponentTranslation("command.aw.membership.click.renounce.hover", factionName(npcFaction))));
+				if (!Kingdoms.isOwner(player.world, player.getUniqueID(), npcFaction)) {
+					player.sendMessage(clickable(new TextComponentTranslation("command.aw.membership.click.renounce"), TextFormatting.RED,
+							"/awmembership leave", new TextComponentTranslation("command.aw.membership.click.renounce.hover", factionName(npcFaction))));
+				}
 			}
 		} else if (AWDiplomacyStatics.leaderDirectionsRange > 0 && npc.world.rand.nextDouble() < AWDiplomacyStatics.leaderDirectionsChance) {
 			findNearestLeader(npc.world, npc, npcFaction, AWDiplomacyStatics.leaderDirectionsRange).ifPresent(leader -> {
