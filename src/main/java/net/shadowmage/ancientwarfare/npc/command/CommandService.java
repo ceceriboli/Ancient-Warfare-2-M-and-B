@@ -70,7 +70,7 @@ public class CommandService extends CommandBase {
 				if (kind == null) {
 					throw new WrongUsageException(getUsage(sender));
 				}
-				Service.propose(player, parseInt(args[1]), kind);
+				Service.proposeInChat(player, parseInt(args[1]), kind);
 			}
 			return;
 		}

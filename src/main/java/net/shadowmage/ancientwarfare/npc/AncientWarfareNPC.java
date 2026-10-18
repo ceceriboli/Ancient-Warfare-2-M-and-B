@@ -59,6 +59,8 @@ import net.shadowmage.ancientwarfare.npc.init.AWNPCEntities;
 import net.shadowmage.ancientwarfare.npc.init.AWNPCItems;
 import net.shadowmage.ancientwarfare.npc.network.PacketExtendedReachAttack;
 import net.shadowmage.ancientwarfare.npc.network.PacketFactionDiplomacy;
+import net.shadowmage.ancientwarfare.npc.network.PacketFactionDialogue;
+import net.shadowmage.ancientwarfare.npc.network.PacketFactionDialogueAction;
 import net.shadowmage.ancientwarfare.npc.network.PacketFactionUpdate;
 import net.shadowmage.ancientwarfare.npc.network.PacketNpcCommand;
 import net.shadowmage.ancientwarfare.npc.network.PacketTeamMembershipUpdate;
@@ -138,6 +140,8 @@ public class AncientWarfareNPC {
 		PacketBase.registerPacketType(NetworkHandler.PACKET_TEAM_STANDINGS_UPDATE, PacketTeamStandingsUpdate.class, PacketTeamStandingsUpdate::new);
 		PacketBase.registerPacketType(NetworkHandler.PACKET_TEAM_STANDING_UPDATE, PacketTeamStandingUpdate.class, PacketTeamStandingUpdate::new);
 		PacketBase.registerPacketType(NetworkHandler.PACKET_FACTION_DIPLOMACY, PacketFactionDiplomacy.class, PacketFactionDiplomacy::new);
+		PacketBase.registerPacketType(NetworkHandler.PACKET_FACTION_DIALOGUE, PacketFactionDialogue.class, PacketFactionDialogue::new);
+		PacketBase.registerPacketType(NetworkHandler.PACKET_FACTION_DIALOGUE_ACTION, PacketFactionDialogueAction.class, PacketFactionDialogueAction::new);
 
 		CompatLoader.registerCompat(new EpicSiegeCompat());
 		CompatLoader.registerCompat(new TwilightForestCompat());

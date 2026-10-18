@@ -42,6 +42,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int campaignProposalStanding = 120;
 	public static int campaignProposalSiegeStanding = 180;
 	public static int campaignProposalCooldownDays = 1;
+	public static boolean dialogueGui = true;
 	public static boolean factionChestsEnabled = true;
 	public static int chestTrustStanding = 150;
 	public static int chestPlunderTicks = 12000;
@@ -209,6 +210,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		campaignProposalSiegeStanding = config.get(serverOptions, "campaign_proposal_siege_standing", campaignProposalSiegeStanding, "Campaign proposal: full siege\nDefault=" + campaignProposalSiegeStanding + "\n" + "Standing a member needs for the ruler to accept a full siege (only if the city had no full siege for\n" + "full_siege_cooldown_days).", -10000, 10000).getInt();
 
 		campaignProposalCooldownDays = config.get(serverOptions, "campaign_proposal_cooldown_days", campaignProposalCooldownDays, "Campaign proposal cooldown\nDefault=" + campaignProposalCooldownDays + "\n" + "Minecraft days after an accepted proposal before the same member can propose another campaign.", 0, 1000).getInt();
+
+		dialogueGui = config.get(serverOptions, "dialogue_gui", dialogueGui, "Dialogue window\nDefault=" + dialogueGui + "\n" + "If true, a ruling leader that has something to offer (pledge allegiance, propose a campaign, renounce) opens a\n" + "dialogue window with buttons. If false, it speaks in chat with clickable texts.").getBoolean();
 
 		factionChestsEnabled = config.get(serverOptions, "faction_chests_enabled", factionChestsEnabled, "Faction chests for members\nDefault=" + factionChestsEnabled + "\n" + "If true, the npcs of a faction let its members open the loot chests of its structures (otherwise locked while a\n" + "faction npc sees the player) once their standing reaches chest_trust_standing, and the players who served in the\n" + "attack that conquered a city plunder its chests freely for chest_plunder_ticks.").getBoolean();
 
