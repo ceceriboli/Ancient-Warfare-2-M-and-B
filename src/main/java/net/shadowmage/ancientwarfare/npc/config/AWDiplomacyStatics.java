@@ -119,6 +119,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int fullSiegeCooldownDays = 20;
 	public static double fullSiegeStrengthRatio = 0.5;
 	public static double fullSiegeAttackerRatio = 0.3;
+	public static double fullSiegeAttackerShare = 0.5;
 	public static int fullSiegeMinAttackers = 10;
 	public static int fullSiegeMaxAttackers = 60;
 	public static int fullSiegeWaves = 4;
@@ -374,6 +375,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		fullSiegeStrengthRatio = config.get(serverOptions, "full_siege_strength_ratio", fullSiegeStrengthRatio, "Full siege size\nDefault=" + fullSiegeStrengthRatio + "\n" + "Total attackers of a full siege (siege engineers not counted) = (garrison units loaded + manpower) x this value,\n" + "limited by full_siege_min_attackers and full_siege_max_attackers, and split into full_siege_waves waves.", 0.0D, 100.0D).getDouble();
 
 		fullSiegeAttackerRatio = config.get(serverOptions, "full_siege_attacker_ratio", fullSiegeAttackerRatio, "Full siege size: attacking faction\nDefault=" + fullSiegeAttackerRatio + "\n" + "A full siege also grows with the strength of the attacking faction: (manpower of all its known cities in the dimension,\n" + "the ones of /awsettlement list) x this value is added to the attackers from full_siege_strength_ratio, before the limits\n" + "full_siege_min_attackers and full_siege_max_attackers. 0 = only the strength of the city counts. Raids are not affected.", 0.0D, 100.0D).getDouble();
+
+		fullSiegeAttackerShare = config.get(serverOptions, "full_siege_attacker_share", fullSiegeAttackerShare, "Full siege size: most of the manpower\nDefault=" + fullSiegeAttackerShare + "\n" + "A full siege has at most this share of the manpower of all the known cities of the attacking faction in the dimension as\n" + "attackers (but never less than full_siege_min_attackers), whatever the strength of the besieged city: a weak faction cannot\n" + "send a big army. 0.5 = half of its manpower. Raids are not affected.", 0.0D, 100.0D).getDouble();
 
 		fullSiegeMinAttackers = config.get(serverOptions, "full_siege_min_attackers", fullSiegeMinAttackers, "Full siege minimum attackers\nDefault=" + fullSiegeMinAttackers + "\n" + "Minimum total number of attackers of a full siege.", 1, 1000).getInt();
 

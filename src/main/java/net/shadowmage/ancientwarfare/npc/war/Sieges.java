@@ -164,7 +164,8 @@ public class Sieges {
 	/**
 	 * Size of an attack, the same for every attack: from the strength of the city (garrison units loaded + manpower). A full siege also
 	 * grows with the strength of the attacking faction: a fraction (full_siege_attacker_ratio) of the manpower of all its known cities in the
-	 * dimension (the ones of /awsettlement list) is added.
+	 * dimension (the ones of /awsettlement list) is added, and it cannot have more attackers than a share (full_siege_attacker_share) of that
+	 * manpower (not less than full_siege_min_attackers).
 	 *
 	 * @return strength of the city, number of waves, attackers per wave, manpower of the attacking and of the defending faction (0 for a raid)
 	 */
@@ -182,6 +183,10 @@ public class Sieges {
 		}
 		int min = full ? AWDiplomacyStatics.fullSiegeMinAttackers : AWDiplomacyStatics.raidMinAttackers;
 		int max = full ? AWDiplomacyStatics.fullSiegeMaxAttackers : AWDiplomacyStatics.raidMaxAttackers;
+		if (full) {
+			// a faction cannot send more than a share of the manpower it has, however big the city is
+			max = Math.min(max, Math.max(min, (int) (attackerManpower * AWDiplomacyStatics.fullSiegeAttackerShare)));
+		}
 		int attackers = Math.min(max, Math.max(min, (int) Math.round(total)));
 		int waves = Math.max(1, Math.min(full ? AWDiplomacyStatics.fullSiegeWaves : AWDiplomacyStatics.raidWaves, attackers));
 		return new int[] {strength, waves, (int) Math.ceil((double) attackers / waves), attackerManpower, defenderManpower};
