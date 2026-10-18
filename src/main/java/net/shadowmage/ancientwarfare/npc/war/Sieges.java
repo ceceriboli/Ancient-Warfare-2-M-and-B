@@ -162,31 +162,25 @@ public class Sieges {
 	}
 
 	/**
-	 * Size of an attack, the same for every attack: from the strength of the city (garrison units loaded + manpower). A full siege also
-	 * grows with the strength of the attacking faction: a fraction (full_siege_attacker_ratio) of the manpower of all its known cities in the
-	 * dimension (the ones of /awsettlement list) is added, and it cannot have more attackers than a share (full_siege_attacker_share) of that
-	 * manpower (not less than full_siege_min_attackers).
+	 * Size of an attack (raid or full siege, each with its own parameters): the strength of the city (garrison units loaded + manpower) x
+	 * strength_ratio, plus a fraction (attacker_ratio) of the manpower of all the known cities of the attacking faction in the dimension (the
+	 * ones of /awsettlement list); at most a share (attacker_share) of that manpower, however big the city is, and between the minimum and
+	 * the maximum number of attackers of the kind.
 	 *
-	 * @return strength of the city, number of waves, attackers per wave, manpower of the attacking and of the defending faction (0 for a raid)
+	 * @return strength of the city, number of waves, attackers per wave, manpower of the attacking and of the defending faction
 	 */
 	private static int[] computeSize(World world, Settlement settlement, Siege.Kind kind, String attacker) {
 		boolean full = kind == Siege.Kind.SIEGE;
 		int strength = countGarrison(world, settlement) + settlement.getManpower();
-		double total = strength * (full ? AWDiplomacyStatics.fullSiegeStrengthRatio : AWDiplomacyStatics.raidStrengthRatio);
-		int attackerManpower = 0;
-		int defenderManpower = 0;
-		if (full) {
-			// a strong faction lays a bigger siege than a weak one on the same city
-			attackerManpower = getFactionManpower(world, attacker, settlement.getDimension());
-			defenderManpower = getFactionManpower(world, settlement.getFaction(), settlement.getDimension());
-			total += attackerManpower * AWDiplomacyStatics.fullSiegeAttackerRatio;
-		}
+		// a strong faction attacks with more than a weak one on the same city
+		int attackerManpower = getFactionManpower(world, attacker, settlement.getDimension());
+		int defenderManpower = getFactionManpower(world, settlement.getFaction(), settlement.getDimension());
+		double total = strength * (full ? AWDiplomacyStatics.fullSiegeStrengthRatio : AWDiplomacyStatics.raidStrengthRatio)
+				+ attackerManpower * (full ? AWDiplomacyStatics.fullSiegeAttackerRatio : AWDiplomacyStatics.raidAttackerRatio);
 		int min = full ? AWDiplomacyStatics.fullSiegeMinAttackers : AWDiplomacyStatics.raidMinAttackers;
 		int max = full ? AWDiplomacyStatics.fullSiegeMaxAttackers : AWDiplomacyStatics.raidMaxAttackers;
-		if (full) {
-			// a faction cannot send more than a share of the manpower it has, however big the city is
-			max = Math.min(max, Math.max(min, (int) (attackerManpower * AWDiplomacyStatics.fullSiegeAttackerShare)));
-		}
+		// a faction cannot send more than a share of the manpower it has (but not less than the minimum)
+		max = Math.min(max, Math.max(min, (int) (attackerManpower * (full ? AWDiplomacyStatics.fullSiegeAttackerShare : AWDiplomacyStatics.raidAttackerShare))));
 		int attackers = Math.min(max, Math.max(min, (int) Math.round(total)));
 		int waves = Math.max(1, Math.min(full ? AWDiplomacyStatics.fullSiegeWaves : AWDiplomacyStatics.raidWaves, attackers));
 		return new int[] {strength, waves, (int) Math.ceil((double) attackers / waves), attackerManpower, defenderManpower};

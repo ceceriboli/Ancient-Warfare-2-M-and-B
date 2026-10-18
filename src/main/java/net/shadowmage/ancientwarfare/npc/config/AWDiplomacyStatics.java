@@ -110,9 +110,11 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int siegeSpawnMinDistance = 40;
 	public static int siegeSpawnMaxDistance = 60;
 	public static boolean announceSieges = true;
-	public static double raidStrengthRatio = 0.4;
-	public static int raidMinAttackers = 3;
-	public static int raidMaxAttackers = 12;
+	public static double raidStrengthRatio = 0.1;
+	public static double raidAttackerRatio = 0.05;
+	public static double raidAttackerShare = 0.2;
+	public static int raidMinAttackers = 10;
+	public static int raidMaxAttackers = 30;
 	public static int raidWaves = 2;
 	public static String[] raidUnitWeights = {"faction.soldier=5", "faction.archer=3", "faction.cavalry=2"};
 	public static double fullSiegeShare = 0.1;
@@ -358,7 +360,11 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		String unitTypes = "Units of the attacking faction in a wave, as npc type=weight. Types are the faction npc names without the\n" + "'ancientwarfarenpc:' prefix: faction.soldier, faction.soldier.elite, faction.archer, faction.archer.elite,\n" + "faction.cavalry (mounted soldier, spawns with its horse), faction.mounted_archer.";
 
-		raidStrengthRatio = config.get(serverOptions, "raid_strength_ratio", raidStrengthRatio, "Raid size\nDefault=" + raidStrengthRatio + "\n" + "Total attackers of a raid = (garrison units loaded + manpower of the city) x this value,\n" + "limited by raid_min_attackers and raid_max_attackers, and split into raid_waves waves.", 0.0D, 100.0D).getDouble();
+		raidStrengthRatio = config.get(serverOptions, "raid_strength_ratio", raidStrengthRatio, "Raid size\nDefault=" + raidStrengthRatio + "\n" + "Total attackers of a raid = (garrison units loaded + manpower of the city) x this value\n" + "+ (manpower of all the known cities of the attacking faction in the dimension) x raid_attacker_ratio, at most\n" + "raid_attacker_share of that manpower, limited by raid_min_attackers and raid_max_attackers, and split into raid_waves waves.", 0.0D, 100.0D).getDouble();
+
+		raidAttackerRatio = config.get(serverOptions, "raid_attacker_ratio", raidAttackerRatio, "Raid size: attacking faction\nDefault=" + raidAttackerRatio + "\n" + "A raid also grows with the strength of the attacking faction: its manpower (all its known cities in the dimension, the ones\n" + "of /awsettlement list) x this value is added to the attackers from raid_strength_ratio.", 0.0D, 100.0D).getDouble();
+
+		raidAttackerShare = config.get(serverOptions, "raid_attacker_share", raidAttackerShare, "Raid size: most of the manpower\nDefault=" + raidAttackerShare + "\n" + "A raid has at most this share of the manpower of the attacking faction as attackers (never less than raid_min_attackers),\n" + "whatever the strength of the besieged city: a weak faction cannot send a big raid.", 0.0D, 100.0D).getDouble();
 
 		raidMinAttackers = config.get(serverOptions, "raid_min_attackers", raidMinAttackers, "Raid minimum attackers\nDefault=" + raidMinAttackers + "\n" + "Minimum total number of attackers of a raid.", 1, 1000).getInt();
 
