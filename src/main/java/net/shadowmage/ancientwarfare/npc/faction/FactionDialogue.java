@@ -241,9 +241,10 @@ public class FactionDialogue {
 		}
 		ITextComponent text = KingdomDiplomacy.describe(player.world, kingdom, other);
 		if (answer != null) {
-			ITextComponent full = answer.createCopy();
-			full.getStyle().setColor(TextFormatting.YELLOW);
-			text = full.appendText("\n\n").appendSibling(text);
+			// only the answer is yellow: siblings take the style of the component they are appended to
+			ITextComponent colored = answer.createCopy();
+			colored.getStyle().setColor(TextFormatting.YELLOW);
+			text = new TextComponentString("").appendSibling(colored).appendText("\n\n").appendSibling(text);
 		}
 		FactionRelation relation = KingdomDiplomacy.getRelation(player.world, kingdom, other);
 		List<Button> buttons = new ArrayList<>();
@@ -283,9 +284,10 @@ public class FactionDialogue {
 		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.culture", FactionMembership.factionName(kingdom.culture)));
 		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.relations", wars, alliances));
 		if (answer != null) {
-			ITextComponent full = answer.createCopy();
-			full.getStyle().setColor(TextFormatting.YELLOW);
-			text = full.appendText("\n\n").appendSibling(text);
+			// only the answer is yellow: siblings take the style of the component they are appended to
+			ITextComponent colored = answer.createCopy();
+			colored.getStyle().setColor(TextFormatting.YELLOW);
+			text = new TextComponentString("").appendSibling(colored).appendText("\n\n").appendSibling(text);
 		}
 		sendPage(player, npc, text,
 				button(new TextComponentTranslation("gui.aw.kingdom.change_culture"), KINGDOM_PREFIX + K_CULTURES + "0")
