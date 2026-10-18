@@ -302,7 +302,12 @@ public class Settlements {
 		into.setMaxManpower(into.getMaxManpower() + absorbed.getMaxManpower());
 		into.setManpower(into.getManpower() + absorbed.getManpower());
 		into.setManpowerCap(into.getManpowerCap() + absorbed.getManpowerCap());
-		into.setGarrisonCap(into.getGarrisonCap() + absorbed.getGarrisonCap());
+		if (into.getGarrisonCap() > 0 || absorbed.getGarrisonCap() > 0) {
+			// a conquered part: reinforcements up to the garrison of the whole merged city, estimated from its manpower as at a conquest
+			// (raised to the real garrison when it is counted, see reinforce)
+			into.setGarrisonCap(Math.max(into.getGarrisonCap() + absorbed.getGarrisonCap(),
+					(int) Math.floor(into.getMaxManpower() / Math.max(0.01D, AWDiplomacyStatics.manpowerPerUnit))));
+		}
 		into.getPendingRespawns().addAll(absorbed.getPendingRespawns());
 		into.setLastSiegeEnd(Math.max(into.getLastSiegeEnd(), absorbed.getLastSiegeEnd()));
 		into.setLastFullSiegeEnd(Math.max(into.getLastFullSiegeEnd(), absorbed.getLastFullSiegeEnd()));
@@ -1047,6 +1052,11 @@ public class Settlements {
 			}
 		}
 		if (garrison >= settlement.getGarrisonCap()) {
+			// the real garrison is larger (e.g. cities merged into this one): it is the garrison reinforcements bring back
+			if (garrison > settlement.getGarrisonCap()) {
+				settlement.setGarrisonCap(garrison);
+				getData(world).markDirty();
+			}
 			return;
 		}
 		List<String> types = new ArrayList<>();
