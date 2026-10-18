@@ -8,7 +8,9 @@ import net.minecraft.world.World;
 import net.minecraft.world.storage.WorldSavedData;
 import net.minecraftforge.common.util.Constants;
 import net.shadowmage.ancientwarfare.core.network.NetworkHandler;
+import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.faction.PlayerFactionEntry;
+import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 import net.shadowmage.ancientwarfare.npc.network.PacketFactionUpdate;
 
 import java.util.HashMap;
@@ -26,7 +28,13 @@ public class FactionData extends WorldSavedData {
 	public void onPlayerLogin(EntityPlayer player) {
 		String name = player.getName();
 		if (!playerFactionEntries.containsKey(name)) {
-			playerFactionEntries.put(name, new PlayerFactionEntry(name));
+			PlayerFactionEntry entry = new PlayerFactionEntry(name);
+			if (AWDiplomacyStatics.newPlayerNeutralStandings) {
+				for (String faction : FactionRegistry.getFactionNames()) {
+					entry.setStandingFor(faction, 0);
+				}
+			}
+			playerFactionEntries.put(name, entry);
 			markDirty();
 		}
 		sendFactionEntry(player);

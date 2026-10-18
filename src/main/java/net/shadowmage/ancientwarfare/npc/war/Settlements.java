@@ -384,9 +384,9 @@ public class Settlements {
 			max = pos.add(radius, 0, radius);
 			structureName = "";
 		}
-		// structure bounds can be flat, make sure npcs on the floors around the leader are included
+		// a city covers its whole column up to the build limit: towers and leaders above a flat structure box must not found a second city
 		min = new BlockPos(min.getX(), Math.max(0, Math.min(min.getY(), pos.getY() - MIN_BOUNDS_BELOW)), min.getZ());
-		max = new BlockPos(max.getX(), Math.min(255, Math.max(max.getY(), pos.getY() + MIN_BOUNDS_ABOVE)), max.getZ());
+		max = new BlockPos(max.getX(), 255, max.getZ());
 		return new Bounds(min, max, structureName);
 	}
 
