@@ -20,6 +20,8 @@ public class FactionTracker {
 	}
 
 	private void onPlayerLogin(EntityPlayer player) {
+		// the client must know the player kingdoms before it receives standings and npcs of those factions
+		Kingdoms.sendTo(player);
 		FactionData data = AWGameData.INSTANCE.getData(player.world, FactionData.class);
 		data.onPlayerLogin(player);
 

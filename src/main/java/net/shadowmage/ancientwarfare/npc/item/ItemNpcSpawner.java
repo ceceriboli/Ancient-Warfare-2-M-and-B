@@ -166,7 +166,7 @@ public class ItemNpcSpawner extends ItemBaseNPC {
 			if (dec.canSpawnBaseEntity()) {
 				if (dec.getNpcType().startsWith("faction.")) {
 					for (String factionName : FactionRegistry.getFactionNames()) {
-						if (NpcDefaultsRegistry.getFactionNpcDefault(factionName, getShortNpcType(dec)).isEnabled()) {
+						if (!net.shadowmage.ancientwarfare.npc.faction.Kingdoms.isKingdom(factionName) && NpcDefaultsRegistry.getFactionNpcDefault(factionName, getShortNpcType(dec)).isEnabled()) {
 							factionOwned.add(getStackForNpcType(dec.getNpcType(), "", factionName));
 						}
 					}

@@ -114,7 +114,8 @@ public class RenderNpcBase<T extends NpcBase> extends RenderBiped<T> {
 			return;
 		}
 		String faction = ((NpcFactionLeader) npc).getFaction();
-		String title = I18n.format("gui.ancientwarfarenpc.leader_title", I18n.format("gui.ancientwarfarenpc.faction_name." + faction));
+		String kingdomName = net.shadowmage.ancientwarfare.npc.faction.Kingdoms.displayName(faction);
+		String title = I18n.format("gui.ancientwarfarenpc.leader_title", kingdomName != null ? kingdomName : I18n.format("gui.ancientwarfarenpc.faction_name." + faction));
 		// above the regular nameplate when that one is rendered too
 		boolean nameplateRendered = npc.isHostileTowards(player) ? AWNPCStatics.renderHostileNames.getBoolean() : AWNPCStatics.renderFriendlyNames.getBoolean();
 		renderColoredLabel(npc, title, x, nameplateRendered ? y + 0.3D : y, z, 0x20ffaa00, 0xffffaa00);

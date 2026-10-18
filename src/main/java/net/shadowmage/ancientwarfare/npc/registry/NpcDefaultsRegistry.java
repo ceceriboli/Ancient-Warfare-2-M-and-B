@@ -41,7 +41,7 @@ public class NpcDefaultsRegistry {
 	private static Map<String, OwnedNpcDefault> ownedNpcDefaults = new HashMap<>();
 
 	public static FactionNpcDefault getFactionNpcDefault(String faction, String npcType) {
-		return factionNpcDefaults.get(faction).get(npcType);
+		return factionNpcDefaults.get(net.shadowmage.ancientwarfare.npc.faction.Kingdoms.cultureOf(faction)).get(npcType);
 	}
 
 	public static FactionNpcDefault getFactionNpcDefault(NpcFaction npc) {
@@ -55,7 +55,7 @@ public class NpcDefaultsRegistry {
 				npcType = "soldier";
 				return factionNpcDefaults.get(faction).get(npcType);
 			}
-			faction = npc.getFaction();
+			faction = npc.getFaction() == null ? null : net.shadowmage.ancientwarfare.npc.faction.Kingdoms.cultureOf(npc.getFaction());
 			npcType = npc.getNpcType();
 			if(faction == null) {
 				System.out.println("AW2t: null NPC faction! using demon as default.");

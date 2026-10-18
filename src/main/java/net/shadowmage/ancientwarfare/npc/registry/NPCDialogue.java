@@ -58,7 +58,7 @@ public class NPCDialogue {
         String factionName = npc.getFaction();
         String npcName = npc.getName();
         String proffession = npc.getNpcType();
-        String message = getRandomDialogue(factionName, isHostile, seed);
+        String message = getRandomDialogue(net.shadowmage.ancientwarfare.npc.faction.Kingdoms.cultureOf(factionName), isHostile, seed);
         if (player instanceof EntityPlayerMP && FactionDialogue.open((EntityPlayerMP) player, npc, message, isHostile)) {
             return; // a ruling leader with something to offer opens its dialogue window
         }

@@ -44,6 +44,10 @@ public class FactionEntry implements Iterable<Map.Entry<String, Integer>> {
 	}
 
 	public void adjustStandingFor(String factionName, int adjustment) {
+		if (!factionStandings.containsKey(factionName) && FactionRegistry.getFactionNames().contains(factionName)) {
+			// a faction registered during the game (a player kingdom) gets its starting standing the first time it is used
+			factionStandings.put(factionName, AncientWarfareNPC.statics.getPlayerDefaultStanding(factionName));
+		}
 		if (factionStandings.containsKey(factionName)) {
 			setStandingFor(factionName, getStandingFor(factionName) + adjustment);
 		}
@@ -59,7 +63,12 @@ public class FactionEntry implements Iterable<Map.Entry<String, Integer>> {
 		for (int i = 0; i < entryList.tagCount(); i++) {
 			entryTag = entryList.getCompoundTagAt(i);
 			name = entryTag.getString("name");
-			setStandingFor(name, entryTag.getInteger("standing"));
+			if (FactionRegistry.getFactionNames().contains(name)) {
+				setStandingFor(name, entryTag.getInteger("standing"));
+			} else {
+				// keep standings of factions not registered yet (player kingdoms are registered when the world loads)
+				factionStandings.put(name, entryTag.getInteger("standing"));
+			}
 		}
 	}
 

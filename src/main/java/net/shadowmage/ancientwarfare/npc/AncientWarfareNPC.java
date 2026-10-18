@@ -142,6 +142,7 @@ public class AncientWarfareNPC {
 		PacketBase.registerPacketType(NetworkHandler.PACKET_FACTION_DIPLOMACY, PacketFactionDiplomacy.class, PacketFactionDiplomacy::new);
 		PacketBase.registerPacketType(NetworkHandler.PACKET_FACTION_DIALOGUE, PacketFactionDialogue.class, PacketFactionDialogue::new);
 		PacketBase.registerPacketType(NetworkHandler.PACKET_FACTION_DIALOGUE_ACTION, PacketFactionDialogueAction.class, PacketFactionDialogueAction::new);
+		PacketBase.registerPacketType(NetworkHandler.PACKET_KINGDOMS, net.shadowmage.ancientwarfare.npc.network.PacketKingdoms.class, net.shadowmage.ancientwarfare.npc.network.PacketKingdoms::new);
 
 		CompatLoader.registerCompat(new EpicSiegeCompat());
 		CompatLoader.registerCompat(new TwilightForestCompat());
@@ -190,6 +191,7 @@ public class AncientWarfareNPC {
 		evt.registerServerCommand(new CommandDiplomacy());
 		evt.registerServerCommand(new CommandArmy());
 		evt.registerServerCommand(new CommandService());
+		evt.registerServerCommand(new net.shadowmage.ancientwarfare.npc.command.CommandKingdom());
 	}
 
 	@SubscribeEvent
@@ -198,6 +200,9 @@ public class AncientWarfareNPC {
 			WorldData d = AWGameData.INSTANCE.getPerWorldData(evt.getWorld(), WorldData.class);
 			if (d != null) {
 				AWNPCStatics.npcAIDebugMode = d.get("NpcAIDebugMode");
+			}
+			if (evt.getWorld().provider.getDimension() == 0) {
+				net.shadowmage.ancientwarfare.npc.faction.Kingdoms.onWorldLoad(evt.getWorld());
 			}
 		}
 	}

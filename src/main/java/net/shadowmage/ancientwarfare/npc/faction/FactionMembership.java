@@ -259,6 +259,10 @@ public class FactionMembership {
 	}
 
 	public static ITextComponent factionName(String faction) {
+		String kingdomName = Kingdoms.displayName(faction);
+		if (kingdomName != null) {
+			return new net.minecraft.util.text.TextComponentString(kingdomName);
+		}
 		return new TextComponentTranslation("gui.ancientwarfarenpc.faction_name." + faction);
 	}
 

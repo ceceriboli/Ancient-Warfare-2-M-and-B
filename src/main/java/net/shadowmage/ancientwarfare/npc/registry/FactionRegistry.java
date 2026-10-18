@@ -36,6 +36,25 @@ public class FactionRegistry {
 		return factions.values();
 	}
 
+	/**
+	 * Registers a faction created during the game (a player kingdom) as a copy of its culture: same rivals, targets and themed blocks,
+	 * neutral starting standing that can change.
+	 */
+	public static void registerRuntime(String name, String culture, int color) {
+		FactionDefinition.CopyBuilder builder = getFaction(culture).copy(name, color);
+		builder.removeHostileTowards(name);
+		builder.removeHostileTowards(culture);
+		builder.setStandingSettings(settings -> {
+			settings.setPlayerDefaultStanding(0);
+			settings.setStandingCanChange(true);
+		});
+		factions.put(name, builder.build());
+	}
+
+	public static void unregisterRuntime(String name) {
+		factions.remove(name);
+	}
+
 	public static class FactionParser implements IRegistryDataParser {
 		private static final String PLAYER_DEFAULT_STANDING = "player_default_standing";
 		private static final String STANDING_CAN_CHANGE = "standing_can_change";

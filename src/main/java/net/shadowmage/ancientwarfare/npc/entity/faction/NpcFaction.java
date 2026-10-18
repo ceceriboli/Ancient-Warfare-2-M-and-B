@@ -283,7 +283,8 @@ public abstract class NpcFaction extends NpcBase {
 
 	@Override
 	public String getNpcFullType() {
-		return factionName + "." + super.getNpcFullType();
+		// a player kingdom uses the names, skins and stats of its culture
+		return net.shadowmage.ancientwarfare.npc.faction.Kingdoms.cultureOf(factionName) + "." + super.getNpcFullType();
 	}
 
 	@Override
@@ -440,7 +441,7 @@ public abstract class NpcFaction extends NpcBase {
 					}
 					else {
 						// Both faction names were valid, do nemesis standings change
-						String prettyNemesisFactionName = new TextComponentTranslation("gui.ancientwarfarenpc.faction_name."+nemesisFaction).getFormattedText();
+						String prettyNemesisFactionName = net.shadowmage.ancientwarfare.npc.faction.FactionMembership.factionName(nemesisFaction).getFormattedText();
 						if(AWCoreStatics.DEBUG) System.out.println("AW2t: Nemesis system adjusted standings for "+nemesisFaction);
 						if(AWCoreStatics.showLargeNemesisRepChanges) {
 							int currentStanding = FactionTracker.INSTANCE.getStandingFor(world, playerName, nemesisFaction);

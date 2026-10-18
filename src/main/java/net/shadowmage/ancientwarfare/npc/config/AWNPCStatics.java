@@ -6,6 +6,7 @@ import net.minecraftforge.common.config.ConfigCategory;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
 import net.shadowmage.ancientwarfare.core.config.ModConfiguration;
+import net.shadowmage.ancientwarfare.npc.faction.Kingdoms;
 import net.shadowmage.ancientwarfare.npc.registry.FactionDefinition;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 
@@ -129,7 +130,7 @@ public class AWNPCStatics extends ModConfiguration {
 
 	public int getPlayerDefaultStanding(String factionName) {
 		FactionDefinition.StandingSettings standingSettings = FactionRegistry.getFaction(factionName).getStandingSettings();
-		if (!standingSettings.canPlayerStandingChange()) {
+		if (!standingSettings.canPlayerStandingChange() || Kingdoms.isKingdom(factionName)) {
 			return standingSettings.getPlayerDefaultStanding();
 		}
 		return factionConfig.get(factionSettings, factionName + ".starting_faction_standing", standingSettings.getPlayerDefaultStanding(),
