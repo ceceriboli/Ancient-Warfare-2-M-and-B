@@ -117,9 +117,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static String[] raidUnitWeights = {"faction.soldier=5", "faction.archer=3", "faction.cavalry=2"};
 	public static double fullSiegeShare = 0.1;
 	public static int fullSiegeCooldownDays = 20;
-	public static double fullSiegeStrengthRatio = 2.0;
-	public static double fullSiegeAttackerRatio = 0.1;
-	public static int fullSiegeMinAttackers = 20;
+	public static double fullSiegeStrengthRatio = 0.5;
+	public static double fullSiegeAttackerRatio = 0.3;
+	public static int fullSiegeMinAttackers = 10;
 	public static int fullSiegeMaxAttackers = 60;
 	public static int fullSiegeWaves = 4;
 	public static String[] fullSiegeUnitWeights = {"faction.soldier=3", "faction.archer=3", "faction.soldier.elite=3", "faction.archer.elite=2",
