@@ -61,6 +61,17 @@ public class FactionMembershipData extends WorldSavedData {
 		}
 	}
 
+	/**
+	 * Day of the last campaign the member proposed and its ruler accepted.
+	 */
+	public void setLastProposalDay(UUID playerId, long day) {
+		Member member = members.get(playerId);
+		if (member != null) {
+			member.lastProposalDay = day;
+			markDirty();
+		}
+	}
+
 	public boolean remove(UUID playerId) {
 		if (members.remove(playerId) != null) {
 			markDirty();
@@ -88,6 +99,7 @@ public class FactionMembershipData extends WorldSavedData {
 				}
 				member.strikes = memberTag.getInteger("strikes");
 				member.lastStrikeDay = memberTag.getLong("lastStrikeDay");
+				member.lastProposalDay = memberTag.hasKey("lastProposalDay") ? memberTag.getLong("lastProposalDay") : Long.MIN_VALUE;
 				members.put(playerId, member);
 			}
 		}
@@ -106,6 +118,9 @@ public class FactionMembershipData extends WorldSavedData {
 			memberTag.setTag("inherited", inheritedTag);
 			memberTag.setInteger("strikes", member.strikes);
 			memberTag.setLong("lastStrikeDay", member.lastStrikeDay);
+			if (member.lastProposalDay != Long.MIN_VALUE) {
+				memberTag.setLong("lastProposalDay", member.lastProposalDay);
+			}
 			memberList.appendTag(memberTag);
 		}
 		tag.setTag("members", memberList);
@@ -122,6 +137,14 @@ public class FactionMembershipData extends WorldSavedData {
 		private final Map<String, Integer> inherited = new HashMap<>();
 		private int strikes;
 		private long lastStrikeDay;
+		private long lastProposalDay = Long.MIN_VALUE;
+
+		/**
+		 * @return the day of the last accepted campaign proposal, Long.MIN_VALUE if none
+		 */
+		public long getLastProposalDay() {
+			return lastProposalDay;
+		}
 
 		public Map<String, Integer> getInherited() {
 			return Collections.unmodifiableMap(inherited);

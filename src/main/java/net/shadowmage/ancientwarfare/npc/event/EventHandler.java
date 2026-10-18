@@ -28,8 +28,11 @@ import net.shadowmage.ancientwarfare.core.gamedata.AWGameData;
 import net.shadowmage.ancientwarfare.core.util.WorldTools;
 import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
 import net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned;
+import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
+import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
+import net.shadowmage.ancientwarfare.npc.war.FactionChests;
 import net.shadowmage.ancientwarfare.npc.registry.NpcDefaultsRegistry;
 import net.shadowmage.ancientwarfare.structure.gamedata.StructureMap;
 import net.shadowmage.ancientwarfare.structure.gamedata.TownMap;
@@ -142,6 +145,13 @@ public class EventHandler {
 		BlockPos pos = evt.getPos();
 		EntityPlayer player = evt.getEntityPlayer();
 		if (!player.capabilities.isCreativeMode && isLockedContainer(world, pos)) {
+			// members of a faction: decided on the server only (cities and war booty are not known on the client, which sends the click to
+			// the server anyway), the server sends the messages
+			String memberFaction = FactionChests.getMemberFaction(world, player);
+			if (memberFaction != null && (world.isRemote || FactionChests.isWarBooty(world, player, memberFaction, pos))) {
+				return;
+			}
+			boolean showMessage = world.isRemote || memberFaction != null;
 			AWGameData.INSTANCE.getPerWorldData(world, StructureMap.class).getStructureAt(world, pos).ifPresent(structure -> {
 				Optional<TileProtectionFlag> tile = WorldTools.getTile(world, structure.getProtectionFlagPos(), TileProtectionFlag.class);
 				if(AWCoreStatics.allowStealing) {
@@ -150,12 +160,17 @@ public class EventHandler {
 					for (NpcFaction factionNpc : world.getEntitiesWithinAABB(NpcFaction.class, structure.getBB().getAABB())) {
 						// If one of the entities can see the player, prevent them from opening the chest.
 						if (factionNpc.canTarget(player) && player.canEntityBeSeen(factionNpc)) {
+							if (memberFaction != null && FactionChests.isTrustedBy(world, player, memberFaction, factionNpc.getFaction())) {
+								continue; // the npcs of its own faction let a trusted member take from their chests
+							}
 							evt.setCanceled(true);
 							evt.setCancellationResult(EnumActionResult.FAIL);
 							factionNpc.addPotionEffect(new PotionEffect(MobEffects.GLOWING, AWCoreStatics.glowDuration));
-							if (world.isRemote) {
-								player.sendStatusMessage(new TextComponentTranslation("gui.ancientwarfarenpc.no_chest_stealing",
-										StringUtils.capitalize(factionNpc.getFaction())), true);
+							if (showMessage) {
+								player.sendStatusMessage(memberFaction != null && memberFaction.equals(factionNpc.getFaction())
+										? new TextComponentTranslation("gui.ancientwarfarenpc.no_chest_trust", FactionMembership.factionName(memberFaction),
+										FactionChests.getStanding(world, player, memberFaction), AWDiplomacyStatics.chestTrustStanding)
+										: new TextComponentTranslation("gui.ancientwarfarenpc.no_chest_stealing", StringUtils.capitalize(factionNpc.getFaction())), true);
 							}
 							return;
 						}
@@ -163,10 +178,13 @@ public class EventHandler {
 				}
 				else { // Old code for full loot chest protection. Player must clear enemies and claim the flag to open chests.
 //					System.out.println("Old-school chest protection!");
+					if (memberFaction != null && FactionChests.isTrustedCity(world, player, memberFaction, pos)) {
+						return; // a city of its own faction: a trusted member needs no flag
+					}
 					if (tile.isPresent() && tile.get().shouldProtectAgainst(player)) {
 						evt.setCanceled(true);
 						evt.setCancellationResult(EnumActionResult.FAIL);
-						if (world.isRemote) {
+						if (showMessage) {
 							player.sendStatusMessage(new TextComponentTranslation("gui.ancientwarfarenpc.no_chest_access_flag_not_claimed"), true);
 						}
 					} else {
@@ -175,7 +193,7 @@ public class EventHandler {
 								evt.setCanceled(true);
 								evt.setCancellationResult(EnumActionResult.FAIL);
 								factionNpc.addPotionEffect(new PotionEffect(MobEffects.GLOWING, AWCoreStatics.glowDuration));
-								if (world.isRemote) {
+								if (showMessage) {
 									player.sendStatusMessage(new TextComponentTranslation("gui.ancientwarfarenpc.no_chest_access",
 											StringUtils.capitalize(factionNpc.getFaction())), true);
 								}

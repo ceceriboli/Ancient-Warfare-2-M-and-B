@@ -23,10 +23,12 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * /awservice call (attack | defend) [player] | strikes (player) (n), for operators: starts a campaign of the military service at once
- * (for testing), sets the strikes of a member.
+ * /awservice propose [(city id) (raid | siege)] for players (also run by the clickable texts of the ruler's dialogue): proposes a campaign
+ * to the ruler of the player's faction. For operators: /awservice call (attack | defend) [player] starts a campaign at once (for testing),
+ * /awservice strikes (player) (n) sets the strikes of a member.
  */
 public class CommandService extends CommandBase {
+	private static final String PROPOSE = "propose";
 	private static final String CALL = "call";
 	private static final String STRIKES = "strikes";
 	private static final String ATTACK = "attack";
@@ -39,7 +41,13 @@ public class CommandService extends CommandBase {
 
 	@Override
 	public int getRequiredPermissionLevel() {
-		return 2;
+		return 0;
+	}
+
+	@Override
+	public boolean checkPermission(MinecraftServer server, ICommandSender sender) {
+		// non operator players can only use commands that skip the permission check, call and strikes check it themselves
+		return true;
 	}
 
 	@Override
@@ -49,10 +57,30 @@ public class CommandService extends CommandBase {
 
 	@Override
 	public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
+		if (args.length < 1) {
+			throw new WrongUsageException(getUsage(sender));
+		}
+		String cmd = args[0].toLowerCase(Locale.ROOT);
+		if (cmd.equals(PROPOSE)) {
+			EntityPlayerMP player = getCommandSenderAsPlayer(sender);
+			if (args.length < 3) {
+				Service.listProposals(player);
+			} else {
+				Siege.Kind kind = Siege.Kind.fromName(args[2].toLowerCase(Locale.ROOT));
+				if (kind == null) {
+					throw new WrongUsageException(getUsage(sender));
+				}
+				Service.propose(player, parseInt(args[1]), kind);
+			}
+			return;
+		}
+		if (!sender.canUseCommand(2, getName())) {
+			throw new CommandException("commands.generic.permission");
+		}
 		if (args.length < 2) {
 			throw new WrongUsageException(getUsage(sender));
 		}
-		switch (args[0].toLowerCase(Locale.ROOT)) {
+		switch (cmd) {
 			case CALL: {
 				String side = args[1].toLowerCase(Locale.ROOT);
 				if (!ATTACK.equals(side) && !DEFEND.equals(side)) {
@@ -93,7 +121,7 @@ public class CommandService extends CommandBase {
 	@Override
 	public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
 		if (args.length == 1) {
-			return CommandBase.getListOfStringsMatchingLastWord(args, CALL, STRIKES);
+			return CommandBase.getListOfStringsMatchingLastWord(args, PROPOSE, CALL, STRIKES);
 		}
 		String cmd = args[0].toLowerCase(Locale.ROOT);
 		if (args.length == 2 && cmd.equals(CALL)) {

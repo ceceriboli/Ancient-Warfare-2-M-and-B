@@ -39,6 +39,12 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean serviceExcuseOffline = true;
 	public static double servicePlunderRatio = 0.5;
 	public static int exhaustionCityPlundered = 15;
+	public static int campaignProposalStanding = 120;
+	public static int campaignProposalSiegeStanding = 180;
+	public static int campaignProposalCooldownDays = 1;
+	public static boolean factionChestsEnabled = true;
+	public static int chestTrustStanding = 150;
+	public static int chestPlunderTicks = 12000;
 	public static boolean diplomacyEnabled = true;
 	public static String[] eternalEnemies = {"brigand", "pirate", "monster", "beast", "undead", "demon", "vampire"};
 	public static int exhaustionUnitKilled = 1;
@@ -197,6 +203,18 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		servicePlunderRatio = config.get(serverOptions, "service_plunder_ratio", servicePlunderRatio, "Plunder\nDefault=" + servicePlunderRatio + "\n" + "Manpower a city loses when nobody comes to defend it = attackers of the campaign x this value.", 0.0D, 100.0D).getDouble();
 
 		exhaustionCityPlundered = config.get(serverOptions, "exhaustion_city_plundered", exhaustionCityPlundered, "Exhaustion: city plundered\nDefault=" + exhaustionCityPlundered + "\n" + "War exhaustion a faction gets when one of its cities is plundered because nobody came to defend it.", 0, 10000).getInt();
+
+		campaignProposalStanding = config.get(serverOptions, "campaign_proposal_standing", campaignProposalStanding, "Campaign proposal: raid\nDefault=" + campaignProposalStanding + "\n" + "A member can propose a campaign to the ruler of a city of its faction ([Propose a campaign] in the dialogue): an\n" + "attack on an enemy city at war, known and within service_call_range. The ruler accepts a raid if the member's standing\n" + "is at least this value and its faction is not exhausted by that war (exhaustion below peace_exhaustion).", -10000, 10000).getInt();
+
+		campaignProposalSiegeStanding = config.get(serverOptions, "campaign_proposal_siege_standing", campaignProposalSiegeStanding, "Campaign proposal: full siege\nDefault=" + campaignProposalSiegeStanding + "\n" + "Standing a member needs for the ruler to accept a full siege (only if the city had no full siege for\n" + "full_siege_cooldown_days).", -10000, 10000).getInt();
+
+		campaignProposalCooldownDays = config.get(serverOptions, "campaign_proposal_cooldown_days", campaignProposalCooldownDays, "Campaign proposal cooldown\nDefault=" + campaignProposalCooldownDays + "\n" + "Minecraft days after an accepted proposal before the same member can propose another campaign.", 0, 1000).getInt();
+
+		factionChestsEnabled = config.get(serverOptions, "faction_chests_enabled", factionChestsEnabled, "Faction chests for members\nDefault=" + factionChestsEnabled + "\n" + "If true, the npcs of a faction let its members open the loot chests of its structures (otherwise locked while a\n" + "faction npc sees the player) once their standing reaches chest_trust_standing, and the players who served in the\n" + "attack that conquered a city plunder its chests freely for chest_plunder_ticks.").getBoolean();
+
+		chestTrustStanding = config.get(serverOptions, "chest_trust_standing", chestTrustStanding, "Chest trust\nDefault=" + chestTrustStanding + "\n" + "Standing a member needs with its faction to open its chests in front of its npcs (joining gives member_standing,\n" + "each answered call to arms service_reward_standing).", -10000, 10000).getInt();
+
+		chestPlunderTicks = config.get(serverOptions, "chest_plunder_ticks", chestPlunderTicks, "War booty\nDefault=" + chestPlunderTicks + "\n" + "Ticks (20 per second) the players who served in the attack that conquered a city can open all its chests, whatever\n" + "their standing and whoever sees them. 0 = no war booty.", 0, 720000).getInt();
 
 		diplomacyEnabled = config.get(serverOptions, "diplomacy_enabled", diplomacyEnabled, "Dynamic diplomacy\nDefault=" + diplomacyEnabled + "\n" + "If true, factions hostile in factions.json start at war (once per world), and once per Minecraft day wars can end\n" + "in a truce when one side is exhausted by its losses, rivals can go to war again after the truce, and factions\n" + "with a common enemy can ally (allies may join each other's wars). If false, relations change only with /awrelation.").getBoolean();
 

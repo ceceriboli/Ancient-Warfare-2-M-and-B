@@ -1,18 +1,23 @@
 package net.shadowmage.ancientwarfare.npc.war;
 
+import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.util.text.TextFormatting;
+import net.minecraft.util.text.event.ClickEvent;
+import net.minecraft.util.text.event.HoverEvent;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.shadowmage.ancientwarfare.core.gamedata.AWGameData;
 import net.shadowmage.ancientwarfare.npc.AncientWarfareNPC;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
+import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
 import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.faction.FactionRelations;
@@ -47,6 +52,7 @@ public class Service {
 	private static final int TICKS_PER_MINUTE = 1200;
 	private static final int STRIKE_CHECK_TICKS = 1200;
 	private static final int CAMPAIGN_TARGET_CHOICES = 3;
+	private static final int PROPOSAL_LIST_SIZE = 8;
 	private static final String[] DIRECTIONS = {"n", "ne", "e", "se", "s", "sw", "w", "nw"};
 
 	private static FactionMembershipData getMembership(World world) {
@@ -342,6 +348,19 @@ public class Service {
 			boolean presentAtEnd = player != null && target != null && player.world == world && player.getDistanceSq(target) <= presenceSq;
 			if (presentAtEnd || call.getPresenceTicks() >= AWDiplomacyStatics.serviceMinPresenceTicks) {
 				serve(world, member, player, city);
+				if (outcome == Sieges.Outcome.TAKEN && call.isAttacking() && settlement != null && AWDiplomacyStatics.factionChestsEnabled
+						&& AWDiplomacyStatics.chestPlunderTicks > 0) {
+					// war booty: the chests of the conquered city are open to those who took it
+					long now = world.getTotalWorldTime();
+					settlement.addPlunderer(member.playerId, now + AWDiplomacyStatics.chestPlunderTicks, now);
+					Settlements.getData(world).markDirty();
+					if (player != null) {
+						ITextComponent message = new TextComponentTranslation("command.aw.service.war_booty", city,
+								(int) Math.ceil(AWDiplomacyStatics.chestPlunderTicks / (double) TICKS_PER_MINUTE));
+						message.getStyle().setColor(TextFormatting.GOLD);
+						player.sendMessage(message);
+					}
+				}
 			} else {
 				strike(server, world, member, player, city);
 			}
@@ -405,6 +424,143 @@ public class Service {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Checks that the player can propose a campaign now: a member near the ruler of a city of its faction, without a call, past the
+	 * cooldown of its last accepted proposal.
+	 *
+	 * @return the faction of the player
+	 */
+	private static String checkProposer(EntityPlayerMP player) throws CommandException {
+		if (!isEnabled() || !AWDiplomacyStatics.siegesEnabled) {
+			throw new CommandException("command.aw.service.disabled");
+		}
+		World world = player.world;
+		String faction = FactionMembership.getFaction(world, player.getUniqueID());
+		if (faction == null) {
+			throw new CommandException("command.aw.membership.not_member");
+		}
+		if (!FactionMembership.findNearestLeader(world, player, faction, AWDiplomacyStatics.leaderJoinRange).isPresent()) {
+			throw new CommandException("command.aw.service.propose.no_ruler", FactionMembership.factionName(faction));
+		}
+		if (isCalled(Settlements.getData(world), player.getUniqueID())) {
+			throw new CommandException("command.aw.service.propose.called");
+		}
+		FactionMembershipData.Member member = getMembership(world).getMember(player.getUniqueID());
+		long day = Diplomacy.getDay(world);
+		if (member != null && member.getLastProposalDay() != Long.MIN_VALUE && day >= member.getLastProposalDay()
+				&& day - member.getLastProposalDay() < AWDiplomacyStatics.campaignProposalCooldownDays) {
+			throw new CommandException("command.aw.service.propose.cooldown", AWDiplomacyStatics.campaignProposalCooldownDays - (day - member.getLastProposalDay()));
+		}
+		return faction;
+	}
+
+	/**
+	 * @return the enemy cities (at war with the faction, known, within service_call_range of the player) that can be attacked now, nearest first
+	 */
+	private static List<Settlement> getProposalTargets(WorldServer world, EntityPlayerMP player, String faction, long now) {
+		List<String> enemies = FactionRelations.getDeclaredEnemies(world, faction);
+		double rangeSq = (double) AWDiplomacyStatics.serviceCallRange * AWDiplomacyStatics.serviceCallRange;
+		int dimension = world.provider.getDimension();
+		List<Settlement> targets = new ArrayList<>();
+		for (Settlement city : Settlements.getData(world).getAll()) {
+			if (city.getDimension() == dimension && city.isActive() && city.getType() == Settlement.Type.FACTION_CITY && enemies.contains(city.getFaction())
+					&& Sieges.canStart(world, city, faction) == null && Sieges.isCooledDown(city, now)
+					&& player.getDistanceSq(Sieges.getTarget(world, city)) <= rangeSq) {
+				targets.add(city);
+			}
+		}
+		targets.sort(Comparator.comparingDouble(city -> player.getDistanceSq(Sieges.getTarget(world, city))));
+		return targets;
+	}
+
+	private static boolean isFullSiegeAllowed(Settlement city, long now) {
+		return now - city.getLastFullSiegeEnd() >= (long) AWDiplomacyStatics.fullSiegeCooldownDays * 24000L;
+	}
+
+	/**
+	 * [Propose a campaign] in the ruler's dialogue: lists the enemy cities that can be attacked, each with clickable [raid] and [siege].
+	 */
+	public static void listProposals(EntityPlayerMP player) throws CommandException {
+		String faction = checkProposer(player);
+		WorldServer world = (WorldServer) player.world;
+		long now = world.getTotalWorldTime();
+		List<Settlement> targets = getProposalTargets(world, player, faction, now);
+		if (targets.isEmpty()) {
+			throw new CommandException("command.aw.service.propose.none", AWDiplomacyStatics.serviceCallRange);
+		}
+		ITextComponent header = new TextComponentTranslation("command.aw.service.propose.header", FactionMembership.factionName(faction));
+		header.getStyle().setColor(TextFormatting.GOLD);
+		player.sendMessage(header);
+		for (Settlement city : targets.subList(0, Math.min(PROPOSAL_LIST_SIZE, targets.size()))) {
+			BlockPos target = Sieges.getTarget(world, city);
+			double dx = target.getX() + 0.5D - player.posX;
+			double dz = target.getZ() + 0.5D - player.posZ;
+			ITextComponent line = new TextComponentTranslation("command.aw.service.propose.entry", Settlements.displayName(city), (int) Math.sqrt(dx * dx + dz * dz),
+					direction(dx, dz));
+			line.appendText(" ");
+			line.appendSibling(clickable(new TextComponentTranslation("command.aw.service.propose.raid"), TextFormatting.GREEN,
+					"/awservice propose " + city.getId() + " raid", new TextComponentTranslation("command.aw.service.propose.raid.hover", AWDiplomacyStatics.campaignProposalStanding)));
+			if (isFullSiegeAllowed(city, now)) {
+				line.appendText(" ");
+				line.appendSibling(clickable(new TextComponentTranslation("command.aw.service.propose.siege"), TextFormatting.RED,
+						"/awservice propose " + city.getId() + " siege",
+						new TextComponentTranslation("command.aw.service.propose.siege.hover", AWDiplomacyStatics.campaignProposalSiegeStanding)));
+			}
+			player.sendMessage(line);
+		}
+	}
+
+	/**
+	 * The player proposes a raid or a full siege of an enemy city to the ruler, who accepts if the player's standing is high enough and its
+	 * faction is not exhausted by that war: the campaign starts mustering and the player is called.
+	 */
+	public static void propose(EntityPlayerMP player, int cityId, Siege.Kind kind) throws CommandException {
+		String faction = checkProposer(player);
+		WorldServer world = (WorldServer) player.world;
+		SettlementData data = Settlements.getData(world);
+		long now = world.getTotalWorldTime();
+		Settlement city = data.get(cityId);
+		if (city == null || !getProposalTargets(world, player, faction, now).contains(city)) {
+			throw new CommandException("command.aw.service.propose.invalid");
+		}
+		if (kind == Siege.Kind.SIEGE && !isFullSiegeAllowed(city, now)) {
+			throw new CommandException("command.aw.service.propose.no_siege", Settlements.displayName(city));
+		}
+		NpcFactionLeader ruler = FactionMembership.findNearestLeader(world, player, faction, AWDiplomacyStatics.leaderJoinRange).orElse(null);
+		if (ruler == null) {
+			throw new CommandException("command.aw.service.propose.no_ruler", FactionMembership.factionName(faction));
+		}
+		int standing = FactionTracker.INSTANCE.getStandingFor(world, player.getName(), faction);
+		int needed = kind == Siege.Kind.SIEGE ? AWDiplomacyStatics.campaignProposalSiegeStanding : AWDiplomacyStatics.campaignProposalStanding;
+		if (data.getSieges().size() >= AWDiplomacyStatics.maxActiveSieges) {
+			rulerSays(player, ruler, new TextComponentTranslation("command.aw.service.propose.refused.busy"));
+			return;
+		}
+		if (standing < needed) {
+			rulerSays(player, ruler, new TextComponentTranslation("command.aw.service.propose.refused.standing", standing, needed));
+			return;
+		}
+		int exhaustion = Diplomacy.getData(world).get(faction, city.getFaction()).getExhaustion(faction, city.getFaction());
+		if (AWDiplomacyStatics.diplomacyEnabled && exhaustion >= AWDiplomacyStatics.peaceExhaustion) {
+			rulerSays(player, ruler, new TextComponentTranslation("command.aw.service.propose.refused.exhausted", FactionMembership.factionName(city.getFaction())));
+			return;
+		}
+		rulerSays(player, ruler, new TextComponentTranslation("command.aw.service.propose.accepted." + kind.getName(), Settlements.displayName(city)));
+		getMembership(world).setLastProposalDay(player.getUniqueID(), Diplomacy.getDay(world));
+		AncientWarfareNPC.LOG.info("{} proposed a {} of city {} ({}) to the {}: accepted", player.getName(), kind.getName(), city.getId(), city.getFaction(), faction);
+		Sieges.start(world, data, city, faction, kind, Siege.Origin.OFFENSIVE);
+	}
+
+	private static void rulerSays(EntityPlayerMP player, NpcFactionLeader ruler, ITextComponent text) {
+		player.sendMessage(new TextComponentTranslation("command.aw.service.propose.says", ruler.getDisplayName(), text));
+	}
+
+	private static ITextComponent clickable(ITextComponent text, TextFormatting color, String command, ITextComponent hover) {
+		text.setStyle(new Style().setColor(color).setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
+				.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hover)));
+		return text;
 	}
 
 	/**

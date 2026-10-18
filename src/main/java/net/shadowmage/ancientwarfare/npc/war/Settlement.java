@@ -8,8 +8,10 @@ import net.minecraftforge.common.util.Constants;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -55,6 +57,10 @@ public class Settlement {
 	private long lastSiegeEnd;
 	private long lastFullSiegeEnd;
 	private final List<PendingRespawn> pendingRespawns = new ArrayList<>();
+	/**
+	 * Players who served in the attack that conquered the city, with the tick their war booty ends (its chests are open to them)
+	 */
+	private final Map<UUID, Long> plunderers = new HashMap<>();
 
 	// not saved: consecutive checks where the leader could not be found although its area was loaded
 	int missingLeaderChecks = 0;
@@ -249,6 +255,19 @@ public class Settlement {
 		return pendingRespawns;
 	}
 
+	/**
+	 * @return true if the player may plunder the city at the given tick (war booty)
+	 */
+	public boolean isPlunderer(UUID playerId, long now) {
+		Long until = plunderers.get(playerId);
+		return until != null && now < until;
+	}
+
+	void addPlunderer(UUID playerId, long until, long now) {
+		plunderers.values().removeIf(end -> end <= now);
+		plunderers.put(playerId, until);
+	}
+
 	public NBTTagCompound writeToNBT(NBTTagCompound tag) {
 		tag.setInteger("id", id);
 		tag.setString("type", type.getName());
@@ -280,6 +299,14 @@ public class Settlement {
 			respawnList.appendTag(respawnTag);
 		}
 		tag.setTag("pendingRespawns", respawnList);
+		NBTTagList plunderList = new NBTTagList();
+		for (Map.Entry<UUID, Long> entry : plunderers.entrySet()) {
+			NBTTagCompound plunderTag = new NBTTagCompound();
+			plunderTag.setUniqueId("player", entry.getKey());
+			plunderTag.setLong("until", entry.getValue());
+			plunderList.appendTag(plunderTag);
+		}
+		tag.setTag("plunderers", plunderList);
 		return tag;
 	}
 
@@ -313,6 +340,14 @@ public class Settlement {
 		for (int i = 0; i < respawnList.tagCount(); i++) {
 			NBTTagCompound respawnTag = respawnList.getCompoundTagAt(i);
 			settlement.pendingRespawns.add(new PendingRespawn(respawnTag.getCompoundTag("entity"), respawnTag.getLong("due")));
+		}
+		NBTTagList plunderList = tag.getTagList("plunderers", Constants.NBT.TAG_COMPOUND);
+		for (int i = 0; i < plunderList.tagCount(); i++) {
+			NBTTagCompound plunderTag = plunderList.getCompoundTagAt(i);
+			UUID playerId = plunderTag.getUniqueId("player");
+			if (playerId != null) {
+				settlement.plunderers.put(playerId, plunderTag.getLong("until"));
+			}
 		}
 		return settlement;
 	}
