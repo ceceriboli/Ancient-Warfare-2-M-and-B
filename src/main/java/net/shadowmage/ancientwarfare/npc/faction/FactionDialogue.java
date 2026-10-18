@@ -394,7 +394,7 @@ public class FactionDialogue {
 	private static void sendPage(EntityPlayerMP player, NpcFaction npc, ITextComponent text, Button... buttons) {
 		NBTTagCompound tag = new NBTTagCompound();
 		tag.setInteger("entity", npc.getEntityId());
-		ITextComponent title = new TextComponentTranslation("gui.ancientwarfarenpc.leader_title", FactionMembership.factionName(npc.getFaction()));
+		ITextComponent title = Kingdoms.rulerTitle(npc.getFaction());
 		tag.setString("title", ITextComponent.Serializer.componentToJson(title));
 		tag.setString("text", ITextComponent.Serializer.componentToJson(text));
 		NBTTagList list = new NBTTagList();

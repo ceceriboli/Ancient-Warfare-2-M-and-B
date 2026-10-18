@@ -1483,6 +1483,7 @@ command.aw.kingdom.gone=The %s have no city any more
 command.aw.kingdom.announce.destroyed=%s is no more
 command.aw.kingdom.announce.war=The %s declare war on the %s!
 command.aw.kingdom.announce.peace=The %s and the %s make peace
+gui.aw.kingdom.governor_title=Governor
 gui.aw.kingdom.diplomacy=Diplomacy
 gui.aw.kingdom.realm=The kingdom
 gui.aw.kingdom.campaign=Order a campaign

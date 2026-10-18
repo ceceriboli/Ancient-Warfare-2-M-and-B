@@ -78,6 +78,14 @@ public class Kingdoms {
 		return info == null ? null : info.name;
 	}
 
+	/**
+	 * @return the title of the ruler of a city: "Governor" in a player kingdom, "Leader of the ..." otherwise
+	 */
+	public static ITextComponent rulerTitle(String faction) {
+		return isKingdom(faction) ? new TextComponentTranslation("gui.aw.kingdom.governor_title")
+				: new TextComponentTranslation("gui.ancientwarfarenpc.leader_title", FactionMembership.factionName(faction));
+	}
+
 	public static void onWorldLoad(World world) {
 		clearRegistered();
 		KingdomData data = getData(world);

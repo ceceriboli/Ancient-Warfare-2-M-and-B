@@ -66,7 +66,7 @@ public class NPCDialogue {
             // ruling leaders introduce themselves with their title, so that players know who to pledge allegiance to
             ITextComponent line = new TextComponentString("[");
             line.getStyle().setColor(TextFormatting.GOLD);
-            line.appendSibling(new TextComponentTranslation("gui.ancientwarfarenpc.leader_title", FactionMembership.factionName(factionName)));
+            line.appendSibling(net.shadowmage.ancientwarfare.npc.faction.Kingdoms.rulerTitle(factionName));
             line.appendText("] ");
             ITextComponent text = new TextComponentString(message);
             text.getStyle().setColor(TextFormatting.WHITE);
