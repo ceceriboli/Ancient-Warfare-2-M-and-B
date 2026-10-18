@@ -22,6 +22,7 @@ import java.util.TreeMap;
 public class SettlementData extends WorldSavedData {
 	private final Map<Integer, Settlement> settlements = new TreeMap<>();
 	private final Map<Integer, Siege> sieges = new TreeMap<>();
+	private final Map<Integer, Integer> mergedInto = new TreeMap<>();
 	private int nextId = 1;
 	private int nextSiegeId = 1;
 
@@ -42,9 +43,26 @@ public class SettlementData extends WorldSavedData {
 		markDirty();
 	}
 
+	/**
+	 * @return the settlement with the id, or the one it was merged into
+	 */
 	@Nullable
 	public Settlement get(int id) {
-		return settlements.get(id);
+		Settlement settlement = settlements.get(id);
+		for (int hops = 0; settlement == null && mergedInto.containsKey(id) && hops < 32; hops++) {
+			id = mergedInto.get(id);
+			settlement = settlements.get(id);
+		}
+		return settlement;
+	}
+
+	/**
+	 * Removes a settlement merged into another: its id keeps leading to the other one (units tagged with it).
+	 */
+	public void merge(Settlement absorbed, Settlement into) {
+		settlements.remove(absorbed.getId());
+		mergedInto.put(absorbed.getId(), into.getId());
+		markDirty();
 	}
 
 	public Collection<Settlement> getAll() {
@@ -119,6 +137,11 @@ public class SettlementData extends WorldSavedData {
 				markDirty();
 			}
 		}
+		mergedInto.clear();
+		NBTTagList mergedList = tag.getTagList("merged", Constants.NBT.TAG_COMPOUND);
+		for (int i = 0; i < mergedList.tagCount(); i++) {
+			mergedInto.put(mergedList.getCompoundTagAt(i).getInteger("from"), mergedList.getCompoundTagAt(i).getInteger("into"));
+		}
 		NBTTagList siegeList = tag.getTagList("sieges", Constants.NBT.TAG_COMPOUND);
 		for (int i = 0; i < siegeList.tagCount(); i++) {
 			Siege siege = Siege.readFromNBT(siegeList.getCompoundTagAt(i));
@@ -136,6 +159,14 @@ public class SettlementData extends WorldSavedData {
 			list.appendTag(settlement.writeToNBT(new NBTTagCompound()));
 		}
 		tag.setTag("settlements", list);
+		NBTTagList mergedList = new NBTTagList();
+		mergedInto.forEach((from, into) -> {
+			NBTTagCompound entry = new NBTTagCompound();
+			entry.setInteger("from", from);
+			entry.setInteger("into", into);
+			mergedList.appendTag(entry);
+		});
+		tag.setTag("merged", mergedList);
 		NBTTagList siegeList = new NBTTagList();
 		for (Siege siege : sieges.values()) {
 			siegeList.appendTag(siege.writeToNBT(new NBTTagCompound()));

@@ -148,6 +148,12 @@ public class Settlement {
 		return max;
 	}
 
+	void setBounds(BlockPos min, BlockPos max) {
+		this.min = min;
+		this.max = max;
+		this.center = new BlockPos((min.getX() + max.getX()) / 2, center.getY(), (min.getZ() + max.getZ()) / 2);
+	}
+
 	public boolean contains(int dim, BlockPos pos) {
 		return dim == dimension && pos.getX() >= min.getX() && pos.getX() <= max.getX() && pos.getY() >= min.getY() && pos.getY() <= max.getY()
 				&& pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();

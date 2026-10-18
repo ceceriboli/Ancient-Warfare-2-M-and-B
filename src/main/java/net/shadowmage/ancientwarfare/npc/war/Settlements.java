@@ -134,6 +134,11 @@ public class Settlements {
 		NBTTagCompound data = npc.getEntityData();
 		if (data.hasKey(TAG_SETTLEMENT)) {
 			Settlement settlement = getData(npc.world).get(data.getInteger(TAG_SETTLEMENT));
+			if (settlement != null && settlement.getId() != data.getInteger(TAG_SETTLEMENT) && settlement.isActive()
+					&& settlement.getFaction().equals(npc.getFaction())) {
+				// its city was merged into another one while it was not loaded
+				retag(npc, settlement);
+			}
 			if (settlement == null) {
 				data.removeTag(TAG_SETTLEMENT);
 				data.removeTag(TAG_ROLE);
@@ -226,6 +231,7 @@ public class Settlements {
 			foundCitiesFromStructures(world, data, now);
 		}
 		int dimension = world.provider.getDimension();
+		mergeOverlappingCities(world, data);
 		for (Settlement settlement : new ArrayList<>(data.getAll())) {
 			if (settlement.getDimension() != dimension || !settlement.isActive() || settlement.getType() != Settlement.Type.FACTION_CITY) {
 				continue;
@@ -241,6 +247,92 @@ public class Settlements {
 		}
 		Sieges.tick(world, data, now);
 		ManpowerBars.update(world, data);
+	}
+
+	/**
+	 * Parts of the same town or structure are generated and found at different times (a structure before the town around it, a leader
+	 * above the box of its structure...), which can make several cities of the same faction one inside the other. Active cities of the same
+	 * faction whose areas overlap become one: the larger keeps its name and takes the area, manpower, garrison and pending respawns of the
+	 * other; the highest ruler rules, the other becomes a captain. Cities under attack wait for the end of it.
+	 */
+	private static void mergeOverlappingCities(WorldServer world, SettlementData data) {
+		int dimension = world.provider.getDimension();
+		boolean merged = true;
+		while (merged) {
+			merged = false;
+			List<Settlement> cities = new ArrayList<>();
+			for (Settlement city : data.getAll()) {
+				if (city.getDimension() == dimension && city.isActive() && city.getType() == Settlement.Type.FACTION_CITY && city.getActiveSiegeId() == 0) {
+					cities.add(city);
+				}
+			}
+			search:
+			for (int i = 0; i < cities.size(); i++) {
+				for (int j = i + 1; j < cities.size(); j++) {
+					Settlement a = cities.get(i);
+					Settlement b = cities.get(j);
+					if (a.getFaction().equals(b.getFaction()) && overlaps(a, b)) {
+						if (area(b) > area(a)) {
+							mergeCity(world, data, a, b);
+						} else {
+							mergeCity(world, data, b, a);
+						}
+						merged = true;
+						break search;
+					}
+				}
+			}
+		}
+	}
+
+	private static boolean overlaps(Settlement a, Settlement b) {
+		return a.getMin().getX() <= b.getMax().getX() && a.getMax().getX() >= b.getMin().getX() && a.getMin().getZ() <= b.getMax().getZ()
+				&& a.getMax().getZ() >= b.getMin().getZ();
+	}
+
+	private static long area(Settlement city) {
+		return (long) (city.getMax().getX() - city.getMin().getX() + 1) * (city.getMax().getZ() - city.getMin().getZ() + 1);
+	}
+
+	private static void mergeCity(WorldServer world, SettlementData data, Settlement absorbed, Settlement into) {
+		into.setBounds(new BlockPos(Math.min(into.getMin().getX(), absorbed.getMin().getX()), Math.min(into.getMin().getY(), absorbed.getMin().getY()),
+						Math.min(into.getMin().getZ(), absorbed.getMin().getZ())),
+				new BlockPos(Math.max(into.getMax().getX(), absorbed.getMax().getX()), Math.max(into.getMax().getY(), absorbed.getMax().getY()),
+						Math.max(into.getMax().getZ(), absorbed.getMax().getZ())));
+		into.setMaxManpower(into.getMaxManpower() + absorbed.getMaxManpower());
+		into.setManpower(into.getManpower() + absorbed.getManpower());
+		into.setManpowerCap(into.getManpowerCap() + absorbed.getManpowerCap());
+		into.setGarrisonCap(into.getGarrisonCap() + absorbed.getGarrisonCap());
+		into.getPendingRespawns().addAll(absorbed.getPendingRespawns());
+		into.setLastSiegeEnd(Math.max(into.getLastSiegeEnd(), absorbed.getLastSiegeEnd()));
+		into.setLastFullSiegeEnd(Math.max(into.getLastFullSiegeEnd(), absorbed.getLastFullSiegeEnd()));
+		// the highest ruler rules the merged city (a city without leader yet takes the other's)
+		boolean takeRuler = absorbed.getLeaderId() != null
+				&& (into.getLeaderId() == null || absorbed.getLastLeaderPos().getY() > into.getLastLeaderPos().getY());
+		if (takeRuler || into.getLeaderId() == null && absorbed.getLastLeaderPos().getY() > into.getLastLeaderPos().getY()) {
+			into.setLeader(absorbed.getLeaderId(), absorbed.getLastLeaderPos());
+			into.missingLeaderChecks = 0;
+		}
+		data.merge(absorbed, into);
+		// loaded units move to the merged city now, the others when they are loaded (their old id leads to it)
+		for (Entity entity : new ArrayList<>(world.loadedEntityList)) {
+			if (entity instanceof NpcFaction && entity.getEntityData().hasKey(TAG_SETTLEMENT) && entity.getEntityData().getInteger(TAG_SETTLEMENT) == absorbed.getId()) {
+				retag((NpcFaction) entity, into);
+			}
+		}
+		AncientWarfareNPC.LOG.info("Merged city {} ({}) into city {} ({}) of faction {}: bounds {} to {}, {} manpower", absorbed.getId(), absorbed.getName(),
+				into.getId(), into.getName(), into.getFaction(), into.getMin(), into.getMax(), into.getManpower());
+	}
+
+	/**
+	 * A unit tagged with a city merged into another one: tagged with that one, a ruler that does not rule it any more as a captain.
+	 */
+	private static void retag(NpcFaction npc, Settlement settlement) {
+		String role = npc.getEntityData().getString(TAG_ROLE);
+		if (ROLE_LEADER.equals(role) && !npc.getUniqueID().equals(settlement.getLeaderId())) {
+			role = ROLE_CAPTAIN;
+		}
+		tag(npc, settlement, role);
 	}
 
 	public static void setManpower(World world, Settlement settlement, int manpower) {
