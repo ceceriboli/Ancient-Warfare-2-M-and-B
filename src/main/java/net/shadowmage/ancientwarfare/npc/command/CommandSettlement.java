@@ -136,12 +136,6 @@ public class CommandSettlement extends CommandBase {
 		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.bounds", min.getX(), min.getY(), min.getZ(), max.getX(), max.getY(), max.getZ()));
 		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.manpower", settlement.getManpower(), settlement.getMaxManpower(),
 				settlement.getPendingRespawns().size()));
-		if (settlement.getGarrisonCap() > 0) {
-			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.garrison_cap", settlement.getGarrisonCap()));
-		}
-		if (settlement.getManpowerCap() > settlement.getMaxManpower()) {
-			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.manpower_cap", settlement.getManpowerCap()));
-		}
 		WorldServer world = server.getWorld(settlement.getDimension());
 		int garrison = 0;
 		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, settlement.getAABB())) {
@@ -149,6 +143,13 @@ public class CommandSettlement extends CommandBase {
 			if (npcSettlement != null && npcSettlement.getId() == settlement.getId()) {
 				garrison++;
 			}
+		}
+		// only when reinforcements are actually coming
+		if (settlement.getGarrisonCap() > 0 && garrison + settlement.getPendingRespawns().size() < settlement.getGarrisonCap()) {
+			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.garrison_cap", settlement.getGarrisonCap()));
+		}
+		if (settlement.getManpowerCap() > settlement.getMaxManpower()) {
+			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.manpower_cap", settlement.getManpowerCap()));
 		}
 		Entity leader = settlement.getLeaderId() == null ? null : world.getEntityFromUuid(settlement.getLeaderId());
 		TextComponentTranslation leaderState;

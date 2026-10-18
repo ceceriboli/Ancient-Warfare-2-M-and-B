@@ -29,7 +29,7 @@ public class AWNPCBlocks {
 	public static void registerItemBlocks(RegistryEvent.Register<Item> event) {
 		IForgeRegistry<Item> registry = event.getRegistry();
 
-		registry.register(new ItemBlockOwned(AWNPCBlocks.TOWN_HALL));
+		registry.register(new net.shadowmage.ancientwarfare.npc.item.ItemBlockTownHall(AWNPCBlocks.TOWN_HALL));
 	}
 
 	@SubscribeEvent

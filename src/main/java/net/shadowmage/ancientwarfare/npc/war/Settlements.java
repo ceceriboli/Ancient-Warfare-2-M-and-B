@@ -207,6 +207,10 @@ public class Settlements {
 			onLeaderKilled(npc.world, data, settlement, source);
 		} else if (isDefender(npc, settlement) && settlement.getManpower() > 0) {
 			NBTTagCompound entityTag = snapshotForRespawn(npc);
+			Entity killer = source.getTrueSource();
+			AncientWarfareNPC.LOG.info("Unit {} of city {} died at {}: {} ({}{}), {} manpower left", npc.getName(), settlement.getId(), npc.getPosition(),
+					source.getDamageType(), killer == null ? "no entity" : killer.getName(), killer instanceof NpcFaction ? ", faction " + ((NpcFaction) killer).getFaction() : "",
+					settlement.getManpower() - (entityTag != null ? 1 : 0));
 			if (entityTag != null) {
 				settlement.setManpower(settlement.getManpower() - 1);
 				settlement.getPendingRespawns().add(new Settlement.PendingRespawn(entityTag, npc.world.getTotalWorldTime() + AWDiplomacyStatics.respawnDelayTicks));
@@ -338,6 +342,78 @@ public class Settlements {
 			role = ROLE_CAPTAIN;
 		}
 		tag(npc, settlement, role);
+	}
+
+	/**
+	 * @return true if a kingdom city around pos would not overlap a city (active or fallen) of the dimension
+	 */
+	public static boolean canFoundKingdomCity(World world, BlockPos pos) {
+		int radius = AWDiplomacyStatics.kingdomRadius;
+		int dimension = world.provider.getDimension();
+		for (Settlement city : getData(world).getAll()) {
+			if (city.getDimension() == dimension && city.getMin().getX() <= pos.getX() + radius && city.getMax().getX() >= pos.getX() - radius
+					&& city.getMin().getZ() <= pos.getZ() + radius && city.getMax().getZ() >= pos.getZ() - radius) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Founds the capital of a player kingdom around its town hall: a faction city of the kingdom owned by the player, with a governor
+	 * (the kingdom's leader) next to the town hall. Manpower: kingdom_start_manpower plus the player's own soldiers in the city.
+	 */
+	@Nullable
+	public static Settlement foundKingdomCity(WorldServer world, String faction, EntityPlayer owner, BlockPos townHall) {
+		SettlementData data = getData(world);
+		int radius = AWDiplomacyStatics.kingdomRadius;
+		BlockPos min = new BlockPos(townHall.getX() - radius, Math.max(0, townHall.getY() - MIN_BOUNDS_BELOW), townHall.getZ() - radius);
+		BlockPos max = new BlockPos(townHall.getX() + radius, 255, townHall.getZ() + radius);
+		String name = SettlementNames.generate(world.rand, data.getAll());
+		BlockPos post = findStandableNear(world, townHall, min, max);
+		Settlement settlement = Settlement.createFactionCity(data.getNextId(), world.provider.getDimension(), name, "", faction, min, max, null, post, 0,
+				getDay(world));
+		settlement.setOwnerId(owner.getUniqueID());
+		settlement.setLastSiegeEnd(world.getTotalWorldTime());
+		settlement.setLastFullSiegeEnd(world.getTotalWorldTime());
+		int ownSoldiers = 0;
+		for (NpcPlayerOwned npc : world.getEntitiesWithinAABB(NpcPlayerOwned.class, settlement.getAABB())) {
+			if (npc.isEntityAlive() && !npc.isPassive() && owner.getUniqueID().equals(npc.getOwner().getUUID())) {
+				ownSoldiers++;
+			}
+		}
+		int manpower = AWDiplomacyStatics.kingdomStartManpower + (int) Math.ceil(ownSoldiers * AWDiplomacyStatics.manpowerPerUnit);
+		settlement.setManpower(manpower);
+		settlement.setMaxManpower(manpower);
+		settlement.setGarrisonCap(AWDiplomacyStatics.kingdomGarrison);
+		data.add(settlement);
+		NpcFactionLeader governor = spawnGovernor(world, settlement, faction);
+		if (governor != null) {
+			settlement.setLeader(governor.getUniqueID(), governor.getPosition());
+			tag(governor, settlement, ROLE_LEADER);
+		}
+		data.markDirty();
+		AncientWarfareNPC.LOG.info("Founded kingdom city {} ({}) of {} for {} at {}, governor {}, {} own soldiers, {} manpower", settlement.getId(), name, faction,
+				owner.getName(), townHall, governor == null ? "not spawned" : "at " + governor.getPosition(), ownSoldiers, manpower);
+		return settlement;
+	}
+
+	/**
+	 * @return a free position (two blocks of air above a full block) within a few blocks of pos and inside min-max, or the block above pos
+	 */
+	private static BlockPos findStandableNear(World world, BlockPos pos, BlockPos min, BlockPos max) {
+		for (int attempt = 0; attempt < 32; attempt++) {
+			BlockPos column = attempt == 0 ? pos : pos.add(world.rand.nextInt(7) - 3, 0, world.rand.nextInt(7) - 3);
+			for (int dy = 3; dy >= -3; dy--) {
+				BlockPos candidate = column.up(dy);
+				if (!candidate.equals(pos) && candidate.getX() >= min.getX() && candidate.getX() <= max.getX() && candidate.getZ() >= min.getZ()
+						&& candidate.getZ() <= max.getZ() && world.isAirBlock(candidate) && world.isAirBlock(candidate.up())
+						&& world.getBlockState(candidate.down()).isFullBlock()) {
+					return candidate;
+				}
+			}
+		}
+		return pos.up();
 	}
 
 	public static void setManpower(World world, Settlement settlement, int manpower) {
@@ -977,6 +1053,7 @@ public class Settlements {
 		List<NpcFaction> newGarrison = Sieges.onSettlementConquered(world, settlement);
 		releaseGarrison(world, settlement);
 		settlement.setFaction(winner);
+		settlement.setOwnerId(null); // a conquered kingdom capital is a city of the winners now
 		checkFactionGone(world, oldFaction);
 		settlement.getPendingRespawns().clear();
 		settlement.missingLeaderChecks = 0;

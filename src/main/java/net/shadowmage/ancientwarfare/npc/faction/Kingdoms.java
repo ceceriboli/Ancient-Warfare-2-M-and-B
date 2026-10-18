@@ -4,8 +4,18 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.TextComponentTranslation;
+import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.Constants;
+import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
+import net.shadowmage.ancientwarfare.npc.war.Settlement;
+import net.shadowmage.ancientwarfare.npc.war.Settlements;
+import java.util.ArrayList;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.shadowmage.ancientwarfare.core.gamedata.AWGameData;
 import net.shadowmage.ancientwarfare.core.network.NetworkHandler;
@@ -82,6 +92,68 @@ public class Kingdoms {
 		sync();
 		AncientWarfareNPC.LOG.info("Founded kingdom {} ({}, culture {}) for {}", kingdom.id, kingdom.name, culture, owner.getName());
 		return kingdom;
+	}
+
+	/**
+	 * A player placed a town hall: if it is their first and it is not inside a city, it founds their kingdom. A member of a faction leaves it
+	 * first (like renouncing), then the kingdom is created with its starting relations, its city and governor, and the player becomes its
+	 * member.
+	 */
+	public static void onTownHallPlaced(World world, EntityPlayer player, BlockPos pos) {
+		if (world.isRemote || !(world instanceof WorldServer) || !(player instanceof EntityPlayerMP) || !AWDiplomacyStatics.kingdomsEnabled
+				|| !AWDiplomacyStatics.settlementsEnabled || getOwnedBy(world, player.getUniqueID()) != null) {
+			return;
+		}
+		MinecraftServer server = world.getMinecraftServer();
+		if (server == null) {
+			return;
+		}
+		if (!Settlements.canFoundKingdomCity(world, pos)) {
+			player.sendMessage(colored(new TextComponentTranslation("command.aw.kingdom.too_close", AWDiplomacyStatics.kingdomRadius), TextFormatting.YELLOW));
+			return;
+		}
+		if (FactionMembership.getFaction(world, player.getUniqueID()) != null) {
+			FactionMembership.leave(server, player.getUniqueID(), player.getName(), FactionMembership.RENOUNCE, "command.aw.membership.announce.leave");
+		}
+		String culture = isValidCulture(AWDiplomacyStatics.kingdomDefaultCulture) ? AWDiplomacyStatics.kingdomDefaultCulture : "empire";
+		KingdomData.Kingdom kingdom = create(world, player, culture);
+		setStartingRelations(server, kingdom.id, culture);
+		Settlement city = Settlements.foundKingdomCity((WorldServer) world, kingdom.id, player, pos);
+		if (city != null) {
+			kingdom.cityId = city.getId();
+			getData(world).markDirty();
+		}
+		FactionMembership.join(server, (EntityPlayerMP) player, kingdom.id, false);
+		FactionMembership.sendDiplomacyToAll(server);
+		ITextComponent announcement = colored(new TextComponentTranslation("command.aw.kingdom.announce.founded", player.getName(), kingdom.name,
+				city == null ? "?" : city.getName()), TextFormatting.GOLD);
+		server.getPlayerList().sendMessage(announcement);
+		player.sendMessage(colored(new TextComponentTranslation("command.aw.kingdom.founded_help"), TextFormatting.GRAY));
+	}
+
+	/**
+	 * Peace with every faction and a truce of kingdom_grace_days, war with the eternal enemies hostile to the culture.
+	 */
+	private static void setStartingRelations(MinecraftServer server, String kingdom, String culture) {
+		World world = server.getEntityWorld();
+		long truceUntil = Diplomacy.getDay(world) + AWDiplomacyStatics.kingdomGraceDays;
+		for (String other : new ArrayList<>(FactionRegistry.getFactionNames())) {
+			if (other.equals(kingdom)) {
+				continue;
+			}
+			boolean eternalEnemy = Diplomacy.isEternalEnemy(other)
+					&& (FactionRegistry.getFaction(other).isHostileTowards(culture) || FactionRegistry.getFaction(culture).isHostileTowards(other));
+			FactionRelations.setRelationQuietly(server, kingdom, other, eternalEnemy ? FactionRelation.WAR : FactionRelation.PEACE);
+			if (!eternalEnemy) {
+				Diplomacy.getData(world).get(kingdom, other).setTruceUntil(truceUntil);
+			}
+		}
+		Diplomacy.getData(world).markDirty();
+	}
+
+	private static ITextComponent colored(ITextComponent text, TextFormatting color) {
+		text.getStyle().setColor(color);
+		return text;
 	}
 
 	public static void rename(World world, KingdomData.Kingdom kingdom, String name) {

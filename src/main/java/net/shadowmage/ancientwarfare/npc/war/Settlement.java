@@ -61,6 +61,11 @@ public class Settlement {
 	 * Players who served in the attack that conquered the city, with the tick their war booty ends (its chests are open to them)
 	 */
 	private final Map<UUID, Long> plunderers = new HashMap<>();
+	/**
+	 * The player who founded the city with a town hall (the capital of their kingdom), null for the cities of Ancient Warfare factions
+	 */
+	@Nullable
+	private UUID ownerId;
 
 	// not saved: consecutive checks where the leader could not be found although its area was loaded
 	int missingLeaderChecks = 0;
@@ -146,6 +151,15 @@ public class Settlement {
 
 	public BlockPos getMax() {
 		return max;
+	}
+
+	@Nullable
+	public UUID getOwnerId() {
+		return ownerId;
+	}
+
+	void setOwnerId(@Nullable UUID ownerId) {
+		this.ownerId = ownerId;
 	}
 
 	void setBounds(BlockPos min, BlockPos max) {
@@ -297,6 +311,9 @@ public class Settlement {
 		tag.setInteger("activeSiege", activeSiegeId);
 		tag.setLong("lastSiegeEnd", lastSiegeEnd);
 		tag.setLong("lastFullSiegeEnd", lastFullSiegeEnd);
+		if (ownerId != null) {
+			tag.setUniqueId("owner", ownerId);
+		}
 		NBTTagList respawnList = new NBTTagList();
 		for (PendingRespawn respawn : pendingRespawns) {
 			NBTTagCompound respawnTag = new NBTTagCompound();
@@ -342,6 +359,7 @@ public class Settlement {
 		settlement.activeSiegeId = tag.getInteger("activeSiege");
 		settlement.lastSiegeEnd = tag.getLong("lastSiegeEnd");
 		settlement.lastFullSiegeEnd = tag.getLong("lastFullSiegeEnd");
+		settlement.ownerId = tag.hasUniqueId("owner") ? tag.getUniqueId("owner") : null;
 		NBTTagList respawnList = tag.getTagList("pendingRespawns", Constants.NBT.TAG_COMPOUND);
 		for (int i = 0; i < respawnList.tagCount(); i++) {
 			NBTTagCompound respawnTag = respawnList.getCompoundTagAt(i);

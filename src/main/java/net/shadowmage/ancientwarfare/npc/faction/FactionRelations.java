@@ -88,6 +88,20 @@ public class FactionRelations {
 	}
 
 	/**
+	 * Sets a relation without announcement and without sending it to the clients (the caller sends all relations once, see
+	 * {@link FactionMembership#sendDiplomacyToAll}): the starting relations of a new faction.
+	 */
+	public static void setRelationQuietly(MinecraftServer server, String faction, String otherFaction, FactionRelation relation) {
+		World overworld = server.getEntityWorld();
+		getData(overworld).set(faction, otherFaction, relation);
+		for (WorldServer world : server.worlds) {
+			clearTargetsIfNotHostile(world, faction, otherFaction);
+		}
+		Diplomacy.onRelationChanged(overworld, faction, otherFaction, relation);
+		FactionMembership.onRelationChanged(overworld, faction, otherFaction);
+	}
+
+	/**
 	 * @return the factions with a war declared against the given faction in this world (relations set during the game,
 	 * not the hostility of the faction registry)
 	 */

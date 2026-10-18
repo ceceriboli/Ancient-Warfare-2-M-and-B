@@ -14,6 +14,11 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int memberEnemyStanding = -100;
 	public static boolean newPlayerNeutralStandings = true;
 	public static String kingdomDefaultCulture = "empire";
+	public static boolean kingdomsEnabled = true;
+	public static int kingdomRadius = 64;
+	public static int kingdomStartManpower = 20;
+	public static int kingdomGarrison = 6;
+	public static int kingdomGraceDays = 10;
 	public static int memberAllyStanding = 50;
 	public static boolean leaveWhenFactionGone = true;
 	public static boolean expelOnKillingOwnFaction = true;
@@ -160,6 +165,11 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		memberStanding = config.get(serverOptions, "member_standing", memberStanding, "Member standing\nDefault=" + memberStanding + "\n" + "When a player joins a faction, its standing with it is raised to at least this value. When it renounces the faction,\n" + "a positive standing goes back to 0 (not hostile); a negative one stays as it is.", 0, 10000).getInt();
 		memberInheritStandings = config.get(serverOptions, "member_inherit_standings", memberInheritStandings, "Members inherit standings\nDefault=" + memberInheritStandings + "\n" + "If true, a member takes the relations of its faction as standings, on joining and whenever they change: at most\n" + "member_enemy_standing with its enemies, at least member_ally_standing with its allies, at least 0 with the others.\n" + "Leaving the faction takes them back: each standing returns to its value before joining, plus the player's own changes.").getBoolean();
+		kingdomsEnabled = config.get(serverOptions, "kingdoms_enabled", kingdomsEnabled, "Player kingdoms\nDefault=" + kingdomsEnabled + "\n" + "The first town hall a player places founds their kingdom: a faction of their own with a city around the town hall and a governor. Needs settlements_enabled.").getBoolean();
+		kingdomRadius = config.get(serverOptions, "kingdom_radius", kingdomRadius, "Kingdom city radius\nDefault=" + kingdomRadius + "\n" + "Half the side of the square city founded around a town hall, in blocks. It must not overlap another city.", 8, 256).getInt();
+		kingdomStartManpower = config.get(serverOptions, "kingdom_start_manpower", kingdomStartManpower, "Kingdom starting manpower\nDefault=" + kingdomStartManpower + "\n" + "Manpower of a new kingdom city, plus manpower_per_unit for each soldier of the player inside it.", 0, 10000).getInt();
+		kingdomGarrison = config.get(serverOptions, "kingdom_garrison", kingdomGarrison, "Kingdom garrison\nDefault=" + kingdomGarrison + "\n" + "Recruits of the kingdom (occupation_unit_weights) come to a kingdom city every reinforcement_interval_ticks until its garrison has this many units. 0 = none.", 0, 200).getInt();
+		kingdomGraceDays = config.get(serverOptions, "kingdom_grace_days", kingdomGraceDays, "Kingdom grace days\nDefault=" + kingdomGraceDays + "\n" + "A new kingdom starts at peace with every faction (except the eternal enemies hostile to its culture), with a truce of this many days.", 0, 1000).getInt();
 		kingdomDefaultCulture = config.get(serverOptions, "kingdom_default_culture", kingdomDefaultCulture, "Kingdom default culture\nDefault=" + kingdomDefaultCulture + "\n" + "Faction whose look, units and dialogues a new player kingdom uses until its owner chooses another culture.").getString();
 		newPlayerNeutralStandings = config.get(serverOptions, "new_player_neutral_standings", newPlayerNeutralStandings, "New player neutral standings\nDefault=" + newPlayerNeutralStandings + "\n" + "A player joining a world for the first time starts with standing 0 with every faction whose standing can change (like /awfaction setall <player> 0).").getBoolean();
 		memberEnemyStanding = config.get(serverOptions, "member_enemy_standing", memberEnemyStanding, "Member standing with enemies\nDefault=" + memberEnemyStanding + "\n" + "Highest standing a member keeps with the enemies of its faction.", -10000, -1).getInt();
