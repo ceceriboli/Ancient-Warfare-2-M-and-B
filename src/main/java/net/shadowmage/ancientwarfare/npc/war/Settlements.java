@@ -375,8 +375,8 @@ public class Settlements {
 		Settlement settlement = Settlement.createFactionCity(data.getNextId(), world.provider.getDimension(), name, "", faction, min, max, null, post, 0,
 				getDay(world));
 		settlement.setOwnerId(owner.getUniqueID());
-		settlement.setLastSiegeEnd(world.getTotalWorldTime());
-		settlement.setLastFullSiegeEnd(world.getTotalWorldTime());
+		settlement.setLastSiegeEnd(Sieges.restClock(world));
+		settlement.setLastFullSiegeEnd(Sieges.restClock(world));
 		int ownSoldiers = 0;
 		for (NpcPlayerOwned npc : world.getEntitiesWithinAABB(NpcPlayerOwned.class, settlement.getAABB())) {
 			if (npc.isEntityAlive() && !npc.isPassive() && owner.getUniqueID().equals(npc.getOwner().getUUID())) {
@@ -500,8 +500,8 @@ public class Settlements {
 		Settlement settlement = Settlement.createFactionCity(data.getNextId(), dimension, name, structureName, leader.getFaction(), min, max,
 				ruler.getUniqueID(), ruler.getPosition(), 0, getDay(world));
 		// no siege right after the founding (siege_cooldown_days)
-		settlement.setLastSiegeEnd(world.getTotalWorldTime());
-		settlement.setLastFullSiegeEnd(world.getTotalWorldTime());
+		settlement.setLastSiegeEnd(Sieges.restClock(world));
+		settlement.setLastFullSiegeEnd(Sieges.restClock(world));
 		int manpower = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(garrison.size() * AWDiplomacyStatics.manpowerPerUnit));
 		settlement.setManpower(manpower);
 		settlement.setMaxManpower(manpower);
@@ -750,8 +750,8 @@ public class Settlements {
 		Settlement settlement = Settlement.createFactionCity(data.getNextId(), world.provider.getDimension(), name, bounds.structureName, spawn.faction, bounds.min,
 				bounds.max, null, spawn.pos, 0, getDay(world));
 		// no siege right after the founding (siege_cooldown_days)
-		settlement.setLastSiegeEnd(world.getTotalWorldTime());
-		settlement.setLastFullSiegeEnd(world.getTotalWorldTime());
+		settlement.setLastSiegeEnd(Sieges.restClock(world));
+		settlement.setLastFullSiegeEnd(Sieges.restClock(world));
 		int manpower = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(spawn.garrison * AWDiplomacyStatics.manpowerPerUnit));
 		settlement.setManpower(manpower);
 		settlement.setMaxManpower(manpower);
@@ -1063,8 +1063,8 @@ public class Settlements {
 		settlement.getPendingRespawns().clear();
 		settlement.missingLeaderChecks = 0;
 		long now = world.getTotalWorldTime();
-		settlement.setLastSiegeEnd(now);
-		settlement.setLastFullSiegeEnd(now);
+		settlement.setLastSiegeEnd(Sieges.restClock(world));
+		settlement.setLastFullSiegeEnd(Sieges.restClock(world));
 		settlement.setLastRegenDay(getDay(world));
 
 		NpcFactionLeader governor = spawnGovernor(world, settlement, winner);

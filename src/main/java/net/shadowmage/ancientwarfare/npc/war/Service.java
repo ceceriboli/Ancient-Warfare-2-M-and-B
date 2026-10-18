@@ -128,7 +128,7 @@ public class Service {
 		List<Settlement> candidates = new ArrayList<>();
 		for (Settlement city : data.getAll()) {
 			if (city.getDimension() != dimension || !city.isActive() || city.getType() != Settlement.Type.FACTION_CITY || Sieges.isBesieged(city)
-					|| !ignoreCooldown && !Sieges.isCooledDown(city, now) || player.getDistanceSq(Sieges.getTarget(world, city)) > rangeSq) {
+					|| !ignoreCooldown && !Sieges.isCooledDown(world, city) || player.getDistanceSq(Sieges.getTarget(world, city)) > rangeSq) {
 				continue;
 			}
 			if (offensive ? enemies.contains(city.getFaction()) && Sieges.canStart(world, city, faction) == null : faction.equals(city.getFaction())) {
@@ -565,7 +565,7 @@ public class Service {
 		List<Settlement> targets = new ArrayList<>();
 		for (Settlement city : Settlements.getData(world).getAll()) {
 			if (city.getDimension() == dimension && city.isActive() && city.getType() == Settlement.Type.FACTION_CITY && enemies.contains(city.getFaction())
-					&& Sieges.canStart(world, city, faction) == null && Sieges.isCooledDown(city, now)
+					&& Sieges.canStart(world, city, faction) == null && Sieges.isCooledDown(world, city)
 					&& player.getDistanceSq(Sieges.getTarget(world, city)) <= rangeSq) {
 				targets.add(city);
 			}
@@ -575,11 +575,31 @@ public class Service {
 	}
 
 	/**
+	 * @return the ticks until the first enemy city at war within service_call_range can be attacked again (its rest after the last attack
+	 * or its founding), or -1 if there is no such city
+	 */
+	public static long getProposalRestTicks(WorldServer world, EntityPlayerMP player, String faction, long now) {
+		List<String> enemies = FactionRelations.getDeclaredEnemies(world, faction);
+		double rangeSq = (double) AWDiplomacyStatics.serviceCallRange * AWDiplomacyStatics.serviceCallRange;
+		int dimension = world.provider.getDimension();
+		long rest = -1;
+		for (Settlement city : Settlements.getData(world).getAll()) {
+			if (city.getDimension() == dimension && city.isActive() && city.getType() == Settlement.Type.FACTION_CITY && enemies.contains(city.getFaction())
+					&& Sieges.canStart(world, city, faction) == null && player.getDistanceSq(Sieges.getTarget(world, city)) <= rangeSq) {
+				long since = Sieges.sinceRest(world, city.getLastSiegeEnd());
+				long left = since == Long.MAX_VALUE ? 0L : Math.max(0L, (long) AWDiplomacyStatics.siegeCooldownDays * 24000L - since);
+				rest = rest < 0 ? left : Math.min(rest, left);
+			}
+		}
+		return rest;
+	}
+
+	/**
 	 * @return true if a member can propose a full siege of the city now: proposals wait campaign_proposal_siege_cooldown_days, not the
 	 * full_siege_cooldown_days of the automatic full sieges
 	 */
-	public static boolean isFullSiegeAllowed(Settlement city, long now) {
-		return now - city.getLastFullSiegeEnd() >= (long) AWDiplomacyStatics.campaignProposalSiegeCooldownDays * 24000L;
+	public static boolean isFullSiegeAllowed(World world, Settlement city) {
+		return Sieges.sinceRest(world, city.getLastFullSiegeEnd()) >= (long) AWDiplomacyStatics.campaignProposalSiegeCooldownDays * 24000L;
 	}
 
 	/**
@@ -620,7 +640,7 @@ public class Service {
 			line.appendSibling(clickable(new TextComponentTranslation("command.aw.service.propose.raid"), TextFormatting.GREEN,
 					"/awservice propose " + city.getId() + " raid", new TextComponentTranslation("command.aw.service.propose.raid.hover",
 							proposalStanding(Siege.Kind.RAID), proposalPenalty(Siege.Kind.RAID))));
-			if (isFullSiegeAllowed(city, now)) {
+			if (isFullSiegeAllowed(world, city)) {
 				line.appendText(" ");
 				line.appendSibling(clickable(new TextComponentTranslation("command.aw.service.propose.siege"), TextFormatting.RED,
 						"/awservice propose " + city.getId() + " siege",
@@ -655,7 +675,7 @@ public class Service {
 		if (city == null || !getProposalTargets(world, player, faction, now).contains(city)) {
 			throw new CommandException("command.aw.service.propose.invalid");
 		}
-		if (kind == Siege.Kind.SIEGE && !isFullSiegeAllowed(city, now)) {
+		if (kind == Siege.Kind.SIEGE && !isFullSiegeAllowed(world, city)) {
 			throw new CommandException("command.aw.service.propose.no_siege", Settlements.displayName(city));
 		}
 		int standing = FactionTracker.INSTANCE.getStandingFor(world, player.getName(), faction);

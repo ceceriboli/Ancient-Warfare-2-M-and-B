@@ -1484,6 +1484,8 @@ command.aw.kingdom.announce.destroyed=%s is no more
 command.aw.kingdom.announce.war=The %s declare war on the %s!
 command.aw.kingdom.announce.peace=The %s and the %s make peace
 gui.aw.kingdom.governor_title=Governor
+gui.aw.dialogue.targets_resting=The enemy cities nearby are still recovering from their last attack or their founding: the first one can be attacked in about %s minutes (siege_cooldown_days = %s Minecraft days).
+gui.aw.dialogue.targets_no_war=We are at war with no one: declare war first.
 gui.aw.kingdom.diplomacy=Diplomacy
 gui.aw.kingdom.realm=The kingdom
 gui.aw.kingdom.campaign=Order a campaign

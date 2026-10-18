@@ -205,7 +205,7 @@ public class Sieges {
 	 */
 	static Siege.Kind chooseKind(World world, Settlement settlement, String attacker, long now) {
 		// full sieges come only from factions with a known city (in the settlement list), the others only raid
-		boolean fullSiegeAllowed = now - settlement.getLastFullSiegeEnd() >= (long) AWDiplomacyStatics.fullSiegeCooldownDays * DAY_TICKS
+		boolean fullSiegeAllowed = sinceRest(world, settlement.getLastFullSiegeEnd()) >= (long) AWDiplomacyStatics.fullSiegeCooldownDays * DAY_TICKS
 				&& Diplomacy.getFactionsWithCities(world).contains(attacker);
 		return fullSiegeAllowed && world.rand.nextDouble() < AWDiplomacyStatics.fullSiegeShare ? Siege.Kind.SIEGE : Siege.Kind.RAID;
 	}
@@ -213,8 +213,25 @@ public class Sieges {
 	/**
 	 * @return true if the city has had no attack for siege_cooldown_days
 	 */
-	static boolean isCooledDown(Settlement settlement, long now) {
-		return now - settlement.getLastSiegeEnd() >= (long) AWDiplomacyStatics.siegeCooldownDays * DAY_TICKS;
+	static boolean isCooledDown(World world, Settlement settlement) {
+		return sinceRest(world, settlement.getLastSiegeEnd()) >= (long) AWDiplomacyStatics.siegeCooldownDays * DAY_TICKS;
+	}
+
+	/**
+	 * The clock of the rests between attacks (siege_cooldown_days, full_siege_cooldown_days): the world time, so that they follow /time and
+	 * sleeping like the days of manpower and diplomacy.
+	 */
+	public static long restClock(World world) {
+		return world.getWorldTime();
+	}
+
+	/**
+	 * @return ticks of the rest clock since mark; a mark ahead of the clock (counted on the total world time before, or time set back)
+	 * counts as a rest long over
+	 */
+	public static long sinceRest(World world, long mark) {
+		long elapsed = restClock(world) - mark;
+		return elapsed < 0 ? Long.MAX_VALUE : elapsed;
 	}
 
 	public static void stop(World world, SettlementData data, Siege siege) {
@@ -480,9 +497,9 @@ public class Sieges {
 		long now = world.getTotalWorldTime();
 		if (settlement != null && settlement.getActiveSiegeId() == siege.getId()) {
 			settlement.setActiveSiegeId(0);
-			settlement.setLastSiegeEnd(now);
+			settlement.setLastSiegeEnd(restClock(world));
 			if (siege.getKind() == Siege.Kind.SIEGE) {
-				settlement.setLastFullSiegeEnd(now);
+				settlement.setLastFullSiegeEnd(restClock(world));
 			}
 		}
 		data.markDirty();
@@ -525,7 +542,7 @@ public class Sieges {
 		List<Settlement> candidates = new ArrayList<>();
 		for (Settlement settlement : data.getAll()) {
 			if (settlement.getDimension() == dimension && settlement.isActive() && settlement.getType() == Settlement.Type.FACTION_CITY
-					&& !isBesieged(settlement) && isCooledDown(settlement, now) && isPlayerNear(world, settlement.getCenter())) {
+					&& !isBesieged(settlement) && isCooledDown(world, settlement) && isPlayerNear(world, settlement.getCenter())) {
 				candidates.add(settlement);
 			}
 		}

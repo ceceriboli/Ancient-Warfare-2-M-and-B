@@ -327,7 +327,17 @@ public class FactionDialogue {
 		WorldServer world = (WorldServer) player.world;
 		List<Settlement> targets = Service.getProposalTargets(world, player, faction, world.getTotalWorldTime());
 		if (targets.isEmpty()) {
-			sendPage(player, npc, new TextComponentTranslation("command.aw.service.propose.none", AWDiplomacyStatics.serviceCallRange),
+			long rest = Service.getProposalRestTicks(world, player, faction, world.getTotalWorldTime());
+			ITextComponent reason;
+			if (rest > 0) {
+				// enemy cities at war are near, but they rest after their last attack (or their founding)
+				reason = new TextComponentTranslation("gui.aw.dialogue.targets_resting", (rest + 1199) / 1200, AWDiplomacyStatics.siegeCooldownDays);
+			} else if (FactionRelations.getDeclaredEnemies(world, faction).isEmpty()) {
+				reason = new TextComponentTranslation("gui.aw.dialogue.targets_no_war");
+			} else {
+				reason = new TextComponentTranslation("command.aw.service.propose.none", AWDiplomacyStatics.serviceCallRange);
+			}
+			sendPage(player, npc, reason,
 					button(new TextComponentTranslation("gui.aw.dialogue.back"), BACK));
 			return;
 		}
@@ -349,7 +359,7 @@ public class FactionDialogue {
 		Button raid = button(new TextComponentTranslation("gui.aw.dialogue.raid", Service.proposalStanding(Siege.Kind.RAID)), PROPOSE_PREFIX + cityId + ":raid")
 				.hover(new TextComponentTranslation("command.aw.service.propose.raid.hover", Service.proposalStanding(Siege.Kind.RAID),
 						Service.proposalPenalty(Siege.Kind.RAID)));
-		boolean siegeAllowed = Service.isFullSiegeAllowed(city, world.getTotalWorldTime());
+		boolean siegeAllowed = Service.isFullSiegeAllowed(world, city);
 		Button siege = button(siegeAllowed ? new TextComponentTranslation("gui.aw.dialogue.siege", Service.proposalStanding(Siege.Kind.SIEGE))
 				: new TextComponentTranslation("gui.aw.dialogue.siege_too_recent"), PROPOSE_PREFIX + cityId + ":siege")
 				.hover(new TextComponentTranslation("command.aw.service.propose.siege.hover", Service.proposalStanding(Siege.Kind.SIEGE),
