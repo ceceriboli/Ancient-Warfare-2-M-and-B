@@ -172,6 +172,9 @@ public class EventHandler {
 										FactionChests.getStanding(world, player, memberFaction), AWDiplomacyStatics.chestTrustStanding)
 										: new TextComponentTranslation("gui.ancientwarfarenpc.no_chest_stealing", StringUtils.capitalize(factionNpc.getFaction())), true);
 							}
+							if (memberFaction != null && memberFaction.equals(factionNpc.getFaction())) {
+								FactionChests.onCaughtStealing(world, player, memberFaction); // seen trying to rob its own faction
+							}
 							return;
 						}
 					}

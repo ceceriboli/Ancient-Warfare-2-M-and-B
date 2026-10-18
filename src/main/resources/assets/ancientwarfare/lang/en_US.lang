@@ -1520,6 +1520,7 @@ command.aw.service.direction.nw=north-west
 command.aw.service.served=You served the %2$s well at %1$s (standing +%3$s)
 command.aw.service.strike=You did not answer the call to arms for %1$s: the %2$s are displeased (standing -%3$s, strike %4$s of %5$s)
 command.aw.service.forgiven=The %s forgive one of your missed calls (strikes: %s of %s)
+command.aw.service.kill_reward=+%s standing with the %s for your service (%s of %s kills)
 command.aw.service.plundered=No help came in time: %s lost %s manpower to the plunder
 command.aw.service.announce.deserter=%s was expelled from the %s as a deserter
 command.aw.service.status.strikes=Military service: %s of %s strikes
@@ -2039,6 +2040,7 @@ gui.aw.dialogue.kind=%s. How shall we strike?
 gui.aw.dialogue.raid=A raid (standing %s)
 gui.aw.dialogue.siege=A full siege with engines (standing %s)
 gui.aw.dialogue.siege_too_recent=A full siege (too soon after the last one)
+gui.ancientwarfarenpc.caught_stealing=You were caught trying to rob your own people: the %s lose trust in you (standing -%s)
 gui.ancientwarfarenpc.no_chest_trust=The %s do not trust you with their stores yet (standing %s of %s)
 gui.ancientwarfarenpc.no_chest_access_flag_not_claimed=You can't open the inventory until you claim the flag at: %s
 

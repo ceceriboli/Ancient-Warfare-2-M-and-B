@@ -70,6 +70,7 @@ public class Siege {
 		private final String faction;
 		private final boolean attacking;
 		private int presenceTicks;
+		private int kills;
 		private boolean excused;
 		// not saved
 		long lastReminder;
@@ -95,6 +96,17 @@ public class Siege {
 			presenceTicks += ticks;
 		}
 
+		/**
+		 * @return the enemy kills of the player in this attack that have been rewarded with standing
+		 */
+		public int getKills() {
+			return kills;
+		}
+
+		void addKill() {
+			kills++;
+		}
+
 		public boolean isExcused() {
 			return excused;
 		}
@@ -107,6 +119,7 @@ public class Siege {
 			tag.setString("faction", faction);
 			tag.setBoolean("attacking", attacking);
 			tag.setInteger("presence", presenceTicks);
+			tag.setInteger("kills", kills);
 			tag.setBoolean("excused", excused);
 			return tag;
 		}
@@ -114,6 +127,7 @@ public class Siege {
 		private static Call readFromNBT(NBTTagCompound tag) {
 			Call call = new Call(tag.getString("faction"), tag.getBoolean("attacking"));
 			call.presenceTicks = tag.getInteger("presence");
+			call.kills = tag.getInteger("kills");
 			call.excused = tag.getBoolean("excused");
 			return call;
 		}

@@ -7,6 +7,7 @@ import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
 import net.shadowmage.ancientwarfare.npc.war.Armies;
+import net.shadowmage.ancientwarfare.npc.war.Service;
 import net.shadowmage.ancientwarfare.npc.war.Sieges;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
@@ -27,6 +28,7 @@ public class SettlementEventHandler {
 	public void onLivingDeath(LivingDeathEvent evt) {
 		if (!evt.getEntityLiving().world.isRemote && evt.getEntityLiving() instanceof NpcFaction) {
 			Diplomacy.onNpcKilled((NpcFaction) evt.getEntityLiving(), evt.getSource());
+			Service.onEnemyKilled((NpcFaction) evt.getEntityLiving(), evt.getSource());
 		}
 		Settlements.onLivingDeath(evt.getEntityLiving(), evt.getSource());
 	}

@@ -2,8 +2,10 @@ package net.shadowmage.ancientwarfare.npc.war;
 
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.DamageSource;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.Style;
@@ -17,6 +19,8 @@ import net.minecraft.world.WorldServer;
 import net.shadowmage.ancientwarfare.core.gamedata.AWGameData;
 import net.shadowmage.ancientwarfare.npc.AncientWarfareNPC;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
+import net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned;
+import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
 import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
@@ -383,6 +387,50 @@ public class Service {
 			} else {
 				strike(server, world, member, player, city);
 			}
+		}
+	}
+
+	/**
+	 * An npc of a faction was killed: a member who is serving in an attack of its faction (called, the attack going on, near the city) and
+	 * killed it, or whose own soldier did, gains standing with its faction, up to service_kill_reward_cap kills per attack. The enemies are
+	 * the defenders for those who attack and the attackers for those who defend.
+	 */
+	public static void onEnemyKilled(NpcFaction victim, DamageSource source) {
+		if (!isEnabled() || AWDiplomacyStatics.serviceKillRewardStanding <= 0 || AWDiplomacyStatics.serviceKillRewardCap <= 0
+				|| !(victim.world instanceof WorldServer)) {
+			return;
+		}
+		Entity killer = source.getTrueSource();
+		UUID killerId = killer instanceof EntityPlayerMP ? killer.getUniqueID() : killer instanceof NpcPlayerOwned ? ((NpcPlayerOwned) killer).getOwner().getUUID() : null;
+		if (killerId == null) {
+			return;
+		}
+		WorldServer world = (WorldServer) victim.world;
+		MinecraftServer server = world.getMinecraftServer();
+		EntityPlayerMP player = server == null ? null : server.getPlayerList().getPlayerByUUID(killerId);
+		FactionMembershipData.Member member = getMembership(world).getMember(killerId);
+		if (player == null || player.world != world || member == null) {
+			return;
+		}
+		SettlementData data = Settlements.getData(world);
+		double presenceSq = (double) AWDiplomacyStatics.servicePresenceRange * AWDiplomacyStatics.servicePresenceRange;
+		for (Siege siege : data.getSieges()) {
+			Siege.Call call = siege.getCall(killerId);
+			Settlement settlement = data.get(siege.getSettlementId());
+			if (call == null || call.isExcused() || settlement == null || siege.getState() == Siege.State.MUSTER || siege.getDimension() != world.provider.getDimension()
+					|| !member.faction.equals(call.getFaction()) || call.getKills() >= AWDiplomacyStatics.serviceKillRewardCap) {
+				continue;
+			}
+			String enemy = call.isAttacking() ? settlement.getFaction() : siege.getAttackerFaction();
+			if (!enemy.equals(victim.getFaction()) || player.getDistanceSq(Sieges.getTarget(world, settlement)) > presenceSq) {
+				continue;
+			}
+			call.addKill();
+			data.markDirty();
+			FactionTracker.INSTANCE.adjustStandingFor(world, member.playerName, member.faction, AWDiplomacyStatics.serviceKillRewardStanding);
+			player.sendStatusMessage(new TextComponentTranslation("command.aw.service.kill_reward", AWDiplomacyStatics.serviceKillRewardStanding,
+					FactionMembership.factionName(member.faction), call.getKills(), AWDiplomacyStatics.serviceKillRewardCap), true);
+			return;
 		}
 	}
 

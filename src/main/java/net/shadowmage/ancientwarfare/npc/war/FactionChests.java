@@ -2,12 +2,18 @@ package net.shadowmage.ancientwarfare.npc.war;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.TextComponentTranslation;
+import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.faction.FactionTracker;
 
 import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Loot chests of the structures (locked by Ancient Warfare while a faction npc sees the player, see npc.event.EventHandler) for the members
@@ -42,6 +48,29 @@ public class FactionChests {
 	 */
 	public static boolean isTrustedBy(World world, EntityPlayer player, String faction, String npcFaction) {
 		return faction.equals(npcFaction) && getStanding(world, player, faction) >= AWDiplomacyStatics.chestTrustStanding;
+	}
+
+	private static final Map<UUID, Long> lastTheft = new HashMap<>();
+
+	/**
+	 * A member tried to open a chest of its own faction while an npc of the faction saw it, without the trust needed: it loses standing
+	 * with its faction (chest_theft_penalty), at most once every chest_theft_cooldown_ticks (a click reaches the server for both hands).
+	 */
+	public static void onCaughtStealing(World world, EntityPlayer player, String faction) {
+		if (world.isRemote || AWDiplomacyStatics.chestTheftPenalty <= 0) {
+			return;
+		}
+		long now = world.getTotalWorldTime();
+		Long last = lastTheft.get(player.getUniqueID());
+		if (last != null && now >= last && now - last < AWDiplomacyStatics.chestTheftCooldownTicks) {
+			return;
+		}
+		lastTheft.put(player.getUniqueID(), now);
+		FactionTracker.INSTANCE.adjustStandingFor(world, player.getName(), faction, -AWDiplomacyStatics.chestTheftPenalty);
+		ITextComponent message = new TextComponentTranslation("gui.ancientwarfarenpc.caught_stealing", FactionMembership.factionName(faction),
+				AWDiplomacyStatics.chestTheftPenalty);
+		message.getStyle().setColor(TextFormatting.RED);
+		player.sendMessage(message);
 	}
 
 	public static int getStanding(World world, EntityPlayer player, String faction) {

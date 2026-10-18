@@ -40,6 +40,10 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int serviceMaxStrikes = 3;
 	public static int serviceStrikeDecayDays = 7;
 	public static boolean serviceExcuseOffline = true;
+	public static int serviceKillRewardStanding = 1;
+	public static int serviceKillRewardCap = 10;
+	public static int chestTheftPenalty = 5;
+	public static int chestTheftCooldownTicks = 600;
 	public static double servicePlunderRatio = 0.5;
 	public static int exhaustionCityPlundered = 15;
 	public static int campaignProposalStanding = 120;
@@ -217,6 +221,14 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		serviceStrikeDecayDays = config.get(serverOptions, "service_strike_decay_days", serviceStrikeDecayDays, "Strike forgiveness\nDefault=" + serviceStrikeDecayDays + "\n" + "Minecraft days without missed calls after which one strike is forgiven. 0 = never.", 0, 10000).getInt();
 
 		serviceExcuseOffline = config.get(serverOptions, "service_excuse_offline", serviceExcuseOffline, "Offline players excused\nDefault=" + serviceExcuseOffline + "\n" + "If true, a called player who goes offline is excused (no strike). Players offline when a campaign starts are\n" + "never called.").getBoolean();
+
+		serviceKillRewardStanding = config.get(serverOptions, "service_kill_reward_standing", serviceKillRewardStanding, "Standing for a kill in service\nDefault=" + serviceKillRewardStanding + "\n" + "Standing a member gains with its faction for each enemy it (or one of its own soldiers) kills while serving in an attack of\n" + "its faction (called, near the city, the attack going on): the defenders if its faction attacks, the attackers if it defends.\n" + "0 = no reward.", 0, 1000).getInt();
+
+		serviceKillRewardCap = config.get(serverOptions, "service_kill_reward_cap", serviceKillRewardCap, "Rewarded kills per attack\nDefault=" + serviceKillRewardCap + "\n" + "Kills that give standing to a member in one attack (at most service_kill_reward_cap x service_kill_reward_standing).\n" + "0 = no reward.", 0, 10000).getInt();
+
+		chestTheftPenalty = config.get(serverOptions, "chest_theft_penalty", chestTheftPenalty, "Caught stealing from its own faction\nDefault=" + chestTheftPenalty + "\n" + "Standing a member loses with its faction when a faction npc sees it try to open a loot chest of the faction without the\n" + "trust needed (chest_trust_standing). 0 = no penalty.", 0, 10000).getInt();
+
+		chestTheftCooldownTicks = config.get(serverOptions, "chest_theft_cooldown_ticks", chestTheftCooldownTicks, "Caught stealing: pause\nDefault=" + chestTheftCooldownTicks + "\n" + "Ticks (20 per second) between two penalties for the same player, so that clicking again does not take all its standing.", 0, 72000).getInt();
 
 		servicePlunderRatio = config.get(serverOptions, "service_plunder_ratio", servicePlunderRatio, "Plunder\nDefault=" + servicePlunderRatio + "\n" + "Manpower a city loses when nobody comes to defend it = attackers of the campaign x this value.", 0.0D, 100.0D).getDouble();
 
