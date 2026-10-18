@@ -194,6 +194,15 @@ public class Siege {
 		setState(State.MUSTER);
 	}
 
+	void setMusterUntil(long musterUntil) {
+		this.musterUntil = musterUntil;
+	}
+
+	void setSize(int totalWaves, int attackersPerWave) {
+		this.totalWaves = totalWaves;
+		this.attackersPerWave = attackersPerWave;
+	}
+
 	public Map<UUID, Call> getCalls() {
 		return Collections.unmodifiableMap(calls);
 	}

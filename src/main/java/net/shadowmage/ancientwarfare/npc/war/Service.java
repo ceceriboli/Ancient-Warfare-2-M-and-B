@@ -162,6 +162,8 @@ public class Service {
 		boolean muster = siege.getState() == Siege.State.MUSTER;
 		double range = muster ? AWDiplomacyStatics.serviceCallRange : AWDiplomacyStatics.serviceMusterRange;
 		BlockPos target = Sieges.getTarget(world, settlement);
+		List<EntityPlayerMP> called = new ArrayList<>();
+		double farthest = 0;
 		for (FactionMembershipData.Member member : getMembership(world).getMembers()) {
 			boolean attacking = member.faction.equals(siege.getAttackerFaction());
 			if (!attacking && !member.faction.equals(settlement.getFaction())) {
@@ -174,9 +176,20 @@ public class Service {
 			Siege.Call call = new Siege.Call(member.faction, attacking);
 			call.lastReminder = world.getTotalWorldTime();
 			siege.addCall(member.playerId, call);
+			called.add(player);
+			farthest = Math.max(farthest, Math.sqrt(player.getDistanceSq(target)));
+		}
+		if (muster) {
+			// time to get there: the base muster time plus the way of the farthest called player
+			long ticks = Math.min(AWDiplomacyStatics.serviceMusterMaxTicks,
+					AWDiplomacyStatics.serviceMusterTicks + (long) (farthest * AWDiplomacyStatics.serviceMusterTicksPerBlock));
+			siege.setMusterUntil(world.getTotalWorldTime() + ticks);
+		}
+		for (EntityPlayerMP player : called) {
+			Siege.Call call = siege.getCall(player.getUniqueID());
 			sendCall(world, player, siege, settlement, call, target);
-			AncientWarfareNPC.LOG.info("{} is called to {} city {} ({}) in {} {}", player.getName(), attacking ? "attack" : "defend", settlement.getId(),
-					settlement.getFaction(), siege.getKind().getName(), siege.getId());
+			AncientWarfareNPC.LOG.info("{} is called to {} city {} ({}) in {} {}, {} blocks away", player.getName(), call.isAttacking() ? "attack" : "defend",
+					settlement.getId(), settlement.getFaction(), siege.getKind().getName(), siege.getId(), (int) Math.sqrt(player.getDistanceSq(target)));
 		}
 		Settlements.getData(world).markDirty();
 	}

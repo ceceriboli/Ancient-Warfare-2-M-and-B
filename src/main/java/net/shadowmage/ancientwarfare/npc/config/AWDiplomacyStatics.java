@@ -27,7 +27,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static double campaignChance = 0.3;
 	public static double campaignOffenseShare = 0.5;
 	public static int serviceCallRange = 1500;
-	public static int serviceMusterTicks = 12000;
+	public static int serviceMusterTicks = 2400;
+	public static int serviceMusterTicksPerBlock = 6;
+	public static int serviceMusterMaxTicks = 36000;
 	public static int serviceMusterRange = 96;
 	public static int serviceReminderTicks = 2400;
 	public static int servicePresenceRange = 96;
@@ -181,7 +183,11 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		serviceCallRange = config.get(serverOptions, "service_call_range", serviceCallRange, "Call range\nDefault=" + serviceCallRange + "\n" + "Campaigns are on cities within this many blocks of the called member, and members within this distance are called.", 16, 100000).getInt();
 
-		serviceMusterTicks = config.get(serverOptions, "service_muster_ticks", serviceMusterTicks, "Muster time\nDefault=" + serviceMusterTicks + "\n" + "Ticks (20 per second) a campaign waits for a called player. Then an attack of the player's faction is called off\n" + "(unsupported) and an attack on a city of the player's faction plunders it (it loses manpower, it never falls).", 200, 720000).getInt();
+		serviceMusterTicks = config.get(serverOptions, "service_muster_ticks", serviceMusterTicks, "Muster time (base)\nDefault=" + serviceMusterTicks + "\n" + "Ticks (20 per second) a campaign waits for a called player, plus service_muster_ticks_per_block for each block between\n" + "the city and the farthest called player, at most service_muster_max_ticks. Then an attack of the player's faction is\n" + "called off (unsupported) and an attack on a city of the player's faction plunders it (it loses manpower, it never falls).", 200, 720000).getInt();
+
+		serviceMusterTicksPerBlock = config.get(serverOptions, "service_muster_ticks_per_block", serviceMusterTicksPerBlock, "Muster time per block\nDefault=" + serviceMusterTicksPerBlock + "\n" + "Ticks added to the muster time for each block of distance (6 = 0.3 seconds a block, a walk with some margin).", 0, 200).getInt();
+
+		serviceMusterMaxTicks = config.get(serverOptions, "service_muster_max_ticks", serviceMusterMaxTicks, "Muster time (maximum)\nDefault=" + serviceMusterMaxTicks + "\n" + "Longest muster time in ticks, whatever the distance.", 200, 720000).getInt();
 
 		serviceMusterRange = config.get(serverOptions, "service_muster_range", serviceMusterRange, "Muster range\nDefault=" + serviceMusterRange + "\n" + "A campaign begins when a called player comes within this many blocks of the city leader.", 16, 512).getInt();
 
