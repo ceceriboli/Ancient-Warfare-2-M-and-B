@@ -137,10 +137,12 @@ public class Sieges {
 	 * mustering, the players of the two factions are called (see {@link Service}).
 	 */
 	public static Siege start(WorldServer world, SettlementData data, Settlement settlement, String attackerFaction, Siege.Kind kind, Siege.Origin origin) {
-		int[] size = computeSize(world, settlement, kind);
+		int[] size = computeSize(world, settlement, kind, attackerFaction);
 		int strength = size[0];
 		int waves = size[1];
 		int perWave = size[2];
+		int attackerManpower = size[3];
+		int defenderManpower = size[4];
 		Siege siege = Siege.create(data.getNextSiegeId(), kind, origin, settlement, attackerFaction, waves, perWave);
 		data.addSiege(siege);
 		settlement.setActiveSiegeId(siege.getId());
@@ -152,26 +154,50 @@ public class Sieges {
 			siege.startMuster(world.getTotalWorldTime() + AWDiplomacyStatics.serviceMusterTicks);
 		}
 		data.markDirty();
-		AncientWarfareNPC.LOG.info("{} {} of city {} ({}) by {} started ({}): strength {}, {} waves of {} attackers", kind.getName(), siege.getId(),
-				settlement.getId(), settlement.getFaction(), attackerFaction, origin.getName(), strength, waves, perWave);
+		AncientWarfareNPC.LOG.info("{} {} of city {} ({}) by {} started ({}): strength {}, faction manpower {} against {}, {} waves of {} attackers",
+				kind.getName(), siege.getId(), settlement.getId(), settlement.getFaction(), attackerFaction, origin.getName(), strength, attackerManpower,
+				defenderManpower, waves, perWave);
 		Service.onSiegeStarted(world, siege, settlement);
 		return siege;
 	}
 
 	/**
-	 * Size of an attack from the strength of the city (garrison units loaded + manpower), the same for every attack.
+	 * Size of an attack, the same for every attack: from the strength of the city (garrison units loaded + manpower). A full siege also
+	 * grows with the strength of the attacking faction: a fraction (full_siege_attacker_ratio) of the manpower of all its known cities in the
+	 * dimension (the ones of /awsettlement list) is added.
 	 *
-	 * @return strength, number of waves, attackers per wave
+	 * @return strength of the city, number of waves, attackers per wave, manpower of the attacking and of the defending faction (0 for a raid)
 	 */
-	private static int[] computeSize(World world, Settlement settlement, Siege.Kind kind) {
+	private static int[] computeSize(World world, Settlement settlement, Siege.Kind kind, String attacker) {
 		boolean full = kind == Siege.Kind.SIEGE;
 		int strength = countGarrison(world, settlement) + settlement.getManpower();
-		int total = (int) Math.round(strength * (full ? AWDiplomacyStatics.fullSiegeStrengthRatio : AWDiplomacyStatics.raidStrengthRatio));
+		double total = strength * (full ? AWDiplomacyStatics.fullSiegeStrengthRatio : AWDiplomacyStatics.raidStrengthRatio);
+		int attackerManpower = 0;
+		int defenderManpower = 0;
+		if (full) {
+			// a strong faction lays a bigger siege than a weak one on the same city
+			attackerManpower = getFactionManpower(world, attacker, settlement.getDimension());
+			defenderManpower = getFactionManpower(world, settlement.getFaction(), settlement.getDimension());
+			total += attackerManpower * AWDiplomacyStatics.fullSiegeAttackerRatio;
+		}
 		int min = full ? AWDiplomacyStatics.fullSiegeMinAttackers : AWDiplomacyStatics.raidMinAttackers;
 		int max = full ? AWDiplomacyStatics.fullSiegeMaxAttackers : AWDiplomacyStatics.raidMaxAttackers;
-		total = Math.min(max, Math.max(min, total));
-		int waves = Math.max(1, Math.min(full ? AWDiplomacyStatics.fullSiegeWaves : AWDiplomacyStatics.raidWaves, total));
-		return new int[] {strength, waves, (int) Math.ceil((double) total / waves)};
+		int attackers = Math.min(max, Math.max(min, (int) Math.round(total)));
+		int waves = Math.max(1, Math.min(full ? AWDiplomacyStatics.fullSiegeWaves : AWDiplomacyStatics.raidWaves, attackers));
+		return new int[] {strength, waves, (int) Math.ceil((double) attackers / waves), attackerManpower, defenderManpower};
+	}
+
+	/**
+	 * @return the manpower of all the active cities of the faction known in the dimension (the ones of /awsettlement list)
+	 */
+	private static int getFactionManpower(World world, String faction, int dimension) {
+		int manpower = 0;
+		for (Settlement city : Settlements.getData(world).getAll()) {
+			if (city.isActive() && city.getType() == Settlement.Type.FACTION_CITY && city.getDimension() == dimension && faction.equals(city.getFaction())) {
+				manpower += city.getManpower();
+			}
+		}
+		return manpower;
 	}
 
 	/**
@@ -336,14 +362,14 @@ public class Sieges {
 			// a campaign waits for a called player, also while the city is far away and not loaded
 			if (Service.hasCalledPlayerNear(world, siege, settlement)) {
 				// sized again now that the city is loaded and its garrison counted, as for an attack started near a player
-				int[] size = computeSize(world, settlement, siege.getKind());
+				int[] size = computeSize(world, settlement, siege.getKind(), siege.getAttackerFaction());
 				siege.setSize(size[1], size[2]);
 				siege.setState(Siege.State.WARMUP);
 				data.markDirty();
 				announce(world, siege, "start", settlement);
 				playHorn(world, settlement.getCenter());
-				AncientWarfareNPC.LOG.info("{} {}: a called player arrived, the attack begins: strength {}, {} waves of {} attackers", siege.getKind().getName(),
-						siege.getId(), size[0], size[1], size[2]);
+				AncientWarfareNPC.LOG.info("{} {}: a called player arrived, the attack begins: strength {}, faction manpower {} against {}, {} waves of {} attackers",
+						siege.getKind().getName(), siege.getId(), size[0], size[3], size[4], size[1], size[2]);
 			} else {
 				if (now >= siege.getMusterUntil()) {
 					Service.resolveUnattended(world, data, siege, settlement);

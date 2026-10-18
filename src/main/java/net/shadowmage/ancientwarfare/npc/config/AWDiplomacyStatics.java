@@ -118,6 +118,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static double fullSiegeShare = 0.1;
 	public static int fullSiegeCooldownDays = 20;
 	public static double fullSiegeStrengthRatio = 2.0;
+	public static double fullSiegeAttackerRatio = 0.1;
 	public static int fullSiegeMinAttackers = 20;
 	public static int fullSiegeMaxAttackers = 60;
 	public static int fullSiegeWaves = 4;
@@ -371,6 +372,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		fullSiegeCooldownDays = config.get(serverOptions, "full_siege_cooldown_days", fullSiegeCooldownDays, "Full siege cooldown\nDefault=" + fullSiegeCooldownDays + "\n" + "Minecraft days after a full siege ends (or after the city is founded) before the city can have another full siege.\n" + "Raids can still come in the meantime.", 0, 1000).getInt();
 
 		fullSiegeStrengthRatio = config.get(serverOptions, "full_siege_strength_ratio", fullSiegeStrengthRatio, "Full siege size\nDefault=" + fullSiegeStrengthRatio + "\n" + "Total attackers of a full siege (siege engineers not counted) = (garrison units loaded + manpower) x this value,\n" + "limited by full_siege_min_attackers and full_siege_max_attackers, and split into full_siege_waves waves.", 0.0D, 100.0D).getDouble();
+
+		fullSiegeAttackerRatio = config.get(serverOptions, "full_siege_attacker_ratio", fullSiegeAttackerRatio, "Full siege size: attacking faction\nDefault=" + fullSiegeAttackerRatio + "\n" + "A full siege also grows with the strength of the attacking faction: (manpower of all its known cities in the dimension,\n" + "the ones of /awsettlement list) x this value is added to the attackers from full_siege_strength_ratio, before the limits\n" + "full_siege_min_attackers and full_siege_max_attackers. 0 = only the strength of the city counts. Raids are not affected.", 0.0D, 100.0D).getDouble();
 
 		fullSiegeMinAttackers = config.get(serverOptions, "full_siege_min_attackers", fullSiegeMinAttackers, "Full siege minimum attackers\nDefault=" + fullSiegeMinAttackers + "\n" + "Minimum total number of attackers of a full siege.", 1, 1000).getInt();
 
