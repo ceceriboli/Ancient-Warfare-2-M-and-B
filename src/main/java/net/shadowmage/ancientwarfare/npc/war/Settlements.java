@@ -21,6 +21,7 @@ import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.chunk.Chunk;
 import net.shadowmage.ancientwarfare.core.gamedata.AWGameData;
 import net.shadowmage.ancientwarfare.npc.AncientWarfareNPC;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
@@ -42,9 +43,13 @@ import net.shadowmage.ancientwarfare.structure.tile.TileAdvancedSpawner;
 import javax.annotation.Nullable;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -73,12 +78,20 @@ public class Settlements {
 	private static final int DAY_TICKS = 24000;
 	private static final int MIN_BOUNDS_BELOW = 24;
 	private static final int MIN_BOUNDS_ABOVE = 40;
+	private static final int STRUCTURE_SCAN_INTERVAL = 100;
+	private static final int STRUCTURE_RETRY_TICKS = 6000;
+	private static final int MAX_FOUNDED_PER_SCAN = 4;
+	private static final int MAX_STRUCTURE_CHUNKS = 400;
+	private static final int MAX_ESTIMATED_GARRISON = 200;
+	private static final int AWAITING_LEADER_CHECKS = 30;
 	private static final String[] RESPAWN_REMOVED_TAGS = {"UUIDMost", "UUIDLeast", "Pos", "Motion", "Health", "HurtTime", "HurtByTimestamp", "DeathTime",
 			"AbsorptionAmount", "ActiveEffects", "Fire", "FallDistance", "Passengers", "Leashed", "Leash"};
 
 	private static final List<Scheduled<NpcFactionLeader>> pendingLeaders = new ArrayList<>();
 	private static final List<Scheduled<NpcFaction>> disbanding = new ArrayList<>();
 	private static final List<Scheduled<NpcFaction>> turningBandits = new ArrayList<>();
+	// structures without a leader spawner, looked at again later (total world time of the next look; by dimension and position)
+	private static final Map<String, Long> structureScanDue = new HashMap<>();
 
 	public static SettlementData getData(World world) {
 		return AWGameData.INSTANCE.getData(world, SettlementData.class);
@@ -209,6 +222,9 @@ public class Settlements {
 		}
 		processPendingLeaders(world, now);
 		SettlementData data = getData(world);
+		if (AWDiplomacyStatics.settlementFoundRange > 0 && now % STRUCTURE_SCAN_INTERVAL == 0) {
+			foundCitiesFromStructures(world, data, now);
+		}
 		int dimension = world.provider.getDimension();
 		for (Settlement settlement : new ArrayList<>(data.getAll())) {
 			if (settlement.getDimension() != dimension || !settlement.isActive() || settlement.getType() != Settlement.Type.FACTION_CITY) {
@@ -283,32 +299,10 @@ public class Settlements {
 			return;
 		}
 
-		BlockPos min;
-		BlockPos max;
-		String structureName;
-		Optional<TownEntry> town = Optional.empty();
-		Optional<StructureEntry> structure = Optional.empty();
-		if (AWDiplomacyStatics.settlementUseStructureBounds) {
-			town = AWGameData.INSTANCE.getPerWorldData(world, TownMap.class).getTownAt(pos);
-			structure = AWGameData.INSTANCE.getPerWorldData(world, StructureMap.class).getStructureAt(world, pos);
-		}
-		if (town.isPresent()) {
-			min = town.get().getBB().min;
-			max = town.get().getBB().max;
-			structureName = "";
-		} else if (structure.isPresent()) {
-			min = structure.get().getBB().min;
-			max = structure.get().getBB().max;
-			structureName = structure.get().getName();
-		} else {
-			int radius = AWDiplomacyStatics.settlementDefaultRadius;
-			min = pos.add(-radius, 0, -radius);
-			max = pos.add(radius, 0, radius);
-			structureName = "";
-		}
-		// structure bounds can be flat, make sure npcs on the floors around the leader are included
-		min = new BlockPos(min.getX(), Math.max(0, Math.min(min.getY(), pos.getY() - MIN_BOUNDS_BELOW)), min.getZ());
-		max = new BlockPos(max.getX(), Math.min(255, Math.max(max.getY(), pos.getY() + MIN_BOUNDS_ABOVE)), max.getZ());
+		Bounds bounds = findBounds(world, pos);
+		BlockPos min = bounds.min;
+		BlockPos max = bounds.max;
+		String structureName = bounds.structureName;
 
 		String name = SettlementNames.generate(world.rand, data.getAll());
 		List<NpcFaction> garrison = new ArrayList<>();
@@ -348,6 +342,248 @@ public class Settlements {
 		}
 		AncientWarfareNPC.LOG.info("Founded city {} ({}) of faction {} at {}, ruler at {}, with {} garrison units ({} captains) and {} manpower", settlement.getId(),
 				name, settlement.getFaction(), pos, ruler.getPosition(), garrison.size(), captains, manpower);
+	}
+
+	private static class Bounds {
+		private final BlockPos min;
+		private final BlockPos max;
+		private final String structureName;
+
+		private Bounds(BlockPos min, BlockPos max, String structureName) {
+			this.min = min;
+			this.max = max;
+			this.structureName = structureName;
+		}
+	}
+
+	/**
+	 * @return the bounds of the city of a leader (or of the spawner of one) at pos: the Ancient Warfare town or structure it is in, or a square
+	 * of settlement_default_radius around it; made tall enough for the floors around pos
+	 */
+	private static Bounds findBounds(WorldServer world, BlockPos pos) {
+		BlockPos min;
+		BlockPos max;
+		String structureName;
+		Optional<TownEntry> town = Optional.empty();
+		Optional<StructureEntry> structure = Optional.empty();
+		if (AWDiplomacyStatics.settlementUseStructureBounds) {
+			town = AWGameData.INSTANCE.getPerWorldData(world, TownMap.class).getTownAt(pos);
+			structure = AWGameData.INSTANCE.getPerWorldData(world, StructureMap.class).getStructureAt(world, pos);
+		}
+		if (town.isPresent()) {
+			min = town.get().getBB().min;
+			max = town.get().getBB().max;
+			structureName = "";
+		} else if (structure.isPresent()) {
+			min = structure.get().getBB().min;
+			max = structure.get().getBB().max;
+			structureName = structure.get().getName();
+		} else {
+			int radius = AWDiplomacyStatics.settlementDefaultRadius;
+			min = pos.add(-radius, 0, -radius);
+			max = pos.add(radius, 0, radius);
+			structureName = "";
+		}
+		// structure bounds can be flat, make sure npcs on the floors around the leader are included
+		min = new BlockPos(min.getX(), Math.max(0, Math.min(min.getY(), pos.getY() - MIN_BOUNDS_BELOW)), min.getZ());
+		max = new BlockPos(max.getX(), Math.min(255, Math.max(max.getY(), pos.getY() + MIN_BOUNDS_ABOVE)), max.getZ());
+		return new Bounds(min, max, structureName);
+	}
+
+	/**
+	 * A spawner of an Ancient Warfare structure that creates a faction leader: the faction, where the leader will appear and how many
+	 * garrison units the whole structure is going to spawn.
+	 */
+	private static class LeaderSpawn {
+		private final String faction;
+		private final BlockPos pos;
+		private final int garrison;
+
+		private LeaderSpawn(String faction, BlockPos pos, int garrison) {
+			this.faction = faction;
+			this.pos = pos;
+			this.garrison = garrison;
+		}
+	}
+
+	/**
+	 * Cities that are born from their structure, like the structure itself at world generation: every STRUCTURE_SCAN_INTERVAL ticks the
+	 * structures within settlement_found_range of a player that are fully loaded and have no city are searched for the spawner of a faction
+	 * leader. The city exists at once (without leader: it comes when a player is close enough for the spawner to work, and is linked to the
+	 * city then, see foundCity), instead of waiting for the leader to appear.
+	 */
+	private static void foundCitiesFromStructures(WorldServer world, SettlementData data, long now) {
+		int range = AWDiplomacyStatics.settlementFoundRange;
+		double rangeSq = (double) range * range;
+		int dimension = world.provider.getDimension();
+		StructureMap structures = AWGameData.INSTANCE.getPerWorldData(world, StructureMap.class);
+		Set<StructureEntry> near = new LinkedHashSet<>();
+		for (EntityPlayer player : world.playerEntities) {
+			if (player.isSpectator()) {
+				continue;
+			}
+			for (StructureEntry entry : structures.getEntriesNear(world, MathHelper.floor(player.posX), MathHelper.floor(player.posZ), (range >> 4) + 1, true,
+					new ArrayList<>())) {
+				BlockPos min = entry.getBB().min;
+				BlockPos max = entry.getBB().max;
+				double dx = Math.max(0D, Math.max(min.getX() - player.posX, player.posX - max.getX()));
+				double dz = Math.max(0D, Math.max(min.getZ() - player.posZ, player.posZ - max.getZ()));
+				if (dx * dx + dz * dz <= rangeSq) {
+					near.add(entry);
+				}
+			}
+		}
+		int founded = 0;
+		for (StructureEntry entry : near) {
+			if (founded >= MAX_FOUNDED_PER_SCAN) {
+				break;
+			}
+			String key = dimension + ":" + entry.getBB().min.toLong();
+			Long due = structureScanDue.get(key);
+			if (due != null && due > now && due - now <= STRUCTURE_RETRY_TICKS) {
+				continue; // no leader spawner there a moment ago
+			}
+			if (overlapsCity(data, dimension, entry) || !isStructureLoaded(world, entry)) {
+				continue; // a loaded structure is looked at once all of it is loaded
+			}
+			LeaderSpawn spawn = findLeaderSpawner(world, entry);
+			if (spawn == null) {
+				// also structures whose spawners are not placed yet are looked at again later
+				structureScanDue.put(key, now + STRUCTURE_RETRY_TICKS);
+				continue;
+			}
+			foundCityFromSpawner(world, data, spawn);
+			founded++;
+		}
+	}
+
+	private static boolean overlapsCity(SettlementData data, int dimension, StructureEntry entry) {
+		BlockPos min = entry.getBB().min;
+		BlockPos max = entry.getBB().max;
+		for (Settlement city : data.getAll()) {
+			if (city.getDimension() == dimension && city.getType() == Settlement.Type.FACTION_CITY && city.getMin().getX() <= max.getX() && city.getMax().getX() >= min.getX()
+					&& city.getMin().getZ() <= max.getZ() && city.getMax().getZ() >= min.getZ()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean isStructureLoaded(WorldServer world, StructureEntry entry) {
+		BlockPos min = entry.getBB().min;
+		BlockPos max = entry.getBB().max;
+		if (((max.getX() >> 4) - (min.getX() >> 4) + 1) * ((max.getZ() >> 4) - (min.getZ() >> 4) + 1) > MAX_STRUCTURE_CHUNKS) {
+			return false;
+		}
+		for (int cx = min.getX() >> 4; cx <= max.getX() >> 4; cx++) {
+			for (int cz = min.getZ() >> 4; cz <= max.getZ() >> 4; cz++) {
+				if (world.getChunkProvider().getLoadedChunk(cx, cz) == null) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * @return the highest spawner of a faction leader in the structure (all of it loaded), with the garrison its spawners are going to
+	 * create for that faction, or null if the structure has no leader spawner
+	 */
+	@Nullable
+	private static LeaderSpawn findLeaderSpawner(WorldServer world, StructureEntry entry) {
+		BlockPos min = entry.getBB().min;
+		BlockPos max = entry.getBB().max;
+		List<TileAdvancedSpawner> spawners = new ArrayList<>();
+		for (int cx = min.getX() >> 4; cx <= max.getX() >> 4; cx++) {
+			for (int cz = min.getZ() >> 4; cz <= max.getZ() >> 4; cz++) {
+				Chunk chunk = world.getChunkProvider().getLoadedChunk(cx, cz);
+				if (chunk == null) {
+					return null;
+				}
+				for (TileEntity tile : new ArrayList<>(chunk.getTileEntityMap().values())) {
+					BlockPos pos = tile.getPos();
+					if (tile instanceof TileAdvancedSpawner && pos.getX() >= min.getX() && pos.getX() <= max.getX() && pos.getY() >= min.getY() && pos.getY() <= max.getY()
+							&& pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ()) {
+						spawners.add((TileAdvancedSpawner) tile);
+					}
+				}
+			}
+		}
+		TileAdvancedSpawner highest = null;
+		String faction = null;
+		for (TileAdvancedSpawner spawner : spawners) {
+			String leaderFaction = getLeaderFaction(spawner.getSettings());
+			if (leaderFaction != null && (highest == null || spawner.getPos().getY() > highest.getPos().getY())) {
+				highest = spawner;
+				faction = leaderFaction;
+			}
+		}
+		if (highest == null) {
+			return null;
+		}
+		int garrison = 0;
+		for (TileAdvancedSpawner spawner : spawners) {
+			garrison += countGarrisonSpawns(world, spawner.getSettings(), faction);
+		}
+		return new LeaderSpawn(faction, highest.getPos(), Math.max(0, Math.min(MAX_ESTIMATED_GARRISON, garrison) - 1));
+	}
+
+	/**
+	 * @return the faction of the leader a spawner creates (a faction leader of a faction that exists), or null
+	 */
+	@Nullable
+	private static String getLeaderFaction(SpawnerSettings settings) {
+		for (SpawnerSettings.EntitySpawnGroup group : settings.getSpawnGroups()) {
+			for (SpawnerSettings.EntitySpawnSettings spawn : group.getEntitiesToSpawn()) {
+				ResourceLocation id = spawn.getEntityId();
+				NBTTagCompound tag = spawn.getCustomTag();
+				if ("ancientwarfarenpc".equals(id.getResourceDomain()) && id.getResourcePath().startsWith("faction.leader") && tag != null
+						&& FactionRegistry.getFactionNames().contains(tag.getString("factionName"))) {
+					return tag.getString("factionName");
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * @return the number of units of the faction that are not passive (soldiers, archers, leaders...) the spawner is going to create
+	 */
+	private static int countGarrisonSpawns(WorldServer world, SpawnerSettings settings, String faction) {
+		int count = 0;
+		for (SpawnerSettings.EntitySpawnGroup group : settings.getSpawnGroups()) {
+			for (SpawnerSettings.EntitySpawnSettings spawn : group.getEntitiesToSpawn()) {
+				NBTTagCompound tag = spawn.getCustomTag();
+				if (tag == null || !faction.equals(tag.getString("factionName"))) {
+					continue;
+				}
+				Entity entity = EntityList.createEntityByIDFromName(spawn.getEntityId(), world);
+				if (entity instanceof NpcFaction && !((NpcFaction) entity).isPassive()) {
+					// a limited spawn creates all its units over time, an unlimited one a batch at a time
+					count += spawn.getSpawnTotal() >= 0 ? spawn.getSpawnTotal() : spawn.getSpawnMax();
+				}
+			}
+		}
+		return count;
+	}
+
+	/**
+	 * Founds a city without leader at the spawner of its leader: manpower from the garrison its structure is going to spawn.
+	 */
+	private static void foundCityFromSpawner(WorldServer world, SettlementData data, LeaderSpawn spawn) {
+		Bounds bounds = findBounds(world, spawn.pos);
+		String name = SettlementNames.generate(world.rand, data.getAll());
+		Settlement settlement = Settlement.createFactionCity(data.getNextId(), world.provider.getDimension(), name, bounds.structureName, spawn.faction, bounds.min,
+				bounds.max, null, spawn.pos, 0, getDay(world));
+		// no siege right after the founding (siege_cooldown_days)
+		settlement.setLastSiegeEnd(world.getTotalWorldTime());
+		settlement.setLastFullSiegeEnd(world.getTotalWorldTime());
+		int manpower = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(spawn.garrison * AWDiplomacyStatics.manpowerPerUnit));
+		settlement.setManpower(manpower);
+		settlement.setMaxManpower(manpower);
+		data.add(settlement);
+		AncientWarfareNPC.LOG.info("Founded city {} ({}) of faction {} from its structure, leader spawner at {}, about {} garrison units, {} manpower, leader to come",
+				settlement.getId(), name, settlement.getFaction(), spawn.pos, spawn.garrison, manpower);
 	}
 
 	/**
@@ -541,6 +777,17 @@ public class Settlements {
 	private static void checkLeader(WorldServer world, SettlementData data, Settlement settlement) {
 		UUID leaderId = settlement.getLeaderId();
 		if (leaderId == null) {
+			// a city founded from its structure waits for its leader: while the spawner is loaded it is given AWAITING_LEADER_CHECKS checks
+			// (minutes), then the leader will never come (a spawner that does not work, a structure already conquered) and the city is dropped
+			if (!world.isBlockLoaded(settlement.getLastLeaderPos())) {
+				settlement.missingLeaderChecks = 0;
+			} else if (++settlement.missingLeaderChecks >= AWAITING_LEADER_CHECKS) {
+				AncientWarfareNPC.LOG.info("City {} ({}) of faction {}: its leader did not come in {} minutes (spawner at {}), the city is dropped", settlement.getId(),
+						settlement.getName(), settlement.getFaction(), AWAITING_LEADER_CHECKS * LEADER_CHECK_INTERVAL / 1200, settlement.getLastLeaderPos());
+				settlement.setAbandoned();
+				data.markDirty();
+				releaseGarrison(world, settlement);
+			}
 			return;
 		}
 		if (!world.isBlockLoaded(settlement.getCenter()) || !world.isBlockLoaded(settlement.getLastLeaderPos())) {

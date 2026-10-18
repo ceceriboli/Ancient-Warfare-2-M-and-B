@@ -367,6 +367,7 @@ public class Sieges {
 		BlockPos target = getTarget(world, settlement);
 		BlockPos center = settlement.getCenter();
 		boolean breach = isBreachAllowed(siege);
+		boolean build = isBuildAllowed(siege);
 		for (NpcFaction npc : siege.getLoadedAttackers()) {
 			if (npc.getDistanceSq(target) > MAX_ATTACKER_DISTANCE * MAX_ATTACKER_DISTANCE) {
 				siege.removeAttacker(npc);
@@ -374,7 +375,7 @@ public class Sieges {
 			} else if (isEngineer(npc)) {
 				commandEngineer(world, npc, settlement);
 			} else {
-				aim(npc, target, breach);
+				aim(npc, target, breach, build);
 			}
 		}
 		commandDefenders(world, siege, settlement, target);
@@ -485,6 +486,7 @@ public class Sieges {
 			Diplomacy.onCityPlundered(world, settlement.getFaction(), siege.getAttackerFaction());
 		}
 		Armies.releaseAll(world, siege.getId());
+		AssaultBuilds.removeAll(world, siege.getId());
 		Service.onSiegeEnded(world, siege, settlement, outcome);
 		AncientWarfareNPC.LOG.info("{} {} of city {} by {} ended: {}", siege.getKind().getName(), siege.getId(), siege.getSettlementId(),
 				siege.getAttackerFaction(), outcome);
@@ -549,7 +551,7 @@ public class Sieges {
 		return settlement.getLastLeaderPos();
 	}
 
-	private static void aim(NpcFaction npc, BlockPos target, boolean breach) {
+	private static void aim(NpcFaction npc, BlockPos target, boolean breach, boolean build) {
 		// the home follows the attacker: Ancient Warfare shortens the attack range of an npc the farther it is from home
 		// (NpcAIAttack.getAdjustedTargetDistance), with the home on the city leader attackers ignored defenders a few blocks away.
 		// The assault AI takes them to the leader, and the move home AIs stay idle
@@ -557,10 +559,18 @@ public class Sieges {
 		NpcAIFactionAssault ai = getOrAddAssaultAI(npc);
 		ai.setTarget(target);
 		ai.setBreachAllowed(breach);
+		ai.setBuildAllowed(build);
 	}
 
 	static boolean isBreachAllowed(Siege siege) {
 		return "all".equals(AWDiplomacyStatics.attackerBreach) || "siege".equals(AWDiplomacyStatics.attackerBreach) && siege.getKind() == Siege.Kind.SIEGE;
+	}
+
+	/**
+	 * @return true if the attackers of the siege may place ladders and bridges when they cannot get closer to the leader
+	 */
+	static boolean isBuildAllowed(Siege siege) {
+		return "all".equals(AWDiplomacyStatics.attackerBuild) || "siege".equals(AWDiplomacyStatics.attackerBuild) && siege.getKind() == Siege.Kind.SIEGE;
 	}
 
 	/**
@@ -763,7 +773,7 @@ public class Sieges {
 			npc.setHealth(npc.getMaxHealth());
 			if (world.spawnEntity(npc)) {
 				siege.addAttacker(npc);
-				aim(npc, target, isBreachAllowed(siege));
+				aim(npc, target, isBreachAllowed(siege), isBuildAllowed(siege));
 				health += npc.getMaxHealth();
 				spawned++;
 			}

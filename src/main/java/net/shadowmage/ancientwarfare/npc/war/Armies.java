@@ -62,6 +62,14 @@ public class Armies {
 		}
 	}
 
+	/**
+	 * @return the id of the siege the npc attacks in, as an attacker of the siege or as a soldier of a player that joined its assault; 0 if none
+	 */
+	public static int getSiegeId(Entity npc) {
+		NBTTagCompound data = npc.getEntityData();
+		return data.hasKey(Settlements.TAG_SIEGE) ? data.getInteger(Settlements.TAG_SIEGE) : data.getInteger(TAG_CHARGE_SIEGE);
+	}
+
 	private static List<NpcBase> getMembers(UUID commander) {
 		List<NpcBase> ret = new ArrayList<>();
 		List<WeakReference<NpcBase>> refs = members.get(commander);
@@ -215,6 +223,7 @@ public class Armies {
 				NpcAIFactionAssault ai = Sieges.getOrAddAssaultAI(npc);
 				ai.setTarget(Sieges.getTarget(world, settlement));
 				ai.setBreachAllowed(Sieges.isBreachAllowed(siege));
+				ai.setBuildAllowed(Sieges.isBuildAllowed(siege));
 			}
 		}
 	}

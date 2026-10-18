@@ -70,7 +70,7 @@ public class Settlement {
 	}
 
 	public static Settlement createFactionCity(int id, int dimension, String name, String structureName, String faction, BlockPos min, BlockPos max,
-			UUID leaderId, BlockPos leaderPos, int manpower, long day) {
+			@Nullable UUID leaderId, BlockPos leaderPos, int manpower, long day) {
 		Settlement settlement = new Settlement(id);
 		settlement.type = Type.FACTION_CITY;
 		settlement.dimension = dimension;

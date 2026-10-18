@@ -168,12 +168,14 @@ public class FactionDialogue {
 			sendPage(player, npc, new TextComponentTranslation("command.aw.service.propose.invalid"), button(new TextComponentTranslation("gui.aw.dialogue.back"), BACK));
 			return;
 		}
-		Button raid = button(new TextComponentTranslation("gui.aw.dialogue.raid", AWDiplomacyStatics.campaignProposalStanding), PROPOSE_PREFIX + cityId + ":raid")
-				.hover(new TextComponentTranslation("command.aw.service.propose.raid.hover", AWDiplomacyStatics.campaignProposalStanding));
+		Button raid = button(new TextComponentTranslation("gui.aw.dialogue.raid", Service.proposalStanding(Siege.Kind.RAID)), PROPOSE_PREFIX + cityId + ":raid")
+				.hover(new TextComponentTranslation("command.aw.service.propose.raid.hover", Service.proposalStanding(Siege.Kind.RAID),
+						Service.proposalPenalty(Siege.Kind.RAID)));
 		boolean siegeAllowed = Service.isFullSiegeAllowed(city, world.getTotalWorldTime());
-		Button siege = button(siegeAllowed ? new TextComponentTranslation("gui.aw.dialogue.siege", AWDiplomacyStatics.campaignProposalSiegeStanding)
+		Button siege = button(siegeAllowed ? new TextComponentTranslation("gui.aw.dialogue.siege", Service.proposalStanding(Siege.Kind.SIEGE))
 				: new TextComponentTranslation("gui.aw.dialogue.siege_too_recent"), PROPOSE_PREFIX + cityId + ":siege")
-				.hover(new TextComponentTranslation("command.aw.service.propose.siege.hover", AWDiplomacyStatics.campaignProposalSiegeStanding));
+				.hover(new TextComponentTranslation("command.aw.service.propose.siege.hover", Service.proposalStanding(Siege.Kind.SIEGE),
+						Service.proposalPenalty(Siege.Kind.SIEGE)));
 		siege.enabled = siegeAllowed;
 		sendPage(player, npc, new TextComponentTranslation("gui.aw.dialogue.kind", describe(player, city)), raid, siege,
 				button(new TextComponentTranslation("gui.aw.dialogue.back"), PROPOSE));

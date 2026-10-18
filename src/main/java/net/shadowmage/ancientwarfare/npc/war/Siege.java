@@ -156,6 +156,9 @@ public class Siege {
 	private Origin origin = Origin.AMBIENT;
 	private long musterUntil;
 	private final Map<UUID, Call> calls = new LinkedHashMap<>();
+	@Nullable
+	private UUID proposer;
+	private int proposerPenalty;
 
 	// not saved
 	private final List<WeakReference<NpcFaction>> attackers = new ArrayList<>();
@@ -201,6 +204,23 @@ public class Siege {
 	void setSize(int totalWaves, int attackersPerWave) {
 		this.totalWaves = totalWaves;
 		this.attackersPerWave = attackersPerWave;
+	}
+
+	/**
+	 * The member who proposed this campaign to its ruler, if any, and the standing it loses if the campaign is lost.
+	 */
+	@Nullable
+	public UUID getProposer() {
+		return proposer;
+	}
+
+	public int getProposerPenalty() {
+		return proposerPenalty;
+	}
+
+	void setProposal(UUID proposer, int penalty) {
+		this.proposer = proposer;
+		this.proposerPenalty = penalty;
 	}
 
 	public Map<UUID, Call> getCalls() {
@@ -358,6 +378,10 @@ public class Siege {
 			callList.appendTag(callTag);
 		}
 		tag.setTag("calls", callList);
+		if (proposer != null) {
+			tag.setUniqueId("proposer", proposer);
+			tag.setInteger("proposerPenalty", proposerPenalty);
+		}
 		return tag;
 	}
 
@@ -378,6 +402,10 @@ public class Siege {
 		siege.idleTicks = tag.getInteger("idleTicks");
 		siege.origin = Origin.fromName(tag.getString("origin"));
 		siege.musterUntil = tag.getLong("musterUntil");
+		if (tag.hasUniqueId("proposer")) {
+			siege.proposer = tag.getUniqueId("proposer");
+			siege.proposerPenalty = tag.getInteger("proposerPenalty");
+		}
 		NBTTagList callList = tag.getTagList("calls", Constants.NBT.TAG_COMPOUND);
 		for (int i = 0; i < callList.tagCount(); i++) {
 			NBTTagCompound callTag = callList.getCompoundTagAt(i);

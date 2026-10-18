@@ -44,6 +44,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int campaignProposalStanding = 120;
 	public static int campaignProposalSiegeStanding = 180;
 	public static int campaignProposalCooldownDays = 1;
+	public static int campaignProposalSiegeCooldownDays = 1;
+	public static double campaignProposalFailureRatio = 0.5;
 	public static boolean dialogueGui = true;
 	public static boolean factionChestsEnabled = true;
 	public static int chestTrustStanding = 150;
@@ -72,6 +74,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean settlementsEnabled = true;
 	public static int settlementDefaultRadius = 48;
 	public static boolean settlementUseStructureBounds = true;
+	public static int settlementFoundRange = 192;
 	public static boolean manpowerBarEnabled = true;
 	public static int manpowerBarRange = 16;
 	public static double manpowerPerUnit = 2.0;
@@ -96,6 +99,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int siegeMaxTicks = 24000;
 	public static int siegeWaveStallTicks = 6000;
 	public static String attackerBreach = "siege";
+	public static String attackerBuild = "siege";
 	public static double breachMaxHardness = 5.0;
 	public static int breachTicksPerHardness = 40;
 	public static String[] breachBlockBlacklist = {"minecraft:bedrock", "minecraft:obsidian", "minecraft:beacon"};
@@ -217,6 +221,10 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		campaignProposalCooldownDays = config.get(serverOptions, "campaign_proposal_cooldown_days", campaignProposalCooldownDays, "Campaign proposal cooldown\nDefault=" + campaignProposalCooldownDays + "\n" + "Minecraft days after an accepted proposal before the same member can propose another campaign.", 0, 1000).getInt();
 
+		campaignProposalSiegeCooldownDays = config.get(serverOptions, "campaign_proposal_siege_cooldown_days", campaignProposalSiegeCooldownDays, "Proposal: full siege pause\nDefault=" + campaignProposalSiegeCooldownDays + "\n" + "Minecraft days a city must have gone without a full siege (counted on the real ticks of the world) before a member can\n" + "propose one to its ruler. Automatic full sieges keep waiting full_siege_cooldown_days.", 0, 1000).getInt();
+
+		campaignProposalFailureRatio = config.get(serverOptions, "campaign_proposal_failure_ratio", campaignProposalFailureRatio, "Proposal: penalty for a lost campaign\nDefault=" + campaignProposalFailureRatio + "\n" + "A campaign proposed by a member that is lost (the city repels it or it is lifted) costs the proposer this fraction of the\n" + "standing needed to propose it: with 120 for a raid and 180 for a full siege and 0.5, 60 and 90. 0 = no penalty.", 0.0D, 10.0D).getDouble();
+
 		dialogueGui = config.get(serverOptions, "dialogue_gui", dialogueGui, "Dialogue window\nDefault=" + dialogueGui + "\n" + "If true, a ruling leader that has something to offer (pledge allegiance, propose a campaign, renounce) opens a\n" + "dialogue window with buttons. If false, it speaks in chat with clickable texts.").getBoolean();
 
 		factionChestsEnabled = config.get(serverOptions, "faction_chests_enabled", factionChestsEnabled, "Faction chests for members\nDefault=" + factionChestsEnabled + "\n" + "If true, the npcs of a faction let its members open the loot chests of its structures (otherwise locked while a\n" + "faction npc sees the player) once their standing reaches chest_trust_standing, and the players who served in the\n" + "attack that conquered a city plunder its chests freely for chest_plunder_ticks.").getBoolean();
@@ -273,6 +281,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		settlementUseStructureBounds = config.get(serverOptions, "settlement_use_structure_bounds", settlementUseStructureBounds, "Cities use structure bounds\nDefault=" + settlementUseStructureBounds + "\n" + "If true, a city takes the bounds of the Ancient Warfare town or structure its leader is in. If false, every city is\n" + "a square of settlement_default_radius blocks around its leader.").getBoolean();
 
+		settlementFoundRange = config.get(serverOptions, "settlement_found_range", settlementFoundRange, "Cities born from their structure\nDefault=" + settlementFoundRange + "\n" + "A structure that has the spawner of a faction leader becomes a city as soon as it is fully loaded within this many blocks of a\n" + "player (about the distance up to which the world is loaded and structures are generated: 12 chunks), without waiting for\n" + "the leader to appear, which needs a player closer (spawner_min_player_range). The leader is linked to the city when it\n" + "comes. 0 = cities only appear when their leader does.", 0, 512).getInt();
+
 		manpowerBarEnabled = config.get(serverOptions, "manpower_bar_enabled", manpowerBarEnabled, "Manpower bar\nDefault=" + manpowerBarEnabled + "\n" + "If true, players inside a city (or near it) see a boss bar with the city's remaining manpower.").getBoolean();
 
 		manpowerBarRange = config.get(serverOptions, "manpower_bar_range", manpowerBarRange, "Manpower bar range\nDefault=" + manpowerBarRange + "\n" + "The manpower bar is shown to players within this many blocks of the city bounds (0 = only inside the city).", 0, 256).getInt();
@@ -320,6 +330,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		siegeWaveStallTicks = config.get(serverOptions, "siege_wave_stall_ticks", siegeWaveStallTicks, "Stalled wave\nDefault=" + siegeWaveStallTicks + "\n" + "Ticks (20 per second) a wave can go on without any attacker or defender killed. Then the wave withdraws and the\n" + "next one comes, or, after the last wave, the raid or siege is lifted. Time only runs while the city is loaded. 0 = never.", 0, 720000).getInt();
 
 		attackerBreach = config.get(serverOptions, "attacker_breach", attackerBreach, "Attackers break blocks\nDefault=" + attackerBreach + "\n" + "Melee attackers that cannot get closer to the city leader for a few seconds break the block in front of them\n" + "(walls, iron doors, gates), within breach_max_hardness and breach_block_blacklist, if the mobGriefing gamerule allows it.\n" + "none = never, siege = only in full sieges, all = in raids and full sieges.", new String[] {"none", "siege", "all"}).getString();
+
+		attackerBuild = config.get(serverOptions, "attacker_build", attackerBuild, "Attackers build ladders and bridges\nDefault=" + attackerBuild + "\n" + "Attackers that cannot get closer to the city leader for a few seconds place ladders to climb a wall (when the leader is\n" + "higher) or planks to bridge a gap (as the raiders of MineColonies), if the mobGriefing gamerule allows it. Everything is\n" + "taken away when the siege ends. none = never, siege = only in full sieges, all = in raids and full sieges.", new String[] {"none", "siege", "all"}).getString();
 
 		breachMaxHardness = config.get(serverOptions, "breach_max_hardness", breachMaxHardness, "Breach hardness\nDefault=" + breachMaxHardness + "\n" + "Hardest block attackers can break (planks 2, cobblestone 2, stone bricks 1.5, iron door 5, obsidian 50).", 0.0D, 100.0D).getDouble();
 

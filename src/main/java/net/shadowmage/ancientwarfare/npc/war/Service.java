@@ -347,6 +347,9 @@ public class Service {
 	 */
 	static void onSiegeEnded(World world, Siege siege, @Nullable Settlement settlement, Sieges.Outcome outcome) {
 		MinecraftServer server = world.getMinecraftServer();
+		if (server != null && isEnabled()) {
+			penalizeLostProposal(server, world, siege, settlement, outcome);
+		}
 		if (!isEnabled() || server == null || siege.getCalls().isEmpty() || outcome == Sieges.Outcome.PEACE || outcome == Sieges.Outcome.STOPPED) {
 			return;
 		}
@@ -380,6 +383,32 @@ public class Service {
 			} else {
 				strike(server, world, member, player, city);
 			}
+		}
+	}
+
+	/**
+	 * A campaign the player proposed to its ruler was lost (the city repelled it, or it was lifted): the proposer loses standing with
+	 * its faction, a fraction of what proposing it required. Not when it was never fought (called off for lack of support, the proposer
+	 * gets a strike then), nor when peace or an operator ended it.
+	 */
+	private static void penalizeLostProposal(MinecraftServer server, World world, Siege siege, @Nullable Settlement settlement, Sieges.Outcome outcome) {
+		if (siege.getProposer() == null || siege.getProposerPenalty() <= 0 || outcome != Sieges.Outcome.DEFENDED && outcome != Sieges.Outcome.LIFTED) {
+			return;
+		}
+		FactionMembershipData.Member member = getMembership(world).getMember(siege.getProposer());
+		if (member == null || !member.faction.equals(siege.getAttackerFaction())) {
+			return; // no longer a member of the faction it proposed the campaign to
+		}
+		FactionTracker.INSTANCE.adjustStandingFor(world, member.playerName, member.faction, -siege.getProposerPenalty());
+		AncientWarfareNPC.LOG.info("{} proposed {} {} and it was lost ({}): standing with the {} -{}", member.playerName, siege.getKind().getName(), siege.getId(),
+				outcome, member.faction, siege.getProposerPenalty());
+		EntityPlayerMP player = server.getPlayerList().getPlayerByUUID(member.playerId);
+		if (player != null) {
+			ITextComponent city = settlement == null ? new TextComponentString("?") : Settlements.displayName(settlement);
+			ITextComponent message = new TextComponentTranslation("command.aw.service.proposal_failed", city, FactionMembership.factionName(member.faction),
+					siege.getProposerPenalty());
+			message.getStyle().setColor(TextFormatting.RED);
+			player.sendMessage(message);
 		}
 	}
 
@@ -491,8 +520,26 @@ public class Service {
 		return targets;
 	}
 
+	/**
+	 * @return true if a member can propose a full siege of the city now: proposals wait campaign_proposal_siege_cooldown_days, not the
+	 * full_siege_cooldown_days of the automatic full sieges
+	 */
 	public static boolean isFullSiegeAllowed(Settlement city, long now) {
-		return now - city.getLastFullSiegeEnd() >= (long) AWDiplomacyStatics.fullSiegeCooldownDays * 24000L;
+		return now - city.getLastFullSiegeEnd() >= (long) AWDiplomacyStatics.campaignProposalSiegeCooldownDays * 24000L;
+	}
+
+	/**
+	 * @return the standing a member needs to propose a raid or a full siege
+	 */
+	public static int proposalStanding(Siege.Kind kind) {
+		return kind == Siege.Kind.SIEGE ? AWDiplomacyStatics.campaignProposalSiegeStanding : AWDiplomacyStatics.campaignProposalStanding;
+	}
+
+	/**
+	 * @return the standing the proposer loses when the proposed campaign is lost: a fraction of the standing needed to propose it
+	 */
+	public static int proposalPenalty(Siege.Kind kind) {
+		return (int) Math.round(proposalStanding(kind) * AWDiplomacyStatics.campaignProposalFailureRatio);
 	}
 
 	/**
@@ -517,12 +564,13 @@ public class Service {
 					direction(dx, dz));
 			line.appendText(" ");
 			line.appendSibling(clickable(new TextComponentTranslation("command.aw.service.propose.raid"), TextFormatting.GREEN,
-					"/awservice propose " + city.getId() + " raid", new TextComponentTranslation("command.aw.service.propose.raid.hover", AWDiplomacyStatics.campaignProposalStanding)));
+					"/awservice propose " + city.getId() + " raid", new TextComponentTranslation("command.aw.service.propose.raid.hover",
+							proposalStanding(Siege.Kind.RAID), proposalPenalty(Siege.Kind.RAID))));
 			if (isFullSiegeAllowed(city, now)) {
 				line.appendText(" ");
 				line.appendSibling(clickable(new TextComponentTranslation("command.aw.service.propose.siege"), TextFormatting.RED,
 						"/awservice propose " + city.getId() + " siege",
-						new TextComponentTranslation("command.aw.service.propose.siege.hover", AWDiplomacyStatics.campaignProposalSiegeStanding)));
+						new TextComponentTranslation("command.aw.service.propose.siege.hover", proposalStanding(Siege.Kind.SIEGE), proposalPenalty(Siege.Kind.SIEGE))));
 			}
 			player.sendMessage(line);
 		}
@@ -557,7 +605,7 @@ public class Service {
 			throw new CommandException("command.aw.service.propose.no_siege", Settlements.displayName(city));
 		}
 		int standing = FactionTracker.INSTANCE.getStandingFor(world, player.getName(), faction);
-		int needed = kind == Siege.Kind.SIEGE ? AWDiplomacyStatics.campaignProposalSiegeStanding : AWDiplomacyStatics.campaignProposalStanding;
+		int needed = proposalStanding(kind);
 		if (data.getSieges().size() >= AWDiplomacyStatics.maxActiveSieges) {
 			return new TextComponentTranslation("command.aw.service.propose.refused.busy");
 		}
@@ -571,7 +619,10 @@ public class Service {
 		getMembership(world).setLastProposalDay(player.getUniqueID(), Diplomacy.getDay(world));
 		AncientWarfareNPC.LOG.info("{} proposed a {} of city {} ({}) to the {}: accepted", player.getName(), kind.getName(), city.getId(), city.getFaction(), faction);
 		ITextComponent answer = new TextComponentTranslation("command.aw.service.propose.accepted." + kind.getName(), Settlements.displayName(city));
-		Sieges.start(world, data, city, faction, kind, Siege.Origin.OFFENSIVE);
+		Siege siege = Sieges.start(world, data, city, faction, kind, Siege.Origin.OFFENSIVE);
+		// the proposer answers for the result: if the campaign is lost (see onSiegeEnded) it loses standing
+		siege.setProposal(player.getUniqueID(), proposalPenalty(kind));
+		data.markDirty();
 		return answer;
 	}
 

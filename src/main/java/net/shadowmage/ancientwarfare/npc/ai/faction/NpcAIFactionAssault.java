@@ -4,11 +4,13 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoor;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
+import net.minecraft.block.state.BlockFaceShape;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.IRangedAttackMob;
 import net.minecraft.entity.ai.EntityAITasks;
 import net.minecraft.entity.passive.AbstractHorse;
+import net.minecraft.init.Blocks;
 import net.minecraft.pathfinding.Path;
 import net.minecraft.pathfinding.PathPoint;
 import net.minecraft.util.EnumFacing;
@@ -21,6 +23,8 @@ import net.minecraftforge.event.ForgeEventFactory;
 import net.shadowmage.ancientwarfare.npc.ai.NpcAI;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
+import net.shadowmage.ancientwarfare.npc.war.Armies;
+import net.shadowmage.ancientwarfare.npc.war.AssaultBuilds;
 
 import javax.annotation.Nullable;
 import java.util.Arrays;
@@ -38,6 +42,10 @@ import java.util.Random;
  * <p>
  * When breaching is allowed (see Sieges), a melee npc that does not move for a while breaks the block in front of it towards the target,
  * within the limits of the config (hardness, blacklist, mobGriefing): walls, iron doors, gates.
+ * <p>
+ * When building is allowed (see Sieges), an npc that does not move for a while places a ladder up the wall in front of it if the target is
+ * higher (the others that get stuck there climb the same ladder), or planks to bridge the gap in front of it (see AssaultBuilds), as the
+ * raiders of MineColonies do without a path. Pushing against the wall on a ladder makes the npc climb (vanilla).
  */
 public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	public static final int PRIORITY = 1;
@@ -58,6 +66,19 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	private static final int NO_PROGRESS_CHECKS = 2;
 	private static final int MIN_BREACH_TICKS = 20;
 	private static final double BREACH_REACH_SQ = 3D * 3D;
+	private static final int LADDER_MIN_RISE = 3;
+	private static final int MAX_LADDER_HEIGHT = 24;
+	private static final int LADDER_PLACE_TICKS = 6;
+	private static final double LADDER_JOIN_RANGE = 10D;
+	private static final int BUILD_TIMEOUT_TICKS = 400;
+	private static final int TOP_PUSH_TICKS = 40;
+	private static final int BRIDGE_MAX_LENGTH = 10;
+	private static final int BRIDGE_PLACE_TICKS = 8;
+	private static final double AT_CELL_DIST_SQ = 1.5D * 1.5D;
+
+	private enum BuildMode {
+		NONE, LADDER, BRIDGE
+	}
 
 	@Nullable
 	private BlockPos target;
@@ -77,6 +98,21 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	private BlockPos progressCheckPos;
 	private long progressCheckTick;
 	private int noProgressChecks;
+	private boolean buildAllowed;
+	private BuildMode buildMode = BuildMode.NONE;
+	private int siegeId;
+	private long buildStart;
+	private long lastPlace;
+	@Nullable
+	private AssaultBuilds.Column column;
+	private int climbStage;
+	private long topSince;
+	@Nullable
+	private EnumFacing bridgeDir;
+	@Nullable
+	private BlockPos bridgeStart;
+	private int bridgeNext;
+	private int bridgeEnd;
 
 	public NpcAIFactionAssault(NpcBase npc) {
 		super(npc);
@@ -184,7 +220,12 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 			continueBreach();
 			return;
 		}
-		if (checkNoProgress() && (dismount() || breachAllowed && startBreach())) {
+		if (buildMode != BuildMode.NONE) {
+			continueBuild();
+			return;
+		}
+		// a rider goes on foot, then ladders and bridges (when the way is not a wall at the height of the target), then the breach
+		if (checkNoProgress() && (dismount() || startBuild() || breachAllowed && startBreach())) {
 			return;
 		}
 		if (repathDelay > 0) {
@@ -406,8 +447,224 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 		this.breachAllowed = breachAllowed;
 	}
 
+	public void setBuildAllowed(boolean buildAllowed) {
+		this.buildAllowed = buildAllowed;
+	}
+
+	/**
+	 * An npc that cannot get closer climbs the wall in front of it on a ladder when the target is higher (placing the ladders if nobody
+	 * has), or bridges the gap in front of it.
+	 *
+	 * @return true if one of them started
+	 */
+	private boolean startBuild() {
+		if (!buildAllowed || target == null || !ForgeEventFactory.getMobGriefingEvent(npc.world, npc)) {
+			return false;
+		}
+		siegeId = Armies.getSiegeId(npc);
+		if (siegeId == 0) {
+			return false;
+		}
+		EnumFacing dir = EnumFacing.getFacingFromVector((float) (target.getX() + 0.5D - npc.posX), 0F, (float) (target.getZ() + 0.5D - npc.posZ));
+		return target.getY() - npc.posY >= LADDER_MIN_RISE && startLadder(dir) || startBridge(dir);
+	}
+
+	private boolean startLadder(EnumFacing dir) {
+		BlockPos pos = npc.getPosition();
+		AssaultBuilds.Column existing = AssaultBuilds.findLadder(siegeId, pos, LADDER_JOIN_RANGE);
+		if (existing != null) {
+			beginClimb(existing);
+			return true;
+		}
+		// the wall in front, or at its sides when the target is towards a corner
+		for (EnumFacing facing : new EnumFacing[] {dir, dir.rotateY(), dir.rotateYCCW()}) {
+			AssaultBuilds.Column planned = planLadder(pos, facing);
+			if (planned != null) {
+				beginClimb(AssaultBuilds.addLadder(siegeId, planned));
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * @return a ladder up the wall at the side of base (towards facing) up to the top of the wall, if there is room for the ladders and the
+	 * top of the wall can be stepped onto, otherwise null
+	 */
+	@Nullable
+	private AssaultBuilds.Column planLadder(BlockPos base, EnumFacing facing) {
+		World world = npc.world;
+		for (int i = 0; i < MAX_LADDER_HEIGHT; i++) {
+			BlockPos cell = base.up(i);
+			if (i > 0 && !world.isAirBlock(cell)) {
+				return null; // an overhang in the way
+			}
+			BlockPos wall = cell.offset(facing);
+			if (world.getBlockState(wall).getBlockFaceShape(world, wall, facing.getOpposite()) != BlockFaceShape.SOLID) {
+				// the wall ends here: the cell beside this one is the top, with room for the npc to step onto
+				return i >= 2 && world.isAirBlock(wall) && world.isAirBlock(wall.up()) ? new AssaultBuilds.Column(base, facing, i) : null;
+			}
+		}
+		return null;
+	}
+
+	private void beginClimb(AssaultBuilds.Column column) {
+		this.column = column;
+		buildMode = BuildMode.LADDER;
+		climbStage = 0;
+		buildStart = npc.world.getTotalWorldTime();
+		lastPlace = 0;
+		npc.getNavigator().clearPath();
+	}
+
+	/**
+	 * @return true if there is an edge in front (no floor) with ground a few blocks ahead on the same level, and the npc started bridging it
+	 */
+	private boolean startBridge(EnumFacing dir) {
+		World world = npc.world;
+		BlockPos start = npc.getPosition();
+		if (!isFloorMissing(world, start.offset(dir))) {
+			return false;
+		}
+		for (int i = 1; i <= BRIDGE_MAX_LENGTH + 1; i++) {
+			BlockPos cell = start.offset(dir, i);
+			if (!world.isAirBlock(cell) || !world.isAirBlock(cell.up())) {
+				return false; // something in the way: not a gap
+			}
+			if (!isFloorMissing(world, cell)) {
+				bridgeDir = dir;
+				bridgeStart = start;
+				bridgeNext = 1;
+				bridgeEnd = i;
+				buildMode = BuildMode.BRIDGE;
+				buildStart = world.getTotalWorldTime();
+				lastPlace = 0;
+				npc.getNavigator().clearPath();
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean isFloorMissing(World world, BlockPos cell) {
+		BlockPos floor = cell.down();
+		return world.isAirBlock(floor) || world.getBlockState(floor).getMaterial().isLiquid();
+	}
+
+	private void continueBuild() {
+		long now = npc.world.getTotalWorldTime();
+		if (!buildAllowed || now - buildStart > BUILD_TIMEOUT_TICKS) {
+			stopBuild();
+		} else if (buildMode == BuildMode.LADDER) {
+			continueClimb(now);
+		} else {
+			continueBridge(now);
+		}
+	}
+
+	private void continueClimb(long now) {
+		if (column == null) {
+			stopBuild();
+			return;
+		}
+		BlockPos base = column.getBase();
+		BlockPos wall = base.offset(column.getDir());
+		BlockPos pos = npc.getPosition();
+		int level = pos.getY() - base.getY();
+		if (climbStage == 0) {
+			// walk to the foot of the ladder
+			if (pos.getX() != base.getX() || pos.getZ() != base.getZ() || Math.abs(level) > 1) {
+				if (npc.getNavigator().noPath() && !tryMoveTo(base)) {
+					stopBuild();
+				}
+				return;
+			}
+			climbStage = 1;
+			npc.getNavigator().clearPath();
+		}
+		if (climbStage == 1) {
+			if (Math.abs(npc.posX - (base.getX() + 0.5D)) > 0.9D || Math.abs(npc.posZ - (base.getZ() + 0.5D)) > 0.9D) {
+				stopBuild(); // fell or was pushed off the ladder
+				return;
+			}
+			// whoever is at the top of the ladders places the next one
+			if (!column.isComplete() && now - lastPlace >= LADDER_PLACE_TICKS && level >= column.getPlaced() - 1) {
+				if (!column.placeNext(npc.world)) {
+					stopBuild();
+					return;
+				}
+				lastPlace = now;
+				npc.swingArm(EnumHand.MAIN_HAND);
+				SoundType sound = SoundType.LADDER;
+				npc.world.playSound(null, base.up(column.getPlaced() - 1), sound.getPlaceSound(), SoundCategory.HOSTILE, sound.getVolume() * 0.5F, sound.getPitch());
+			}
+			// pushing against the wall on a ladder makes the npc climb (EntityLivingBase.travel)
+			npc.getMoveHelper().setMoveTo(wall.getX() + 0.5D, npc.posY, wall.getZ() + 0.5D, moveSpeed);
+			if (column.isComplete() && level >= column.getHeight() - 1) {
+				climbStage = 2;
+				topSince = now;
+			}
+			return;
+		}
+		// at the top: onto the roof beside the wall
+		BlockPos roof = column.getRoof();
+		npc.getMoveHelper().setMoveTo(roof.getX() + 0.5D, roof.getY(), roof.getZ() + 0.5D, moveSpeed);
+		double dx = npc.posX - (roof.getX() + 0.5D);
+		double dz = npc.posZ - (roof.getZ() + 0.5D);
+		if (npc.posY >= roof.getY() - 0.2D && dx * dx + dz * dz <= 0.8D * 0.8D || now - topSince > TOP_PUSH_TICKS) {
+			stopBuild();
+			repathDelay = 0;
+		}
+	}
+
+	private void continueBridge(long now) {
+		if (bridgeDir == null || bridgeStart == null) {
+			stopBuild();
+			return;
+		}
+		World world = npc.world;
+		// the next floor block is placed once the npc stands at the end of what is built
+		BlockPos last = bridgeStart.offset(bridgeDir, bridgeNext - 1);
+		if (bridgeNext < bridgeEnd && now - lastPlace >= BRIDGE_PLACE_TICKS && horizontalDistSq(last) <= AT_CELL_DIST_SQ) {
+			BlockPos cell = bridgeStart.offset(bridgeDir, bridgeNext);
+			BlockPos floor = cell.down();
+			IBlockState original = world.getBlockState(floor);
+			if (world.isAirBlock(floor) || original.getMaterial().isLiquid()) {
+				world.setBlockState(floor, Blocks.PLANKS.getDefaultState());
+				AssaultBuilds.addBridge(siegeId, floor, original);
+				npc.swingArm(EnumHand.MAIN_HAND);
+				SoundType sound = SoundType.WOOD;
+				world.playSound(null, floor, sound.getPlaceSound(), SoundCategory.HOSTILE, sound.getVolume() * 0.5F, sound.getPitch());
+			}
+			bridgeNext++;
+			lastPlace = now;
+		}
+		// onto the last floor block, and across once the bridge reaches the ground
+		BlockPos goal = bridgeStart.offset(bridgeDir, bridgeNext >= bridgeEnd ? bridgeEnd : bridgeNext - 1);
+		npc.getMoveHelper().setMoveTo(goal.getX() + 0.5D, goal.getY(), goal.getZ() + 0.5D, moveSpeed);
+		if (bridgeNext >= bridgeEnd && horizontalDistSq(goal) <= AT_CELL_DIST_SQ) {
+			stopBuild();
+			repathDelay = 0;
+		}
+	}
+
+	private double horizontalDistSq(BlockPos pos) {
+		double dx = npc.posX - (pos.getX() + 0.5D);
+		double dz = npc.posZ - (pos.getZ() + 0.5D);
+		return dx * dx + dz * dz;
+	}
+
+	private void stopBuild() {
+		buildMode = BuildMode.NONE;
+		column = null;
+		bridgeDir = null;
+		bridgeStart = null;
+		npc.getNavigator().clearPath();
+	}
+
 	@Override
 	public void resetTask() {
+		stopBuild();
 		stopBreach();
 		npc.removeAITask(TASK_MOVE);
 		npc.getNavigator().clearPath();
