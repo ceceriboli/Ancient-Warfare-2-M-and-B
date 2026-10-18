@@ -3,6 +3,7 @@ package net.shadowmage.ancientwarfare.npc.war;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLiving;
+import net.minecraft.entity.ai.EntityAIBase;
 import net.minecraft.entity.ai.EntityAITasks;
 import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionFlee;
 import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionHoldPost;
@@ -12,7 +13,9 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.util.text.TextFormatting;
@@ -133,6 +136,9 @@ public class Settlements {
 				}
 				if (ROLE_LEADER.equals(data.getString(TAG_ROLE)) && npc.getUniqueID().equals(settlement.getLeaderId())) {
 					addHoldPostAI(npc);
+				} else if (ROLE_LEADER.equals(data.getString(TAG_ROLE))) {
+					// a higher leader took its place while it was not loaded: it is one of the captains now
+					tag(npc, settlement, ROLE_CAPTAIN);
 				}
 				if (npc instanceof NpcFactionLeader) {
 					((NpcFactionLeader) npc).setRuler(ROLE_LEADER.equals(data.getString(TAG_ROLE)) && npc.getUniqueID().equals(settlement.getLeaderId()));
@@ -268,6 +274,9 @@ public class Settlements {
 				existing.missingLeaderChecks = 0;
 				data.markDirty();
 				tag(leader, existing, ROLE_LEADER);
+			} else if (altitude(leader) > rulerAltitude(world, existing)) {
+				// the ruler is the highest leader of the city (the lord in the keep, not a captain on the walls)
+				promote(world, data, existing, leader);
 			} else {
 				tag(leader, existing, ROLE_CAPTAIN);
 			}
@@ -302,23 +311,34 @@ public class Settlements {
 		max = new BlockPos(max.getX(), Math.min(255, Math.max(max.getY(), pos.getY() + MIN_BOUNDS_ABOVE)), max.getZ());
 
 		String name = SettlementNames.generate(world.rand, data.getAll());
-		Settlement settlement = Settlement.createFactionCity(data.getNextId(), dimension, name, structureName, leader.getFaction(), min, max,
-				leader.getUniqueID(), pos, 0, getDay(world));
-		// no siege right after the founding (siege_cooldown_days)
-		settlement.setLastSiegeEnd(world.getTotalWorldTime());
-		settlement.setLastFullSiegeEnd(world.getTotalWorldTime());
 		List<NpcFaction> garrison = new ArrayList<>();
-		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, settlement.getAABB())) {
+		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, new AxisAlignedBB(min, max.add(1, 1, 1)))) {
 			if (npc != leader && !npc.isPassive() && leader.getFaction().equals(npc.getFaction()) && !isSiegeOrArmyUnit(npc)
 					&& !npc.getEntityData().getBoolean(TAG_REMNANT) && !isInActiveSettlement(data, npc)) {
 				garrison.add(npc);
 			}
 		}
+		// the ruler is the highest leader of the city (the lord in the keep, not a captain on the walls), the founder may be a captain
+		NpcFactionLeader ruler = leader;
+		for (NpcFaction npc : garrison) {
+			if (npc instanceof NpcFactionLeader && altitude(npc) > altitude(ruler)) {
+				ruler = (NpcFactionLeader) npc;
+			}
+		}
+		if (ruler != leader) {
+			garrison.remove(ruler);
+			garrison.add(leader);
+		}
+		Settlement settlement = Settlement.createFactionCity(data.getNextId(), dimension, name, structureName, leader.getFaction(), min, max,
+				ruler.getUniqueID(), ruler.getPosition(), 0, getDay(world));
+		// no siege right after the founding (siege_cooldown_days)
+		settlement.setLastSiegeEnd(world.getTotalWorldTime());
+		settlement.setLastFullSiegeEnd(world.getTotalWorldTime());
 		int manpower = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(garrison.size() * AWDiplomacyStatics.manpowerPerUnit));
 		settlement.setManpower(manpower);
 		settlement.setMaxManpower(manpower);
 		data.add(settlement);
-		tag(leader, settlement, ROLE_LEADER);
+		tag(ruler, settlement, ROLE_LEADER);
 		int captains = 0;
 		for (NpcFaction npc : garrison) {
 			// the other leaders of the city are its captains
@@ -326,8 +346,39 @@ public class Settlements {
 			tag(npc, settlement, captain ? ROLE_CAPTAIN : ROLE_GARRISON);
 			captains += captain ? 1 : 0;
 		}
-		AncientWarfareNPC.LOG.info("Founded city {} ({}) of faction {} at {} with {} garrison units ({} captains) and {} manpower", settlement.getId(), name,
-				settlement.getFaction(), pos, garrison.size(), captains, manpower);
+		AncientWarfareNPC.LOG.info("Founded city {} ({}) of faction {} at {}, ruler at {}, with {} garrison units ({} captains) and {} manpower", settlement.getId(),
+				name, settlement.getFaction(), pos, ruler.getPosition(), garrison.size(), captains, manpower);
+	}
+
+	/**
+	 * @return the height of the leader's post (its home), or of where it stands
+	 */
+	private static int altitude(NpcFaction npc) {
+		return npc.hasHome() ? npc.getHomePosition().getY() : MathHelper.floor(npc.posY);
+	}
+
+	/**
+	 * @return the height of the post of the city's ruler, or of where it was last seen if it is not loaded
+	 */
+	private static int rulerAltitude(WorldServer world, Settlement settlement) {
+		Entity ruler = settlement.getLeaderId() == null ? null : world.getEntityFromUuid(settlement.getLeaderId());
+		return ruler instanceof NpcFaction && ruler.isEntityAlive() ? altitude((NpcFaction) ruler) : settlement.getLastLeaderPos().getY();
+	}
+
+	/**
+	 * A higher leader becomes the ruler of the city, the former ruler one of its captains (or when it is loaded, if it is not now).
+	 */
+	private static void promote(WorldServer world, SettlementData data, Settlement settlement, NpcFactionLeader leader) {
+		Entity former = settlement.getLeaderId() == null ? null : world.getEntityFromUuid(settlement.getLeaderId());
+		if (former instanceof NpcFaction && former.isEntityAlive()) {
+			tag((NpcFaction) former, settlement, ROLE_CAPTAIN);
+		}
+		AncientWarfareNPC.LOG.info("Leader {} at {} is higher than the ruler of city {} ({}): it rules the city now", leader.getUniqueID(), leader.getPosition(),
+				settlement.getId(), settlement.getName());
+		settlement.setLeader(leader.getUniqueID(), leader.getPosition());
+		settlement.missingLeaderChecks = 0;
+		data.markDirty();
+		tag(leader, settlement, ROLE_LEADER);
 	}
 
 	/**
@@ -367,6 +418,15 @@ public class Settlements {
 		}
 		if (ROLE_LEADER.equals(role)) {
 			addHoldPostAI(npc);
+		} else {
+			// a former ruler, now a captain, defends the city as the others
+			List<EntityAIBase> holdPost = new ArrayList<>();
+			for (EntityAITasks.EntityAITaskEntry entry : npc.tasks.taskEntries) {
+				if (entry.action instanceof NpcAIFactionHoldPost) {
+					holdPost.add(entry.action);
+				}
+			}
+			holdPost.forEach(npc.tasks::removeTask);
 		}
 	}
 
