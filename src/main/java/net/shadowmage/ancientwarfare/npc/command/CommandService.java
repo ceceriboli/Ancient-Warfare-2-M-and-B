@@ -18,6 +18,8 @@ import net.shadowmage.ancientwarfare.npc.war.Settlements;
 import net.shadowmage.ancientwarfare.npc.war.Siege;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -33,6 +35,8 @@ public class CommandService extends CommandBase {
 	private static final String STRIKES = "strikes";
 	private static final String ATTACK = "attack";
 	private static final String DEFEND = "defend";
+	private static final String RAID = "raid";
+	private static final String SIEGE = "siege";
 
 	@Override
 	public String getName() {
@@ -86,17 +90,20 @@ public class CommandService extends CommandBase {
 				if (!ATTACK.equals(side) && !DEFEND.equals(side)) {
 					throw new WrongUsageException(getUsage(sender));
 				}
-				EntityPlayerMP player = args.length > 2 ? getPlayer(server, sender, args[2]) : getCommandSenderAsPlayer(sender);
+				// optional raid | siege, then optional player
+				Siege.Kind kind = args.length > 2 ? Siege.Kind.fromName(args[2].toLowerCase(Locale.ROOT)) : null;
+				int playerIndex = kind != null ? 3 : 2;
+				EntityPlayerMP player = args.length > playerIndex ? getPlayer(server, sender, args[playerIndex]) : getCommandSenderAsPlayer(sender);
 				String faction = FactionMembership.getFaction(player.world, player.getUniqueID());
 				if (faction == null) {
 					throw new CommandException("command.aw.service.not_member", player.getName());
 				}
 				WorldServer world = (WorldServer) player.world;
-				Siege siege = Service.startCampaign(world, Settlements.getData(world), player, faction, ATTACK.equals(side), world.getTotalWorldTime(), true);
+				Siege siege = Service.startCampaign(world, Settlements.getData(world), player, faction, ATTACK.equals(side), world.getTotalWorldTime(), true, kind);
 				if (siege == null) {
 					throw new CommandException("command.aw.service.no_campaign." + side);
 				}
-				sender.sendMessage(new TextComponentTranslation("command.aw.service.campaign_started", siege.getId()));
+				sender.sendMessage(new TextComponentTranslation("command.aw.service.campaign_started", siege.getId(), siege.getKind().getName()));
 				break;
 			}
 			case STRIKES: {
@@ -127,7 +134,12 @@ public class CommandService extends CommandBase {
 		if (args.length == 2 && cmd.equals(CALL)) {
 			return CommandBase.getListOfStringsMatchingLastWord(args, ATTACK, DEFEND);
 		}
-		if (args.length == 3 && cmd.equals(CALL) || args.length == 2 && cmd.equals(STRIKES)) {
+		if (args.length == 3 && cmd.equals(CALL)) {
+			List<String> options = new ArrayList<>(Arrays.asList(RAID, SIEGE));
+			options.addAll(Arrays.asList(server.getOnlinePlayerNames()));
+			return CommandBase.getListOfStringsMatchingLastWord(args, options);
+		}
+		if (args.length == 4 && cmd.equals(CALL) || args.length == 2 && cmd.equals(STRIKES)) {
 			return CommandBase.getListOfStringsMatchingLastWord(args, server.getOnlinePlayerNames());
 		}
 		return Collections.emptyList();
@@ -135,6 +147,10 @@ public class CommandService extends CommandBase {
 
 	@Override
 	public boolean isUsernameIndex(String[] args, int index) {
-		return args.length > 0 && (index == 2 && args[0].equalsIgnoreCase(CALL) || index == 1 && args[0].equalsIgnoreCase(STRIKES));
+		if (args.length > 0 && args[0].equalsIgnoreCase(CALL)) {
+			boolean withKind = args.length > 2 && Siege.Kind.fromName(args[2].toLowerCase(Locale.ROOT)) != null;
+			return index == (withKind ? 3 : 2);
+		}
+		return index == 1 && args.length > 0 && args[0].equalsIgnoreCase(STRIKES);
 	}
 }

@@ -97,8 +97,8 @@ public class Service {
 				continue;
 			}
 			boolean offensive = world.rand.nextDouble() < AWDiplomacyStatics.campaignOffenseShare;
-			if (startCampaign(world, data, player, member.faction, offensive, now, false) == null) {
-				startCampaign(world, data, player, member.faction, !offensive, now, false);
+			if (startCampaign(world, data, player, member.faction, offensive, now, false, null) == null) {
+				startCampaign(world, data, player, member.faction, !offensive, now, false, null);
 			}
 		}
 	}
@@ -108,11 +108,12 @@ public class Service {
 	 * war on a city of its faction, within service_call_range.
 	 *
 	 * @param ignoreCooldown true to ignore the cooldown of the cities (operator command)
+	 * @param forcedKind     raid or full siege chosen by an operator (no full siege cooldown), null to choose as for automatic attacks
 	 * @return the campaign, or null if no city can be attacked or defended
 	 */
 	@Nullable
 	public static Siege startCampaign(WorldServer world, SettlementData data, EntityPlayerMP player, String faction, boolean offensive, long now,
-			boolean ignoreCooldown) {
+			boolean ignoreCooldown, @Nullable Siege.Kind forcedKind) {
 		List<String> enemies = FactionRelations.getDeclaredEnemies(world, faction);
 		if (enemies.isEmpty()) {
 			return null;
@@ -136,7 +137,8 @@ public class Service {
 				return null;
 			}
 			Settlement city = candidates.get(world.rand.nextInt(Math.min(CAMPAIGN_TARGET_CHOICES, candidates.size())));
-			return Sieges.start(world, data, city, faction, Sieges.chooseKind(world, city, faction, now), Siege.Origin.OFFENSIVE);
+			Siege.Kind kind = forcedKind != null ? forcedKind : Sieges.chooseKind(world, city, faction, now);
+			return Sieges.start(world, data, city, faction, kind, Siege.Origin.OFFENSIVE);
 		}
 		Collections.shuffle(candidates, world.rand);
 		for (Settlement city : candidates) {
@@ -144,7 +146,8 @@ public class Service {
 			attackers.removeIf(enemy -> Sieges.canStart(world, city, enemy) != null);
 			if (!attackers.isEmpty()) {
 				String attacker = attackers.get(world.rand.nextInt(attackers.size()));
-				return Sieges.start(world, data, city, attacker, Sieges.chooseKind(world, city, attacker, now), Siege.Origin.DEFENSIVE);
+				Siege.Kind kind = forcedKind != null ? forcedKind : Sieges.chooseKind(world, city, attacker, now);
+				return Sieges.start(world, data, city, attacker, kind, Siege.Origin.DEFENSIVE);
 			}
 		}
 		return null;
