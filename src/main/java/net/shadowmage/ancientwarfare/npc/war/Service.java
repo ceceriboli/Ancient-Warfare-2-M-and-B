@@ -603,6 +603,13 @@ public class Service {
 	}
 
 	/**
+	 * @return the manpower a kingdom pays for a campaign against the city: its number of attackers
+	 */
+	public static int campaignCost(World world, Settlement city, Siege.Kind kind, String faction) {
+		return Sieges.estimateAttackers(world, city, kind, faction);
+	}
+
+	/**
 	 * @return the standing a member needs to propose a raid or a full siege
 	 */
 	public static int proposalStanding(Siege.Kind kind) {
@@ -685,6 +692,19 @@ public class Service {
 		if (data.getSieges().size() >= AWDiplomacyStatics.maxActiveSieges) {
 			return new TextComponentTranslation("command.aw.service.propose.refused.busy");
 		}
+		Settlement capital = null;
+		int cost = 0;
+		if (owner) {
+			// a kingdom pays its campaigns with the manpower of its capital: one for each attacker
+			capital = Kingdoms.getCity(world, Kingdoms.get(world, faction));
+			cost = campaignCost(world, city, kind, faction);
+			if (capital == null) {
+				return new TextComponentTranslation("command.aw.kingdom.no_city");
+			}
+			if (capital.getManpower() < cost) {
+				return new TextComponentTranslation("gui.aw.kingdom.campaign.no_manpower", cost, Settlements.displayName(capital), capital.getManpower());
+			}
+		}
 		if (!owner && standing < needed) {
 			return new TextComponentTranslation("command.aw.service.propose.refused.standing", standing, needed);
 		}
@@ -698,6 +718,11 @@ public class Service {
 		Siege siege = Sieges.start(world, data, city, faction, kind, Siege.Origin.OFFENSIVE);
 		// the proposer answers for the result: if the campaign is lost (see onSiegeEnded) it loses standing
 		siege.setProposal(player.getUniqueID(), owner ? 0 : proposalPenalty(kind));
+		if (capital != null) {
+			capital.setManpower(capital.getManpower() - cost);
+			AncientWarfareNPC.LOG.info("The {} pay {} manpower of city {} for {} {}", faction, cost, capital.getId(), kind.getName(), siege.getId());
+			answer = new TextComponentTranslation("gui.aw.kingdom.campaign.paid", answer, cost, Settlements.displayName(capital), capital.getManpower());
+		}
 		data.markDirty();
 		return answer;
 	}

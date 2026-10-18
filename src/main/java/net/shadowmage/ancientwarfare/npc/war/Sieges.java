@@ -169,6 +169,14 @@ public class Sieges {
 	 *
 	 * @return strength of the city, number of waves, attackers per wave, manpower of the attacking and of the defending faction
 	 */
+	/**
+	 * @return how many attackers a raid or full siege of the city by the faction would have now
+	 */
+	public static int estimateAttackers(World world, Settlement settlement, Siege.Kind kind, String attacker) {
+		int[] size = computeSize(world, settlement, kind, attacker);
+		return size[1] * size[2];
+	}
+
 	private static int[] computeSize(World world, Settlement settlement, Siege.Kind kind, String attacker) {
 		boolean full = kind == Siege.Kind.SIEGE;
 		int strength = countGarrison(world, settlement) + settlement.getManpower();

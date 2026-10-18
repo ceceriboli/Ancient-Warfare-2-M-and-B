@@ -367,6 +367,20 @@ public class FactionDialogue {
 				.hover(new TextComponentTranslation("command.aw.service.propose.siege.hover", Service.proposalStanding(Siege.Kind.SIEGE),
 						Service.proposalPenalty(Siege.Kind.SIEGE)));
 		siege.enabled = siegeAllowed;
+		String faction = npc.getFaction();
+		Settlement capital = Kingdoms.isOwner(world, player.getUniqueID(), faction) ? Kingdoms.getCity(world, Kingdoms.get(world, faction)) : null;
+		if (capital != null) {
+			// the owner of a kingdom pays with the manpower of its capital, not with standing
+			int raidCost = Service.campaignCost(world, city, Siege.Kind.RAID, faction);
+			int siegeCost = Service.campaignCost(world, city, Siege.Kind.SIEGE, faction);
+			raid = button(new TextComponentTranslation("gui.aw.kingdom.campaign.raid", raidCost), PROPOSE_PREFIX + cityId + ":raid")
+					.hover(new TextComponentTranslation("gui.aw.kingdom.campaign.cost.hover", raidCost, Settlements.displayName(capital), capital.getManpower()));
+			raid.enabled = capital.getManpower() >= raidCost;
+			siege = button(siegeAllowed ? new TextComponentTranslation("gui.aw.kingdom.campaign.siege", siegeCost)
+					: new TextComponentTranslation("gui.aw.dialogue.siege_too_recent"), PROPOSE_PREFIX + cityId + ":siege")
+					.hover(new TextComponentTranslation("gui.aw.kingdom.campaign.cost.hover", siegeCost, Settlements.displayName(capital), capital.getManpower()));
+			siege.enabled = siegeAllowed && capital.getManpower() >= siegeCost;
+		}
 		sendPage(player, npc, new TextComponentTranslation("gui.aw.dialogue.kind", describe(player, city)), raid, siege,
 				button(new TextComponentTranslation("gui.aw.dialogue.back"), PROPOSE));
 	}
