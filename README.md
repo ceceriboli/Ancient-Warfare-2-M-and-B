@@ -21,9 +21,6 @@ A fork of [Ancient Warfare 2: Tweaked](https://github.com/blahthebiste/AncientWa
 
 Everything is in `config/ancientwarfare/AncientWarfareDiplomacy.cfg`, which is written on the first start with the default values and a description of each option (cities, sieges, diplomacy, military service, kingdoms, wages). All texts are in English only for now.
 
-## Installing
-
-Download the jar from the Releases page and put it in the `mods` folder instead of the Ancient Warfare 2 jar (it is a full replacement, based on version 2.10.2). It needs Minecraft 1.12.2, Forge and CodeChickenLib, like the original. Worlds created with Ancient Warfare 2: Tweaked 2.9.20 loaded without problems in the tests.
 
 ## Building
 
