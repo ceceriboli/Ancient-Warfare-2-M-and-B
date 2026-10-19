@@ -15,6 +15,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean newPlayerNeutralStandings = true;
 	public static String kingdomDefaultCulture = "empire";
 	public static boolean kingdomsEnabled = true;
+	public static double kingdomTributeRatio = 0.5;
 	public static String[] kingdomCultures = new String[0];
 	public static int kingdomRadius = 64;
 	public static int kingdomStartManpower = 20;
@@ -168,6 +169,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		memberInheritStandings = config.get(serverOptions, "member_inherit_standings", memberInheritStandings, "Members inherit standings\nDefault=" + memberInheritStandings + "\n" + "If true, a member takes the relations of its faction as standings, on joining and whenever they change: at most\n" + "member_enemy_standing with its enemies, at least member_ally_standing with its allies, at least 0 with the others.\n" + "Leaving the faction takes them back: each standing returns to its value before joining, plus the player's own changes.").getBoolean();
 		kingdomsEnabled = config.get(serverOptions, "kingdoms_enabled", kingdomsEnabled, "Player kingdoms\nDefault=" + kingdomsEnabled + "\n" + "The first town hall a player places founds their kingdom: a faction of their own with a city around the town hall and a governor. Needs settlements_enabled.").getBoolean();
 		kingdomCultures = config.get(serverOptions, "kingdom_cultures", kingdomCultures, "Kingdom cultures\n" + "Factions a kingdom owner can choose as the culture of their kingdom (look, units, dialogues, natural rivals). Empty = every faction that is not one of the eternal_enemies.").getStringList();
+		kingdomTributeRatio = config.get(serverOptions, "kingdom_tribute_ratio", kingdomTributeRatio, "Kingdom tribute\nDefault=" + kingdomTributeRatio + "\n" + "The cities a kingdom conquered add this fraction of their maximum manpower to the maximum manpower of its capital (and the same amount as manpower when it grows). The capital pays the campaigns of the kingdom.", 0.0D, 10.0D).getDouble();
 		kingdomRadius = config.get(serverOptions, "kingdom_radius", kingdomRadius, "Kingdom city radius\nDefault=" + kingdomRadius + "\n" + "Half the side of the square city founded around a town hall, in blocks. It must not overlap another city.", 8, 256).getInt();
 		kingdomStartManpower = config.get(serverOptions, "kingdom_start_manpower", kingdomStartManpower, "Kingdom starting manpower\nDefault=" + kingdomStartManpower + "\n" + "Manpower of a new kingdom city, plus manpower_per_unit for each soldier of the player inside it.", 0, 10000).getInt();
 		kingdomGarrison = config.get(serverOptions, "kingdom_garrison", kingdomGarrison, "Kingdom garrison\nDefault=" + kingdomGarrison + "\n" + "Recruits of the kingdom (occupation_unit_weights) come to a kingdom city every reinforcement_interval_ticks until its garrison has this many units. 0 = none.", 0, 200).getInt();

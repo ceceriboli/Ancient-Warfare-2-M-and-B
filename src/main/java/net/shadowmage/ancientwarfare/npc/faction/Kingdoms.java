@@ -224,12 +224,27 @@ public class Kingdoms {
 	 */
 	public static void disband(MinecraftServer server, KingdomData.Kingdom kingdom) {
 		World world = server.getEntityWorld();
-		Settlement city = kingdom.cityId < 0 ? null : Settlements.getData(world).get(kingdom.cityId);
-		if (city != null && city.isActive() && kingdom.id.equals(city.getFaction())) {
-			WorldServer cityWorld = server.getWorld(city.getDimension());
-			Settlements.collapse(cityWorld, Settlements.getData(world), city);
+		for (Settlement city : getCities(world, kingdom)) {
+			Settlements.collapse(server.getWorld(city.getDimension()), Settlements.getData(world), city);
 		}
 		destroy(server, kingdom.id);
+	}
+
+	/**
+	 * @return every active city of the kingdom, the capital first
+	 */
+	public static List<Settlement> getCities(World world, KingdomData.Kingdom kingdom) {
+		List<Settlement> ret = new ArrayList<>();
+		Settlement capital = getCity(world, kingdom);
+		if (capital != null) {
+			ret.add(capital);
+		}
+		for (Settlement city : Settlements.getData(world).getAll()) {
+			if (city != capital && city.isActive() && city.getType() == Settlement.Type.FACTION_CITY && kingdom.id.equals(city.getFaction())) {
+				ret.add(city);
+			}
+		}
+		return ret;
 	}
 
 	@Nullable

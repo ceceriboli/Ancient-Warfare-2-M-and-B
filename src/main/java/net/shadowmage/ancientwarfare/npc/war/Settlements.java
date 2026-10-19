@@ -237,6 +237,7 @@ public class Settlements {
 		}
 		int dimension = world.provider.getDimension();
 		mergeOverlappingCities(world, data);
+		updateKingdomTribute(data);
 		for (Settlement settlement : new ArrayList<>(data.getAll())) {
 			if (settlement.getDimension() != dimension || !settlement.isActive() || settlement.getType() != Settlement.Type.FACTION_CITY) {
 				continue;
@@ -290,6 +291,32 @@ public class Settlements {
 		}
 	}
 
+	/**
+	 * The other cities of a kingdom (the ones it conquered) pay tribute to its capital, the city with the owner: kingdom_tribute_ratio of
+	 * their own maximum manpower is added to the capital's maximum, and granted as manpower when it grows. The capital pays the campaigns.
+	 */
+	private static void updateKingdomTribute(SettlementData data) {
+		for (Settlement capital : data.getAll()) {
+			if (capital.getOwnerId() == null || !capital.isActive() || !Kingdoms.isKingdom(capital.getFaction())) {
+				continue;
+			}
+			double sum = 0;
+			for (Settlement city : data.getAll()) {
+				if (city != capital && city.isActive() && city.getType() == Settlement.Type.FACTION_CITY && city.getOwnerId() == null
+						&& city.getFaction().equals(capital.getFaction())) {
+					sum += city.getBaseMaxManpower();
+				}
+			}
+			int bonus = (int) Math.floor(sum * AWDiplomacyStatics.kingdomTributeRatio);
+			if (bonus != capital.getTributeBonus()) {
+				int delta = bonus - capital.getTributeBonus();
+				capital.setTributeBonus(bonus);
+				capital.setManpower(delta > 0 ? capital.getManpower() + delta : Math.min(capital.getManpower(), capital.getMaxManpower()));
+				data.markDirty();
+			}
+		}
+	}
+
 	private static boolean overlaps(Settlement a, Settlement b) {
 		return a.getMin().getX() <= b.getMax().getX() && a.getMax().getX() >= b.getMin().getX() && a.getMin().getZ() <= b.getMax().getZ()
 				&& a.getMax().getZ() >= b.getMin().getZ();
@@ -304,14 +331,14 @@ public class Settlements {
 						Math.min(into.getMin().getZ(), absorbed.getMin().getZ())),
 				new BlockPos(Math.max(into.getMax().getX(), absorbed.getMax().getX()), Math.max(into.getMax().getY(), absorbed.getMax().getY()),
 						Math.max(into.getMax().getZ(), absorbed.getMax().getZ())));
-		into.setMaxManpower(into.getMaxManpower() + absorbed.getMaxManpower());
+		into.setMaxManpower(into.getBaseMaxManpower() + absorbed.getBaseMaxManpower());
 		into.setManpower(into.getManpower() + absorbed.getManpower());
 		into.setManpowerCap(into.getManpowerCap() + absorbed.getManpowerCap());
 		if (into.getGarrisonCap() > 0 || absorbed.getGarrisonCap() > 0) {
 			// a conquered part: reinforcements up to the garrison of the whole merged city, estimated from its manpower as at a conquest
 			// (raised to the real garrison when it is counted, see reinforce)
 			into.setGarrisonCap(Math.max(into.getGarrisonCap() + absorbed.getGarrisonCap(),
-					(int) Math.floor(into.getMaxManpower() / Math.max(0.01D, AWDiplomacyStatics.manpowerPerUnit))));
+					(int) Math.floor(into.getBaseMaxManpower() / Math.max(0.01D, AWDiplomacyStatics.manpowerPerUnit))));
 		}
 		into.getPendingRespawns().addAll(absorbed.getPendingRespawns());
 		into.setLastSiegeEnd(Math.max(into.getLastSiegeEnd(), absorbed.getLastSiegeEnd()));
@@ -419,7 +446,7 @@ public class Settlements {
 
 	public static void setManpower(World world, Settlement settlement, int manpower) {
 		settlement.setManpower(manpower);
-		settlement.setMaxManpower(Math.max(settlement.getMaxManpower(), manpower));
+		settlement.setMaxManpower(Math.max(settlement.getBaseMaxManpower(), manpower));
 		getData(world).markDirty();
 	}
 

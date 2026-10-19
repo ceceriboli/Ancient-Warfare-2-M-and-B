@@ -66,6 +66,8 @@ public class Settlement {
 	 */
 	@Nullable
 	private UUID ownerId;
+	// maximum manpower the other cities of the kingdom add to its capital (saved: the manpower it granted is not granted again after a load)
+	private int tributeBonus;
 
 	// not saved: consecutive checks where the leader could not be found although its area was loaded
 	int missingLeaderChecks = 0;
@@ -199,8 +201,26 @@ public class Settlement {
 		return manpower;
 	}
 
+	/**
+	 * @return the maximum manpower, including what the other cities of a kingdom pay to its capital
+	 */
 	public int getMaxManpower() {
+		return maxManpower + tributeBonus;
+	}
+
+	/**
+	 * @return the maximum manpower of the city itself, without the tribute of the other cities of its kingdom
+	 */
+	public int getBaseMaxManpower() {
 		return maxManpower;
+	}
+
+	public int getTributeBonus() {
+		return tributeBonus;
+	}
+
+	void setTributeBonus(int tributeBonus) {
+		this.tributeBonus = Math.max(0, tributeBonus);
 	}
 
 	void setManpower(int manpower) {
@@ -314,6 +334,7 @@ public class Settlement {
 		if (ownerId != null) {
 			tag.setUniqueId("owner", ownerId);
 		}
+		tag.setInteger("tribute", tributeBonus);
 		NBTTagList respawnList = new NBTTagList();
 		for (PendingRespawn respawn : pendingRespawns) {
 			NBTTagCompound respawnTag = new NBTTagCompound();
@@ -360,6 +381,7 @@ public class Settlement {
 		settlement.lastSiegeEnd = tag.getLong("lastSiegeEnd");
 		settlement.lastFullSiegeEnd = tag.getLong("lastFullSiegeEnd");
 		settlement.ownerId = tag.hasUniqueId("owner") ? tag.getUniqueId("owner") : null;
+		settlement.tributeBonus = tag.getInteger("tribute");
 		NBTTagList respawnList = tag.getTagList("pendingRespawns", Constants.NBT.TAG_COMPOUND);
 		for (int i = 0; i < respawnList.tagCount(); i++) {
 			NBTTagCompound respawnTag = respawnList.getCompoundTagAt(i);

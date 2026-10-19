@@ -87,9 +87,13 @@ public class CommandKingdom extends CommandBase {
 		}
 		switch (cmd) {
 			case INFO:
-				Settlement capital = Kingdoms.getCity(world, kingdom);
-				sender.sendMessage(new TextComponentTranslation("command.aw.kingdom.info", kingdom.name, kingdom.id, FactionMembership.factionName(kingdom.culture),
-						capital == null ? new net.minecraft.util.text.TextComponentString("-") : Settlements.displayName(capital)));
+				List<Settlement> cities = Kingdoms.getCities(world, kingdom);
+				sender.sendMessage(new TextComponentTranslation("command.aw.kingdom.info", kingdom.name, kingdom.id, FactionMembership.factionName(kingdom.culture), cities.size()));
+				for (Settlement city : cities) {
+					boolean isCapital = city.getOwnerId() != null;
+					sender.sendMessage(new TextComponentTranslation(isCapital ? "command.aw.kingdom.info.capital" : "command.aw.kingdom.info.conquered", Settlements.displayName(city),
+							city.getManpower(), city.getMaxManpower(), city.getTributeBonus()));
+				}
 				break;
 			case RENAME:
 				if (args.length < 2) {

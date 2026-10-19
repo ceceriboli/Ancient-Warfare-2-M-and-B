@@ -281,6 +281,16 @@ public class FactionDialogue {
 		ITextComponent text = new TextComponentString(kingdom.name);
 		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.capital", city == null ? new TextComponentString("-") : Settlements.displayName(city)));
 		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.manpower", city == null ? 0 : city.getManpower(), city == null ? 0 : city.getMaxManpower()));
+		List<Settlement> cities = Kingdoms.getCities(player.world, kingdom);
+		int shown = 0;
+		for (Settlement other : cities) {
+			if (other != city && shown++ < 5) {
+				text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.conquered", Settlements.displayName(other), other.getManpower(), other.getMaxManpower()));
+			}
+		}
+		if (city != null && city.getTributeBonus() > 0) {
+			text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.tribute", city.getTributeBonus()));
+		}
 		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.culture", FactionMembership.factionName(kingdom.culture)));
 		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.relations", wars, alliances));
 		if (answer != null) {
