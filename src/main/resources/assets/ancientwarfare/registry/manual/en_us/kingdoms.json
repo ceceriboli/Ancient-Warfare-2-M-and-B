@@ -138,12 +138,37 @@
         },
         {
             "content_type": "heading",
-            "text": "Commands",
+            "text": "Commands for Every Player",
             "level": 2
         },
         {
             "content_type": "text",
-            "text": "For every player:\n/awmembership join (faction), leave, status\n/awservice propose [city id] [raid or siege], wages\n/awkingdom info, rename (name), cityname (name), culture (faction), disband confirm\n/awarmy status\nFor operators:\n/awrelation war, peace, alliance, reset, get (faction) (faction); list [faction]\n/awdiplomacy status [faction], day, exhaustion (faction) (enemy) (value)\n/awsettlement list, info [id], setmanpower (id) (amount), rename (id) (name)\n/awsiege start (city id) (faction) [raid or siege], stop (city id), list\n/awservice call attack or defend [raid or siege] [player], strikes (player) (n)\n/awmembership set (player) (faction), clear (player)\n/awfaction get, set, setall, add, subtract (player)"
+            "text": "/awmembership join (faction)\nSwears allegiance to a faction, like the button of its Leader. A Leader of that faction must be within 8 blocks and your standing with it must be 0 or more.\n\n/awmembership leave\nRenounces your allegiance: a positive standing with the faction goes back to 0 and the standings you inherited are given back. Not possible for the owner of a kingdom.\n\n/awmembership status\nYour faction, your standing with it, your strikes and the calls to arms you have now."
+        },
+        {
+            "content_type": "text",
+            "text": "/awservice propose\nLists the enemy cities you can propose a campaign against, with clickable raid and siege choices. You must be near your Leader.\n\n/awservice propose (city id) (raid or siege)\nProposes that campaign to your Leader, who answers in chat.\n\n/awservice wages\nCollects the wages your Leader owes you. You must be near your Leader."
+        },
+        {
+            "content_type": "text",
+            "text": "/awkingdom info\nYour kingdom: its faction id, culture and every city, with manpower, tribute and treasury.\n\n/awkingdom rename (name)\nRenames your kingdom (up to 32 characters).\n\n/awkingdom cityname (name)\nRenames your capital.\n\n/awkingdom culture (faction)\nChanges the culture of your kingdom: the look, soldiers, dialogues and natural rivals of that faction. Soldiers already in the world keep their look.\n\n/awkingdom disband confirm\nGives up your kingdom: every city of it is abandoned and you leave it.\n\n/awarmy status\nYour own soldiers that are taking part in an assault of your faction."
+        },
+        {
+            "content_type": "heading",
+            "text": "Commands for Operators",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "/awrelation war, peace or alliance (faction) (faction)\nSets the relation between two factions at once, with an announcement.\n\n/awrelation reset (faction) (faction)\nGives the pair back the relation they have by nature.\n\n/awrelation get (faction) (faction), /awrelation list [faction]\nShows one relation, or every relation set in this world (of one faction).\n\n/awdiplomacy status [faction]\nWars, truces and war exhaustion.\n\n/awdiplomacy day\nRuns a diplomatic day at once: truces, new wars, alliances.\n\n/awdiplomacy exhaustion (faction) (enemy) (value)\nSets the war exhaustion of a faction in a war."
+        },
+        {
+            "content_type": "text",
+            "text": "/awsettlement list\nEvery known city, with its id, faction, state and manpower.\n\n/awsettlement info [id]\nOne city in detail (the one you stand in without an id): bounds, manpower, garrison loaded, leader.\n\n/awsettlement setmanpower (id) (amount), /awsettlement rename (id) (name)\nChanges the manpower or the name of a city.\n\n/awsiege start (city id) (faction) [raid or siege]\nStarts an attack of that faction on the city at once.\n\n/awsiege stop (city id), /awsiege list\nStops the attack on a city, or lists the attacks in progress with their timers."
+        },
+        {
+            "content_type": "text",
+            "text": "/awservice call attack or defend [raid or siege] [player]\nStarts a campaign for a member at once: an attack of their faction on a nearby enemy city, or an enemy attack on one of its cities. The player is called to arms.\n\n/awservice strikes (player) (n)\nSets the strikes of a member.\n\n/awmembership set (player) (faction), /awmembership clear (player)\nMoves a player into a faction, or out of it.\n\n/awkingdom debugcreate [culture]\nCreates a kingdom without a city, for testing.\n\n/awfaction get, set, setall, add or subtract (player) ...\nShows or changes the standing of a player with the factions (from Ancient Warfare 2)."
         }
     ]
 }
