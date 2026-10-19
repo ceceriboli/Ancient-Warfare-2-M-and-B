@@ -37,6 +37,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int kingdomStartManpower = 20;
 	public static int kingdomGarrison = 6;
 	public static int kingdomGraceDays = 10;
+	public static double kingdomAttackChance = 0.1;
 	public static int memberAllyStanding = 50;
 	public static boolean leaveWhenFactionGone = true;
 	public static boolean expelOnKillingOwnFaction = true;
@@ -209,6 +210,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		kingdomRadius = config.get(serverOptions, "kingdom_radius", kingdomRadius, "Kingdom city radius\nDefault=" + kingdomRadius + "\n" + "Half the side of the square city founded around a town hall, in blocks. It must not overlap another city.", 8, 256).getInt();
 		kingdomStartManpower = config.get(serverOptions, "kingdom_start_manpower", kingdomStartManpower, "Kingdom starting manpower\nDefault=" + kingdomStartManpower + "\n" + "Manpower of a new kingdom city, plus manpower_per_unit for each soldier of the player inside it.", 0, 10000).getInt();
 		kingdomGarrison = config.get(serverOptions, "kingdom_garrison", kingdomGarrison, "Kingdom garrison\nDefault=" + kingdomGarrison + "\n" + "Recruits of the kingdom (occupation_unit_weights) come to a kingdom city every reinforcement_interval_ticks until its garrison has this many units. 0 = none.", 0, 200).getInt();
+		kingdomAttackChance = config.get(serverOptions, "kingdom_attack_chance", kingdomAttackChance, "Attacks on a kingdom\nDefault=" + kingdomAttackChance + "\n" + "Chance, every service_check_interval ticks while a member is online, that an enemy at war attacks a city of a player kingdom (a defensive campaign: its members are called). The cities of a kingdom are never attacked otherwise (siege_chance does not apply to them). One roll per kingdom, also with several members online; each city still rests siege_cooldown_days after an attack.", 0.0D, 1.0D).getDouble();
 		kingdomGraceDays = config.get(serverOptions, "kingdom_grace_days", kingdomGraceDays, "Kingdom grace days\nDefault=" + kingdomGraceDays + "\n" + "A new kingdom starts at peace with every faction (except the eternal enemies hostile to its culture), with a truce of this many days.", 0, 1000).getInt();
 		kingdomDefaultCulture = config.get(serverOptions, "kingdom_default_culture", kingdomDefaultCulture, "Kingdom default culture\nDefault=" + kingdomDefaultCulture + "\n" + "Faction whose look, units and dialogues a new player kingdom uses until its owner chooses another culture.").getString();
 		newPlayerNeutralStandings = config.get(serverOptions, "new_player_neutral_standings", newPlayerNeutralStandings, "New player neutral standings\nDefault=" + newPlayerNeutralStandings + "\n" + "A player joining a world for the first time starts with standing 0 with every faction whose standing can change (like /awfaction setall <player> 0).").getBoolean();

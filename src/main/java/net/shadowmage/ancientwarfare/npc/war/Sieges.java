@@ -564,8 +564,10 @@ public class Sieges {
 		int dimension = world.provider.getDimension();
 		List<Settlement> candidates = new ArrayList<>();
 		for (Settlement settlement : data.getAll()) {
+			// the cities of a player kingdom are attacked only by defensive campaigns (Service), which call its members
 			if (settlement.getDimension() == dimension && settlement.isActive() && settlement.getType() == Settlement.Type.FACTION_CITY
-					&& !isBesieged(settlement) && isCooledDown(world, settlement) && isPlayerNear(world, settlement.getCenter())) {
+					&& !Kingdoms.isKingdom(settlement.getFaction()) && !isBesieged(settlement) && isCooledDown(world, settlement)
+					&& isPlayerNear(world, settlement.getCenter())) {
 				candidates.add(settlement);
 			}
 		}

@@ -93,17 +93,25 @@ public class Service {
 		}
 		List<FactionMembershipData.Member> members = new ArrayList<>(getMembership(world).getMembers());
 		Collections.shuffle(members, world.rand);
+		// a player kingdom is attacked through these campaigns only (never by ambient attacks), one roll per kingdom whatever the number
+		// of its members online, with kingdom_attack_chance
+		java.util.Set<String> kingdomsRolled = new java.util.HashSet<>();
 		for (FactionMembershipData.Member member : members) {
 			if (data.getSieges().size() >= AWDiplomacyStatics.maxActiveSieges) {
 				return;
 			}
 			EntityPlayerMP player = server.getPlayerList().getPlayerByUUID(member.playerId);
-			if (player == null || player.world != world || player.isSpectator() || isCalled(data, member.playerId)
-					|| world.rand.nextDouble() >= AWDiplomacyStatics.campaignChance) {
+			if (player == null || player.world != world || player.isSpectator() || isCalled(data, member.playerId)) {
 				continue;
 			}
 			// a player kingdom attacks only when its owner orders a campaign: only defenses start on their own
 			boolean kingdom = Kingdoms.isKingdom(member.faction);
+			if (kingdom && !kingdomsRolled.add(member.faction)) {
+				continue;
+			}
+			if (world.rand.nextDouble() >= (kingdom ? AWDiplomacyStatics.kingdomAttackChance : AWDiplomacyStatics.campaignChance)) {
+				continue;
+			}
 			boolean offensive = !kingdom && world.rand.nextDouble() < AWDiplomacyStatics.campaignOffenseShare;
 			if (startCampaign(world, data, player, member.faction, offensive, now, false, null) == null && !kingdom) {
 				startCampaign(world, data, player, member.faction, !offensive, now, false, null);
