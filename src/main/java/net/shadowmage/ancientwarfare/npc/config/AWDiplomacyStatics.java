@@ -15,9 +15,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean newPlayerNeutralStandings = true;
 	public static String kingdomDefaultCulture = "empire";
 	public static boolean kingdomsEnabled = true;
-	public static int serviceWageRaid = 4;
-	public static int serviceWageSiege = 12;
-	public static String serviceWageCoin = "silver";
+	public static int serviceWageRaid = 3;
+	public static int serviceWageSiege = 8;
+	public static String serviceWageCoin = "gold";
 	public static double kingdomTributeRatio = 0.5;
 	public static String[] kingdomCultures = new String[0];
 	public static int kingdomRadius = 64;
