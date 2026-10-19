@@ -137,6 +137,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static String[] breachBlockBlacklist = {"minecraft:bedrock", "minecraft:obsidian", "minecraft:beacon"};
 	public static int defenderPerimeterMargin = 24;
 	public static int defenderGuardRadius = 10;
+	public static int defenderResponseRange = 48;
+	public static int defenderMaxPerAttacker = 4;
 	public static int groupAlertRange = 16;
 	public static int siegeSpawnMinDistance = 40;
 	public static int siegeSpawnMaxDistance = 60;
@@ -413,6 +415,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		defenderPerimeterMargin = config.get(serverOptions, "defender_perimeter_margin", defenderPerimeterMargin, "Defended perimeter\nDefault=" + defenderPerimeterMargin + "\n" + "During a raid or siege the garrison goes after the attackers inside the city bounds grown by this many blocks.", 0, 128).getInt();
 
+		defenderResponseRange = config.get(serverOptions, "defender_response_range", defenderResponseRange, "Defender response range\nDefault=" + defenderResponseRange + "\n" + "Only garrison units within this many blocks of an attacker go out to fight it; the others stay at their posts (fewer npcs computing long paths across large cities).", 8, 256).getInt();
+		defenderMaxPerAttacker = config.get(serverOptions, "defender_max_per_attacker", defenderMaxPerAttacker, "Defenders per attacker\nDefault=" + defenderMaxPerAttacker + "\n" + "At most this many melee garrison units are sent after each attacker (archers on the walls shoot regardless).", 1, 64).getInt();
 		defenderGuardRadius = config.get(serverOptions, "defender_guard_radius", defenderGuardRadius, "Leader guards\nDefault=" + defenderGuardRadius + "\n" + "Garrison units whose post (home) is within this many blocks of the leader stay to guard it instead of going out.", 0, 128).getInt();
 
 		groupAlertRange = config.get(serverOptions, "group_alert_range", groupAlertRange, "Group alert\nDefault=" + groupAlertRange + "\n" + "When an attacker or a city unit is hurt, its companions within this many blocks without an enemy go after the one\n" + "who hurt it. 0 = off.", 0, 64).getInt();

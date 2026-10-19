@@ -48,6 +48,8 @@ import net.shadowmage.ancientwarfare.vehicle.entity.types.VehicleType;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -651,6 +653,16 @@ public class Sieges {
 			}
 		}
 		double guardRadiusSq = (double) AWDiplomacyStatics.defenderGuardRadius * AWDiplomacyStatics.defenderGuardRadius;
+		double responseSq = (double) AWDiplomacyStatics.defenderResponseRange * AWDiplomacyStatics.defenderResponseRange;
+		// how many melee defenders already go after each attacker: only a few per attacker, so that a large garrison does not compute
+		// hundreds of paths across the city every second (the others stay at their posts)
+		Map<NpcFaction, Integer> assigned = new HashMap<>();
+		for (NpcFaction defender : world.getEntitiesWithinAABB(NpcFaction.class, perimeter)) {
+			EntityLivingBase target = defender.getAttackTarget();
+			if (target instanceof NpcFaction && enemies.contains(target) && !(defender instanceof IRangedAttackMob) && Settlements.isDefender(defender, settlement)) {
+				assigned.merge((NpcFaction) target, 1, Integer::sum);
+			}
+		}
 		for (NpcFaction defender : world.getEntitiesWithinAABB(NpcFaction.class, perimeter)) {
 			if (!defender.isEntityAlive() || !Settlements.isDefender(defender, settlement)) {
 				continue;
@@ -669,12 +681,17 @@ public class Sieges {
 			EntityLivingBase current = defender.getAttackTarget();
 			// keeps fighting an enemy inside the perimeter (an attacker, or a player helping them), otherwise the nearest attacker
 			boolean keep = current != null && current.isEntityAlive() && (enemies.contains(current) || perimeter.contains(current.getPositionVector()));
-			EntityLivingBase enemy = keep ? current : nearest(defender, enemies);
+			EntityLivingBase enemy = keep ? current : nearestFree(defender, enemies, assigned, responseSq);
 			if (enemy == null) {
-				continue; // every attacker in the perimeter is out of its reach for now
+				// no attacker close enough that does not have enough defenders on it already: stays at (or goes back to) its post
+				restorePost(defender);
+				continue;
 			}
 			if (enemy != current) {
 				defender.setAttackTarget(enemy);
+				if (enemy instanceof NpcFaction) {
+					assigned.merge((NpcFaction) enemy, 1, Integer::sum);
+				}
 			}
 			savePost(defender);
 			defender.setHomePosAndDistance(enemy.getPosition(), defender.getHomeRange());
@@ -712,6 +729,24 @@ public class Sieges {
 		for (NpcFaction candidate : candidates) {
 			if (!from.isMarkedUnreachable(candidate) && (nearest == null || candidate.getDistanceSq(from) < nearest.getDistanceSq(from))) {
 				nearest = candidate;
+			}
+		}
+		return nearest;
+	}
+
+	/**
+	 * @return the nearest attacker within defender_response_range that has fewer than defender_max_per_attacker defenders on it and that the
+	 * npc has not found unreachable recently, or null
+	 */
+	@Nullable
+	private static NpcFaction nearestFree(NpcBase from, List<NpcFaction> candidates, Map<NpcFaction, Integer> assigned, double responseSq) {
+		NpcFaction nearest = null;
+		double nearestSq = responseSq;
+		for (NpcFaction candidate : candidates) {
+			double distSq = candidate.getDistanceSq(from);
+			if (distSq <= nearestSq && assigned.getOrDefault(candidate, 0) < AWDiplomacyStatics.defenderMaxPerAttacker && !from.isMarkedUnreachable(candidate)) {
+				nearest = candidate;
+				nearestSq = distSq;
 			}
 		}
 		return nearest;
