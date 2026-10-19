@@ -4,8 +4,6 @@ import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Items;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.DamageSource;
@@ -26,6 +24,7 @@ import net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
 import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
+import net.shadowmage.ancientwarfare.npc.item.ItemCoin;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.faction.FactionRelations;
 import net.shadowmage.ancientwarfare.npc.faction.FactionTracker;
@@ -489,15 +488,13 @@ public class Service {
 		}
 	}
 
-	@Nullable
-	private static Item getWageItem() {
-		Item item = Item.getByNameOrId(AWDiplomacyStatics.serviceWageItem);
-		return item == null || item == Items.AIR ? null : item;
+	private static ItemCoin.CoinMetal getWageMetal() {
+		ItemCoin.CoinMetal metal = ItemCoin.CoinMetal.byName(AWDiplomacyStatics.serviceWageCoin.trim().toLowerCase(java.util.Locale.ROOT));
+		return metal == null ? ItemCoin.CoinMetal.SILVER : metal;
 	}
 
 	private static ITextComponent getWageName() {
-		Item item = getWageItem();
-		return item == null ? new TextComponentString("?") : new TextComponentTranslation(item.getUnlocalizedName() + ".name");
+		return new TextComponentTranslation("item.coin." + getWageMetal().getName() + ".name");
 	}
 
 	/**
@@ -528,20 +525,19 @@ public class Service {
 			throw new CommandException("command.aw.service.propose.no_ruler", FactionMembership.factionName(faction));
 		}
 		int wages = getWages(world, player);
-		Item item = getWageItem();
-		if (wages <= 0 || item == null) {
+		if (wages <= 0) {
 			return new TextComponentTranslation("gui.aw.dialogue.wages_none");
 		}
 		getMembership(world).addWages(player.getUniqueID(), -wages);
 		int left = wages;
 		while (left > 0) {
-			ItemStack stack = new ItemStack(item, Math.min(left, item.getItemStackLimit()));
+			ItemStack stack = ItemCoin.getCoinStack(getWageMetal(), Math.min(left, 64));
 			left -= stack.getCount();
 			if (!player.inventory.addItemStackToInventory(stack) && !stack.isEmpty()) {
 				player.dropItem(stack, false);
 			}
 		}
-		AncientWarfareNPC.LOG.info("{} collected {} wages ({}) from the {}", player.getName(), wages, AWDiplomacyStatics.serviceWageItem, faction);
+		AncientWarfareNPC.LOG.info("{} collected {} wages ({}) from the {}", player.getName(), wages, getWageMetal().getName(), faction);
 		return new TextComponentTranslation("gui.aw.dialogue.wages_paid", wages, getWageName());
 	}
 
