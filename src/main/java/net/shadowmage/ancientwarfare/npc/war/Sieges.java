@@ -82,6 +82,11 @@ public class Sieges {
 	private static final String TAG_POST = "awPost";
 	private static final String TAG_POST_RANGE = "awPostRange";
 	private static final double MAX_ATTACKER_DISTANCE = 128D;
+	private static final int LEASH_MARGIN = 48;
+	private static final int OUTSIDE_SPAWN_MIN_MARGIN = 8;
+	private static final int OUTSIDE_SPAWN_EXTRA = 16;
+	private static final int OUTSIDE_SPAWN_MAX_DISTANCE = 240;
+	private static final int OUTSIDE_SPAWN_PATIENCE_TICKS = 1200;
 	private static final double ENGINE_TARGET_RANGE = 96D;
 	private static final int ENGINE_SPACING = 6;
 	private static final int RECONNECT_GRACE_TICKS = 200;
@@ -424,8 +429,9 @@ public class Sieges {
 		BlockPos center = settlement.getCenter();
 		boolean breach = isBreachAllowed(siege);
 		boolean build = isBuildAllowed(siege);
+		double leash = Math.max(MAX_ATTACKER_DISTANCE, siege.getLeash());
 		for (NpcFaction npc : siege.getLoadedAttackers()) {
-			if (npc.getDistanceSq(target) > MAX_ATTACKER_DISTANCE * MAX_ATTACKER_DISTANCE) {
+			if (npc.getDistanceSq(target) > leash * leash) {
 				siege.removeAttacker(npc);
 				Settlements.disband(npc, now + 20);
 			} else if (isEngineer(npc)) {
@@ -850,10 +856,23 @@ public class Sieges {
 	 */
 	@Nullable
 	private static BlockPos spawnWave(WorldServer world, Siege siege, Settlement settlement, BlockPos target) {
-		BlockPos origin = findSpawnPos(world, target);
+		// outside the walls: in a large city the usual distance from the leader would still be inside it
+		BlockPos origin = findSpawnPosOutside(world, target, settlement);
+		if (origin == null) {
+			// the land outside the city is not loaded (a player deep inside a large city): the usual place near the leader only if it is
+			// outside the city too, or after waiting OUTSIDE_SPAWN_PATIENCE_TICKS (the wave is tried again every second meanwhile)
+			BlockPos near = findSpawnPos(world, target);
+			boolean inside = near != null && settlement.contains(settlement.getDimension(), new BlockPos(near.getX(), settlement.getMin().getY(), near.getZ()));
+			if (near != null && (!inside || siege.getStateTicks() >= AWDiplomacyStatics.siegeWarmupTicks + OUTSIDE_SPAWN_PATIENCE_TICKS)) {
+				origin = near;
+			}
+		}
 		if (origin == null) {
 			return null;
 		}
+		double dx = origin.getX() - target.getX();
+		double dz = origin.getZ() - target.getZ();
+		siege.setLeash(Math.max(siege.getLeash(), (int) Math.sqrt(dx * dx + dz * dz) + LEASH_MARGIN));
 		List<String> types = new ArrayList<>();
 		List<Integer> weights = new ArrayList<>();
 		parseWeights(siege.getKind() == Siege.Kind.SIEGE ? AWDiplomacyStatics.fullSiegeUnitWeights : AWDiplomacyStatics.raidUnitWeights, FALLBACK_UNIT,
@@ -1054,6 +1073,37 @@ public class Sieges {
 	 * @return a loaded surface position siege_spawn_min/max_distance from the city leader, or closer if none is found.
 	 * The leader and not the center of the city bounds: Ancient Warfare towns can be hundreds of blocks wide.
 	 */
+	/**
+	 * @return a loaded surface position outside the city bounds, a few blocks beyond the edge in a random direction from the leader (and at
+	 * least siege_spawn_min_distance from it), or null
+	 */
+	@Nullable
+	private static BlockPos findSpawnPosOutside(World world, BlockPos leader, Settlement settlement) {
+		for (int attempt = 0; attempt < SPAWN_ATTEMPTS; attempt++) {
+			double angle = world.rand.nextDouble() * Math.PI * 2D;
+			double dx = Math.cos(angle);
+			double dz = Math.sin(angle);
+			// distance from the leader to the edge of the bounds along the direction
+			double toEdgeX = dx > 1.0E-6 ? (settlement.getMax().getX() + 1 - leader.getX()) / dx : dx < -1.0E-6 ? (settlement.getMin().getX() - leader.getX()) / dx : Double.MAX_VALUE;
+			double toEdgeZ = dz > 1.0E-6 ? (settlement.getMax().getZ() + 1 - leader.getZ()) / dz : dz < -1.0E-6 ? (settlement.getMin().getZ() - leader.getZ()) / dz : Double.MAX_VALUE;
+			double distance = Math.max(0D, Math.min(toEdgeX, toEdgeZ)) + OUTSIDE_SPAWN_MIN_MARGIN + world.rand.nextInt(OUTSIDE_SPAWN_EXTRA + 1);
+			distance = Math.max(distance, AWDiplomacyStatics.siegeSpawnMinDistance);
+			if (distance > OUTSIDE_SPAWN_MAX_DISTANCE) {
+				continue;
+			}
+			BlockPos column = new BlockPos(leader.getX() + dx * distance, 64, leader.getZ() + dz * distance);
+			if (settlement.contains(settlement.getDimension(), new BlockPos(column.getX(), settlement.getMin().getY(), column.getZ())) || !world.isAreaLoaded(column, SPAWN_SPREAD + 2)) {
+				continue;
+			}
+			BlockPos top = world.getTopSolidOrLiquidBlock(column);
+			if (top.getY() <= 0 || world.getBlockState(top.down()).getMaterial().isLiquid()) {
+				continue;
+			}
+			return top;
+		}
+		return null;
+	}
+
 	@Nullable
 	private static BlockPos findSpawnPos(World world, BlockPos center) {
 		int minDistance = AWDiplomacyStatics.siegeSpawnMinDistance;

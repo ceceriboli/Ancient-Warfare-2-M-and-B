@@ -173,6 +173,8 @@ public class Siege {
 	// where the called players gather, outside the city (null: near the city leader, as for attacks that start near players)
 	@Nullable
 	private BlockPos musterPos;
+	// how far from the city leader attackers may be before they are dropped: more than the default for waves spawned outside a large city
+	private int leash;
 	private final Map<UUID, Call> calls = new LinkedHashMap<>();
 	@Nullable
 	private UUID proposer;
@@ -217,6 +219,14 @@ public class Siege {
 
 	void setMusterUntil(long musterUntil) {
 		this.musterUntil = musterUntil;
+	}
+
+	public int getLeash() {
+		return leash;
+	}
+
+	void setLeash(int leash) {
+		this.leash = leash;
 	}
 
 	@Nullable
@@ -398,6 +408,7 @@ public class Siege {
 		tag.setInteger("idleTicks", idleTicks);
 		tag.setString("origin", origin.getName());
 		tag.setLong("musterUntil", musterUntil);
+		tag.setInteger("leash", leash);
 		if (musterPos != null) {
 			tag.setLong("musterPos", musterPos.toLong());
 		}
@@ -432,6 +443,7 @@ public class Siege {
 		siege.idleTicks = tag.getInteger("idleTicks");
 		siege.origin = Origin.fromName(tag.getString("origin"));
 		siege.musterUntil = tag.getLong("musterUntil");
+		siege.leash = tag.getInteger("leash");
 		siege.musterPos = tag.hasKey("musterPos") ? BlockPos.fromLong(tag.getLong("musterPos")) : null;
 		if (tag.hasUniqueId("proposer")) {
 			siege.proposer = tag.getUniqueId("proposer");
