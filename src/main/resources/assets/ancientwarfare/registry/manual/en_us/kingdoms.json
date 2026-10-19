@@ -1,0 +1,133 @@
+{
+    "type": "manual_content",
+    "lang": "en_US",
+    "category": "kingdoms",
+    "content": [
+        {
+            "content_type": "heading",
+            "text": "Wars and Kingdoms",
+            "level": 1
+        },
+        {
+            "content_type": "text",
+            "text": "In Ancient Warfare 2: M&B the factions of the world are living powers. They go to war, make peace and form alliances as the days pass; their leaders rule cities with garrisons; those cities are raided, besieged and conquered. You can swear allegiance to a faction and fight in its wars, or place a Town Hall and found a kingdom of your own.\nEvery number in this chapter is a default. The server operator can change all of them in the file config/ancientwarfare/AncientWarfareDiplomacy.cfg."
+        },
+        {
+            "content_type": "heading",
+            "text": "Relations Between Factions",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "Any two factions are at war, at peace or allied. When a world begins, factions that are hostile to each other by nature are at war. As the days pass (Minecraft days: sleeping and the /time command count) every war wears the two sides down: each death, each lost city and each failed attack adds war exhaustion.\nA war that has lasted at least 3 days ends in a truce once the exhaustion is high enough (30). During a truce the two factions cannot declare war on each other. Rivals whose truce is over can fall into war again, and two factions that are at war with the same enemy can become allies, who may then join each other's wars. A faction fights at most 3 wars and has at most 2 alliances.\nOnly factions that rule at least one city take part in this. Some factions never make peace: Brigands, Pirates, monsters, beasts, the Undead, Demons and vampires."
+        },
+        {
+            "content_type": "heading",
+            "text": "Cities",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "A faction leader, the Leader NPC with the golden label “Leader of the …”, rules a city: the area of its structure or town. The city has a name, a garrison (the soldiers of the structure) and manpower, a reserve of soldiers. When a garrison soldier dies a replacement arrives after 30 seconds and costs 1 manpower; a city regains 1 manpower every Minecraft day. A purple bar at the top of the screen shows the manpower of the city you are in.\nA city has one ruler, the highest of its leaders; the others are its captains. The ruler and the garrison never despawn. Cities of the same faction that overlap are merged into one."
+        },
+        {
+            "content_type": "heading",
+            "text": "Raids and Sieges",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "Factions at war attack each other’s cities, close to players. A raid is a small attack of one or two waves. A siege is rare and large: up to 4 waves of soldiers, archers and cavalry, with siege engines handled by engineers. A faction with no known city can only raid. The size depends on the strength of the city (its garrison and manpower) and on the strength of the attacking faction.\nWhen an attack begins a horn sounds and a red bar shows the health of the attackers. They march on the leader of the city, open doors, climb the ladders they place against walls, lay planks over gaps and, in a siege, break through walls. The defenders come out to meet them, and archers on the walls keep shooting. A wave that makes no progress for five minutes retreats and the next one follows.\nThe attack is over when every wave is beaten off, when peace is made, or when the leader of the city is killed. Then the city is conquered: the old garrison flees, the surviving attackers become the new garrison and a governor of the winners takes the leader’s place. A conquered city starts small and regains its manpower slowly; reinforcements keep arriving until its garrison is as large as it was before."
+        },
+        {
+            "content_type": "heading",
+            "text": "Joining a Faction",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "Speak to the Leader of a faction that is not hostile to you (within 8 blocks). A window opens: press “Pledge allegiance to …”. You can belong to one faction at a time.\nAs a member the enemies of your faction become your enemies (your standing with them falls to at most -100), its allies become friendly (at least 50), and its soldiers are never hostile to you. Your standing with your faction rises to at least 100. When your faction makes peace or war, your standings follow.\nTo leave, speak to your Leader and choose “Renounce your allegiance” (or use /awmembership leave): a positive standing with the faction returns to 0 and the standings you inherited are given back. Killing a member of your own faction gets you expelled. If your faction loses its last city you are released from your oath without penalty."
+        },
+        {
+            "content_type": "heading",
+            "text": "Chests of Your Faction",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "The chests in the structures of your faction stay locked while its soldiers can see you, until you are trusted by it: a standing of 150 or more. Trying to open one before that costs you 5 standing. After your faction conquers a city in a campaign you served in, all the chests of that city are open to you for 10 minutes: the spoils of war."
+        },
+        {
+            "content_type": "heading",
+            "text": "Military Service",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "A member is a soldier of the faction. When your faction attacks an enemy city within 1500 blocks, or one of its cities is attacked, you are called to arms: a message gives the city, its distance and its direction, and reminders follow. The attack waits for you for 2 minutes plus about 0.3 seconds for each block of the longest journey (at most 30 minutes); when you reach the leader of the city, the attack begins. Your own soldiers who follow you join the assault.\nYou have served if you are at the city when the attack ends or have spent at least a minute there. Serving earns 10 standing, forgives a strike and pays wages (see Coins and Wages); each enemy you kill in the attack gives 1 more standing, up to 10 per attack.\nIf you do not come, an attack you were called to is cancelled and a city that nobody came to defend is plundered and loses manpower. You get a strike and lose 25 standing for each strike you have (25, then 50); on the third strike you are expelled and lose 50 more. A strike is forgiven after 7 days. Peace during the muster, going offline or an operator stopping the attack excuses you."
+        },
+        {
+            "content_type": "heading",
+            "text": "Proposing a Campaign",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "Speak to your Leader and choose “Propose a campaign”: you see the nearest enemy cities and can propose a raid (it needs a standing of 120) or a full siege (180). The Leader refuses if too many attacks are already in progress, if the faction is exhausted by that war, or if you proposed a campaign less than a day ago. If it is accepted, the campaign begins like any other and you are called. If the city holds out, you lose half of the standing that was needed."
+        },
+        {
+            "content_type": "heading",
+            "text": "Your Own Kingdom",
+            "level": 2
+        },
+        {
+            "content_type": "item",
+            "name": "ancientwarfarenpc:town_hall"
+        },
+        {
+            "content_type": "text",
+            "text": "The first Town Hall you place founds your kingdom, as long as the 64 blocks around it are free of other cities. If you belonged to a faction, you leave it. You receive:\n- a faction of your own, “(your name) Kingdom”, which you can rename with /awkingdom rename;\n- a capital city around the Town Hall, with a random name (rename it with /awkingdom cityname);\n- a Governor beside the Town Hall: the ruler of the city, with whom you manage the kingdom;\n- a culture: the look, soldiers, dialogues and natural rivals of an existing faction (the Empire at first), which you can change at the Governor.\nYour kingdom starts at peace with every faction, except the eternal enemies that are hostile to its culture, with a truce of 10 days. During these days nobody can attack your capital. You may declare war during the truce, but that ends the protection of your capital for good."
+        },
+        {
+            "content_type": "heading",
+            "text": "The Governor",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "Only you, the owner, see the options of the Governor.\nDiplomacy: the factions that rule cities, with your relation to each. You can declare war (it asks for confirmation, and it is not possible during a truce other than the first); propose peace (accepted after 3 days of war if one side is exhausted, never by eternal enemies; a truce follows); propose an alliance (accepted if you and they are at war with the same enemy, outside of a truce); or break an alliance. Peace and alliances are never made for you: only you decide. Other factions can still declare war on you.\nThe kingdom: your capital, its manpower, your culture, your wars and alliances.\nOrder a campaign: choose an enemy city and a raid or a siege. It costs 1 manpower of your capital for each attacker the campaign will have, and it is not refunded if the attack is cancelled. You and your subjects are called to arms as usual, but you never get strikes in your own kingdom."
+        },
+        {
+            "content_type": "heading",
+            "text": "Manpower, Conquest and Tribute",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "The manpower of your capital starts at 20, plus 2 for each of your own combat soldiers inside it. It grows when you have more soldiers there than ever before, and never shrinks when they die. Free recruits of your kingdom also arrive in the capital, up to 6 soldiers.\nYour kingdom can conquer cities: kill the leader of an enemy city yourself, with your soldiers, or in a campaign you ordered, and the city becomes yours, with your culture. Each conquered city pays tribute: half of its maximum manpower is added to the manpower of your capital, which pays the campaigns of the kingdom. /awkingdom info lists all your cities.\nIf you lose all your cities, the kingdom ends and you are free again. To end it yourself, use /awkingdom disband confirm: every city of the kingdom is abandoned."
+        },
+        {
+            "content_type": "heading",
+            "text": "Coins and Wages",
+            "level": 2
+        },
+        {
+            "content_type": "item",
+            "name": "ancientwarfarenpc:coin",
+            "nbt": "{metal:\"gold\"}"
+        },
+        {
+            "content_type": "text",
+            "text": "Ancient Warfare has four coins: the Copper Owl, the Silver Stag, the Gold Dragon and the Ancient Coin. Traders accept them in exchange for their goods, and change them: 9 copper for 1 silver, 1 silver for 7 copper, 9 silver for 1 gold and 1 gold for 7 silver. Eight coins of one metal are worth about one of the next. Eight coins can be placed on the ground as a coin stack.\nWhen you serve in a campaign of your faction, the Leader owes you wages: 3 Gold Dragons for a raid, 8 for a full siege. Speak to your Leader and choose “Collect my wages” (or use /awservice wages). Wages are lost if you leave the faction. Your own kingdom pays you nothing."
+        },
+        {
+            "content_type": "heading",
+            "text": "Commands",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "For every player:\n/awmembership join (faction), leave, status\n/awservice propose [city id] [raid or siege], wages\n/awkingdom info, rename (name), cityname (name), culture (faction), disband confirm\n/awarmy status\nFor operators:\n/awrelation war, peace, alliance, reset, get (faction) (faction); list [faction]\n/awdiplomacy status [faction], day, exhaustion (faction) (enemy) (value)\n/awsettlement list, info [id], setmanpower (id) (amount), rename (id) (name)\n/awsiege start (city id) (faction) [raid or siege], stop (city id), list\n/awservice call attack or defend [raid or siege] [player], strikes (player) (n)\n/awmembership set (player) (faction), clear (player)\n/awfaction get, set, setall, add, subtract (player)"
+        }
+    ]
+}

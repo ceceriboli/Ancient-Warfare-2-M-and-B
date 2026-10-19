@@ -53,7 +53,7 @@
         },
         {
             "content_type": "text",
-            "text": "The Town Hall block functions as an auto-assignable upkeep point for its owner’s NPCs. NPCs in range will automatically select the closest Town Hall as their upkeep point if no Upkeep Orders are present. This will also override an upkeep point assigned by command baton. The Town Hall has a modest sized inventory for storing food for NPC upkeep. \nThe Town Hall additionally serves as a death tracker for any NPCs that died within its range. Players may view this list by pressing the ‘Death List’ button in the Town Hall GUI. The list may be cleared out manually by pressing the ‘Clear List’ button in the death list GUI. Priests use this death list to track potential resurrection targets, so do not clear the list if you want to resurrect any of the NPCs on it."
+            "text": "The Town Hall block functions as an auto-assignable upkeep point for its owner’s NPCs. NPCs in range will automatically select the closest Town Hall as their upkeep point if no Upkeep Orders are present. This will also override an upkeep point assigned by command baton. The Town Hall has a modest sized inventory for storing food for NPC upkeep. The first Town Hall you place also founds your own kingdom (see the chapter The Town Hall additionally serves as a death tracker for any NPCs that died within its range. Players may view this list by pressing the ‘Death List’ button in the Town Hall GUI. The list may be cleared out manually by pressing the ‘Clear List’ button in the death list GUI. Priests use this death list to track potential resurrection targets, so do not clear the list if you want to resurrect any of the NPCs on it."
         },
         {
             "content_type": "item",

@@ -31,6 +31,10 @@
                     "category_link": "factions"
                 },
                 {
+                    "text": "Wars and Kingdoms",
+                    "category_link": "kingdoms"
+                },
+                {
                     "text": "结构",
                     "category_link": "structures"
                 },
