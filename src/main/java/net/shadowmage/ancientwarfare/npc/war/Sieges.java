@@ -508,7 +508,8 @@ public class Sieges {
 			}
 			percent = siege.getWaveMaxHealth() <= 0 ? 0F : health / siege.getWaveMaxHealth();
 		}
-		AxisAlignedBB area = new AxisAlignedBB(settlement.getCenter()).grow(AWDiplomacyStatics.siegePlayerRange);
+		// the whole city and around it (the center alone left most of a large city without the bar)
+		AxisAlignedBB area = settlement.getAABB().grow(AWDiplomacyStatics.manpowerBarRange);
 		AreaBossBars.show(world, key, area, name, BossInfo.Color.RED, BossInfo.Overlay.NOTCHED_10, percent);
 	}
 
