@@ -1,5 +1,6 @@
 package net.shadowmage.ancientwarfare.npc.war;
 
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraftforge.common.util.Constants;
@@ -169,6 +170,9 @@ public class Siege {
 	private int idleTicks;
 	private Origin origin = Origin.AMBIENT;
 	private long musterUntil;
+	// where the called players gather, outside the city (null: near the city leader, as for attacks that start near players)
+	@Nullable
+	private BlockPos musterPos;
 	private final Map<UUID, Call> calls = new LinkedHashMap<>();
 	@Nullable
 	private UUID proposer;
@@ -213,6 +217,15 @@ public class Siege {
 
 	void setMusterUntil(long musterUntil) {
 		this.musterUntil = musterUntil;
+	}
+
+	@Nullable
+	public BlockPos getMusterPos() {
+		return musterPos;
+	}
+
+	void setMusterPos(@Nullable BlockPos musterPos) {
+		this.musterPos = musterPos;
 	}
 
 	void setSize(int totalWaves, int attackersPerWave) {
@@ -385,6 +398,9 @@ public class Siege {
 		tag.setInteger("idleTicks", idleTicks);
 		tag.setString("origin", origin.getName());
 		tag.setLong("musterUntil", musterUntil);
+		if (musterPos != null) {
+			tag.setLong("musterPos", musterPos.toLong());
+		}
 		NBTTagList callList = new NBTTagList();
 		for (Map.Entry<UUID, Call> entry : calls.entrySet()) {
 			NBTTagCompound callTag = entry.getValue().writeToNBT(new NBTTagCompound());
@@ -416,6 +432,7 @@ public class Siege {
 		siege.idleTicks = tag.getInteger("idleTicks");
 		siege.origin = Origin.fromName(tag.getString("origin"));
 		siege.musterUntil = tag.getLong("musterUntil");
+		siege.musterPos = tag.hasKey("musterPos") ? BlockPos.fromLong(tag.getLong("musterPos")) : null;
 		if (tag.hasUniqueId("proposer")) {
 			siege.proposer = tag.getUniqueId("proposer");
 			siege.proposerPenalty = tag.getInteger("proposerPenalty");

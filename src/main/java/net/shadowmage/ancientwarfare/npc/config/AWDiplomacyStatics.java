@@ -57,6 +57,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int serviceMusterTicksPerBlock = 6;
 	public static int serviceMusterMaxTicks = 36000;
 	public static int serviceMusterRange = 96;
+	public static int serviceMusterMargin = 24;
+	public static int serviceMusterPointRange = 16;
 	public static int serviceReminderTicks = 2400;
 	public static int servicePresenceRange = 96;
 	public static int serviceMinPresenceTicks = 1200;
@@ -253,6 +255,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		serviceMusterMaxTicks = config.get(serverOptions, "service_muster_max_ticks", serviceMusterMaxTicks, "Muster time (maximum)\nDefault=" + serviceMusterMaxTicks + "\n" + "Longest muster time in ticks, whatever the distance.", 200, 720000).getInt();
 
+		serviceMusterMargin = config.get(serverOptions, "service_muster_margin", serviceMusterMargin, "Muster point distance\nDefault=" + serviceMusterMargin + "\n" + "The players called to a campaign gather this many blocks outside the bounds of the city, on the side of the nearest of them.", 0, 256).getInt();
+		serviceMusterPointRange = config.get(serverOptions, "service_muster_point_range", serviceMusterPointRange, "Muster point size\nDefault=" + serviceMusterPointRange + "\n" + "A campaign begins when a called player comes within this many blocks of the muster point.", 2, 128).getInt();
 		serviceMusterRange = config.get(serverOptions, "service_muster_range", serviceMusterRange, "Muster range\nDefault=" + serviceMusterRange + "\n" + "A campaign begins when a called player comes within this many blocks of the city leader.", 16, 512).getInt();
 
 		serviceReminderTicks = config.get(serverOptions, "service_reminder_ticks", serviceReminderTicks, "Call reminder\nDefault=" + serviceReminderTicks + "\n" + "Ticks (20 per second) between two reminders (distance, direction, time left) to a called player during the muster.\n" + "0 = no reminders.", 0, 720000).getInt();

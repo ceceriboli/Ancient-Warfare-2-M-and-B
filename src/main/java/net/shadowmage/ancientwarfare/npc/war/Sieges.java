@@ -561,7 +561,8 @@ public class Sieges {
 		Collections.shuffle(candidates, world.rand);
 		for (Settlement settlement : candidates) {
 			List<String> enemies = new ArrayList<>(FactionRelations.getDeclaredEnemies(world, settlement.getFaction()));
-			enemies.removeIf(enemy -> canStart(world, settlement, enemy) != null);
+			// a player kingdom attacks only when its owner orders a campaign
+			enemies.removeIf(enemy -> Kingdoms.isKingdom(enemy) || canStart(world, settlement, enemy) != null);
 			if (enemies.isEmpty() || world.rand.nextDouble() >= AWDiplomacyStatics.siegeChance) {
 				continue;
 			}

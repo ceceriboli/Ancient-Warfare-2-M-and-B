@@ -102,8 +102,10 @@ public class Service {
 					|| world.rand.nextDouble() >= AWDiplomacyStatics.campaignChance) {
 				continue;
 			}
-			boolean offensive = world.rand.nextDouble() < AWDiplomacyStatics.campaignOffenseShare;
-			if (startCampaign(world, data, player, member.faction, offensive, now, false, null) == null) {
+			// a player kingdom attacks only when its owner orders a campaign: only defenses start on their own
+			boolean kingdom = Kingdoms.isKingdom(member.faction);
+			boolean offensive = !kingdom && world.rand.nextDouble() < AWDiplomacyStatics.campaignOffenseShare;
+			if (startCampaign(world, data, player, member.faction, offensive, now, false, null) == null && !kingdom) {
 				startCampaign(world, data, player, member.faction, !offensive, now, false, null);
 			}
 		}
@@ -188,6 +190,21 @@ public class Service {
 			called.add(player);
 			farthest = Math.max(farthest, Math.sqrt(player.getDistanceSq(target)));
 		}
+		if (muster && !called.isEmpty()) {
+			// the called players gather outside the city, on the side of the nearest of them
+			EntityPlayerMP nearest = called.get(0);
+			for (EntityPlayerMP player : called) {
+				if (player.getDistanceSq(target) < nearest.getDistanceSq(target)) {
+					nearest = player;
+				}
+			}
+			siege.setMusterPos(computeMusterPos(world, settlement, nearest));
+			target = siege.getMusterPos();
+			farthest = 0;
+			for (EntityPlayerMP player : called) {
+				farthest = Math.max(farthest, Math.sqrt(player.getDistanceSq(target)));
+			}
+		}
 		if (muster) {
 			// time to get there: the base muster time plus the way of the farthest called player
 			long ticks = Math.min(AWDiplomacyStatics.serviceMusterMaxTicks,
@@ -201,6 +218,38 @@ public class Service {
 					settlement.getId(), settlement.getFaction(), siege.getKind().getName(), siege.getId(), (int) Math.sqrt(player.getDistanceSq(target)));
 		}
 		Settlements.getData(world).markDirty();
+	}
+
+	/**
+	 * @return a point outside the city bounds, service_muster_margin blocks beyond its edge, on the side of the given player (from the center
+	 * of the city), on the surface if that part of the world is loaded
+	 */
+	private static BlockPos computeMusterPos(WorldServer world, Settlement settlement, EntityPlayerMP toward) {
+		double centerX = (settlement.getMin().getX() + settlement.getMax().getX() + 1) / 2D;
+		double centerZ = (settlement.getMin().getZ() + settlement.getMax().getZ() + 1) / 2D;
+		double dx = toward.posX - centerX;
+		double dz = toward.posZ - centerZ;
+		double length = Math.sqrt(dx * dx + dz * dz);
+		if (length < 1D) {
+			dx = 1D;
+			dz = 0D;
+		} else {
+			dx /= length;
+			dz /= length;
+		}
+		double halfX = (settlement.getMax().getX() - settlement.getMin().getX() + 1) / 2D;
+		double halfZ = (settlement.getMax().getZ() - settlement.getMin().getZ() + 1) / 2D;
+		// distance from the center to the edge of the bounds along the direction
+		double toEdge = Math.min(Math.abs(dx) < 1.0E-6 ? Double.MAX_VALUE : halfX / Math.abs(dx), Math.abs(dz) < 1.0E-6 ? Double.MAX_VALUE : halfZ / Math.abs(dz));
+		double distance = toEdge + AWDiplomacyStatics.serviceMusterMargin;
+		BlockPos column = new BlockPos(centerX + dx * distance, settlement.getLastLeaderPos().getY(), centerZ + dz * distance);
+		return world.isBlockLoaded(column) ? world.getTopSolidOrLiquidBlock(column) : column;
+	}
+
+	private static double horizontalDistanceSq(EntityPlayerMP player, BlockPos pos) {
+		double dx = pos.getX() + 0.5D - player.posX;
+		double dz = pos.getZ() + 0.5D - player.posZ;
+		return dx * dx + dz * dz;
 	}
 
 	private static void sendCall(World world, EntityPlayerMP player, Siege siege, Settlement settlement, Siege.Call call, BlockPos target) {
@@ -266,7 +315,7 @@ public class Service {
 				if (siege.getState() == Siege.State.MUSTER) {
 					if (AWDiplomacyStatics.serviceReminderTicks > 0 && now - call.lastReminder >= AWDiplomacyStatics.serviceReminderTicks) {
 						call.lastReminder = now;
-						sendReminder(world, player, siege, settlement, call, target);
+						sendReminder(world, player, siege, settlement, call, siege.getMusterPos() != null ? siege.getMusterPos() : target);
 					}
 				} else if (player.getDistanceSq(target) <= presenceSq) {
 					call.addPresenceTicks(20);
@@ -313,7 +362,8 @@ public class Service {
 		double rangeSq = (double) AWDiplomacyStatics.serviceMusterRange * AWDiplomacyStatics.serviceMusterRange;
 		for (Map.Entry<UUID, Siege.Call> entry : siege.getCalls().entrySet()) {
 			EntityPlayerMP player = entry.getValue().isExcused() ? null : server.getPlayerList().getPlayerByUUID(entry.getKey());
-			if (player != null && player.world == world && !player.isSpectator() && player.getDistanceSq(target) <= rangeSq) {
+			if (player != null && player.world == world && !player.isSpectator() && (player.getDistanceSq(target) <= rangeSq || siege.getMusterPos() != null
+					&& horizontalDistanceSq(player, siege.getMusterPos()) <= (double) AWDiplomacyStatics.serviceMusterPointRange * AWDiplomacyStatics.serviceMusterPointRange)) {
 				return true;
 			}
 		}
