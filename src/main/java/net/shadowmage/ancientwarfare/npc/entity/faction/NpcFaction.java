@@ -40,6 +40,7 @@ import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionFlee;
 import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionFleeSun;
 import net.shadowmage.ancientwarfare.npc.ai.faction.NpcAIFactionRestrictSun;
 import net.shadowmage.ancientwarfare.npc.registry.NPCDialogue;
+import net.shadowmage.ancientwarfare.npc.war.Settlements;
 import net.shadowmage.ancientwarfare.npc.config.AWNPCStatics;
 import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
 import net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned;
@@ -303,6 +304,11 @@ public abstract class NpcFaction extends NpcBase {
 			return revengePlayers.containsKey(playerName) || FactionTracker.INSTANCE.isHostileToPlayer(world, playerUUID, playerName, getFaction());
 		} else if (e instanceof NpcFaction) {
 			NpcFaction npc = (NpcFaction) e;
+			String siegeEnemy = getEntityData().hasKey(Settlements.TAG_SIEGE) ? getEntityData().getString(Settlements.TAG_SIEGE_ENEMY) : "";
+			if (!siegeEnemy.isEmpty() && !siegeEnemy.equals(npc.getFaction()) && npc.getAttackTarget() != this) {
+				// an attacker in a siege fights the besieged faction, not the other settlements on its way (unless they attack it)
+				return false;
+			}
 			return !npc.getFaction().equals(factionName) && FactionRelations.isHostile(world, getFaction(), npc.getFaction());
 		} else {
 			return FactionRegistry.getFaction(factionName).isTarget(e) || AIHelper.isAdditionalEntityToTarget(e);

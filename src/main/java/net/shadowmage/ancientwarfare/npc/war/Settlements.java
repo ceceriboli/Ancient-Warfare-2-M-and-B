@@ -64,6 +64,8 @@ public class Settlements {
 	public static final String TAG_SETTLEMENT = "awSettlement";
 	public static final String TAG_ROLE = "awSettlementRole";
 	public static final String TAG_SIEGE = "awSiege";
+	// faction of the city an attacker besieges: the only npcs it is hostile to (with those that attack it), see NpcFaction.isHostileTowards
+	public static final String TAG_SIEGE_ENEMY = "awSiegeEnemy";
 	public static final String TAG_ARMY = "awArmy";
 	/**
 	 * Units left by a fallen city (bandits or units without city): they never found or join a city again

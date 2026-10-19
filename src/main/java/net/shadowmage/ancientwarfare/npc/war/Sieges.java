@@ -438,6 +438,7 @@ public class Sieges {
 			} else if (isEngineer(npc)) {
 				commandEngineer(world, npc, settlement);
 			} else {
+				dropForeignTarget(npc);
 				aim(npc, target, breach, build);
 			}
 		}
@@ -623,6 +624,22 @@ public class Sieges {
 			}
 		}
 		return settlement.getLastLeaderPos();
+	}
+
+	/**
+	 * An attacker that took an enemy it should not fight now (another settlement on its way, taken before the siege restriction applied) lets
+	 * it go: a running target task keeps its own copy of the target, so it is reset too.
+	 */
+	private static void dropForeignTarget(NpcFaction npc) {
+		EntityLivingBase target = npc.getAttackTarget();
+		if (target instanceof NpcFaction && !npc.isHostileTowards(target)) {
+			npc.setAttackTarget(null);
+			for (EntityAITasks.EntityAITaskEntry entry : npc.targetTasks.taskEntries) {
+				if (entry.using) {
+					entry.action.resetTask();
+				}
+			}
+		}
 	}
 
 	private static void aim(NpcFaction npc, BlockPos target, boolean breach, boolean build) {
@@ -890,6 +907,7 @@ public class Sieges {
 					world.rand.nextInt(SPAWN_SPREAD * 2 + 1) - SPAWN_SPREAD));
 			npc.setLocationAndAngles(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, world.rand.nextFloat() * 360F, 0F);
 			npc.getEntityData().setInteger(Settlements.TAG_SIEGE, siege.getId());
+			npc.getEntityData().setString(Settlements.TAG_SIEGE_ENEMY, settlement.getFaction());
 			npc.setHealth(npc.getMaxHealth());
 			if (world.spawnEntity(npc)) {
 				siege.addAttacker(npc);
