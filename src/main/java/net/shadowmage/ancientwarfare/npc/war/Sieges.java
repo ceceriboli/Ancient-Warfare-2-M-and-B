@@ -87,6 +87,7 @@ public class Sieges {
 	private static final int OUTSIDE_SPAWN_EXTRA = 16;
 	private static final int OUTSIDE_SPAWN_MAX_DISTANCE = 240;
 	private static final int OUTSIDE_SPAWN_PATIENCE_TICKS = 1200;
+	private static final int OUTSIDE_SPAWN_ATTEMPTS = 48;
 	private static final double ENGINE_TARGET_RANGE = 96D;
 	private static final int ENGINE_SPACING = 6;
 	private static final int RECONNECT_GRACE_TICKS = 200;
@@ -1074,12 +1075,14 @@ public class Sieges {
 	 * The leader and not the center of the city bounds: Ancient Warfare towns can be hundreds of blocks wide.
 	 */
 	/**
-	 * @return a loaded surface position outside the city bounds, a few blocks beyond the edge in a random direction from the leader (and at
-	 * least siege_spawn_min_distance from it), or null
+	 * @return a loaded surface position outside the city bounds, a few blocks beyond the edge (and at least siege_spawn_min_distance from the
+	 * leader): among several directions the closest to the leader, so that the attackers do not have to cross the whole of a large city
 	 */
 	@Nullable
 	private static BlockPos findSpawnPosOutside(World world, BlockPos leader, Settlement settlement) {
-		for (int attempt = 0; attempt < SPAWN_ATTEMPTS; attempt++) {
+		BlockPos best = null;
+		double bestDistance = Double.MAX_VALUE;
+		for (int attempt = 0; attempt < OUTSIDE_SPAWN_ATTEMPTS; attempt++) {
 			double angle = world.rand.nextDouble() * Math.PI * 2D;
 			double dx = Math.cos(angle);
 			double dz = Math.sin(angle);
@@ -1096,12 +1099,13 @@ public class Sieges {
 				continue;
 			}
 			BlockPos top = world.getTopSolidOrLiquidBlock(column);
-			if (top.getY() <= 0 || world.getBlockState(top.down()).getMaterial().isLiquid()) {
+			if (top.getY() <= 0 || world.getBlockState(top.down()).getMaterial().isLiquid() || distance >= bestDistance) {
 				continue;
 			}
-			return top;
+			best = top;
+			bestDistance = distance;
 		}
-		return null;
+		return best;
 	}
 
 	@Nullable
