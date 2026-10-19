@@ -65,6 +65,7 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	private static final int PROGRESS_CHECK_TICKS = 40;
 	private static final int NO_PROGRESS_CHECKS = 2;
 	private static final int MIN_BREACH_TICKS = 20;
+	private static final int FOLIAGE_CLEAR_TICKS = 10;
 	private static final double BREACH_REACH_SQ = 3D * 3D;
 	private static final int LADDER_MIN_RISE = 3;
 	private static final int MAX_LADDER_HEIGHT = 24;
@@ -225,7 +226,7 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 			return;
 		}
 		// a rider goes on foot, then ladders and bridges (when the way is not a wall at the height of the target), then the breach
-		if (checkNoProgress() && (dismount() || startBuild() || breachAllowed && startBreach())) {
+		if (checkNoProgress() && (dismount() || startClearFoliage() || startBuild() || breachAllowed && startBreach())) {
 			return;
 		}
 		if (repathDelay > 0) {
@@ -395,6 +396,45 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * An attacker caught in tree leaves (in raids too, archers too) clears the leaves around it and in front of it towards the target, up to
+	 * its own height (giants are 4 blocks tall). Quick, and it does not open walls: only leaves.
+	 */
+	private boolean startClearFoliage() {
+		if (!AWDiplomacyStatics.attackerClearFoliage || !ForgeEventFactory.getMobGriefingEvent(npc.world, npc)) {
+			return false;
+		}
+		//noinspection ConstantConditions
+		double dx = target.getX() + 0.5D - npc.posX;
+		double dz = target.getZ() + 0.5D - npc.posZ;
+		double length = Math.max(1.0E-3D, Math.sqrt(dx * dx + dz * dz));
+		// the cells of the npc and one block around, a bit further towards the target
+		net.minecraft.util.math.AxisAlignedBB box = npc.getEntityBoundingBox().grow(1D, 0D, 1D).offset(dx / length * 0.5D, 0D, dz / length * 0.5D);
+		BlockPos best = null;
+		double bestScore = Double.MAX_VALUE;
+		double aheadX = npc.posX + dx / length;
+		double aheadZ = npc.posZ + dz / length;
+		for (BlockPos pos : BlockPos.getAllInBoxMutable(new BlockPos(box.minX, box.minY, box.minZ), new BlockPos(box.maxX, box.maxY - 0.01D, box.maxZ))) {
+			IBlockState state = npc.world.getBlockState(pos);
+			if (state.getMaterial() != Material.LEAVES || !canBreach(npc.world, pos)) {
+				continue;
+			}
+			double score = (pos.getX() + 0.5D - aheadX) * (pos.getX() + 0.5D - aheadX) + (pos.getZ() + 0.5D - aheadZ) * (pos.getZ() + 0.5D - aheadZ);
+			if (score < bestScore) {
+				bestScore = score;
+				best = pos.toImmutable();
+			}
+		}
+		if (best == null) {
+			return false;
+		}
+		breachPos = best;
+		breachTicks = 0;
+		breachTotalTicks = FOLIAGE_CLEAR_TICKS;
+		npc.getNavigator().clearPath();
+		return true;
 	}
 
 	public static boolean canBreach(World world, BlockPos pos) {
