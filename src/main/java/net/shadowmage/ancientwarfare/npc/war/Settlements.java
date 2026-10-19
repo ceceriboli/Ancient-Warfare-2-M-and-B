@@ -980,6 +980,13 @@ public class Settlements {
 		return world.getWorldTime() / DAY_TICKS;
 	}
 
+	/**
+	 * @return the coins a city pays as taxes every day: city_tax_per_manpower of its own maximum manpower, at least 1
+	 */
+	public static int getDailyTax(Settlement settlement) {
+		return Math.max(1, (int) Math.round(settlement.getBaseMaxManpower() * AWDiplomacyStatics.cityTaxPerManpower));
+	}
+
 	private static void regenerateManpower(World world, SettlementData data, Settlement settlement) {
 		// Minecraft days of the world time (they follow /time and sleeping, like the days of the diplomacy)
 		long day = getDay(world);
@@ -993,6 +1000,11 @@ public class Settlements {
 			return;
 		}
 		long days = day - settlement.getLastRegenDay();
+		if (!Sieges.isBesieged(settlement)) {
+			// taxes: coins for the owner of the city, up to city_tax_max_days days of them
+			int daily = getDailyTax(settlement);
+			settlement.setTreasury((int) Math.min((long) daily * AWDiplomacyStatics.cityTaxMaxDays, settlement.getTreasury() + days * daily));
+		}
 		if (AWDiplomacyStatics.conqueredManpowerGrowthPerDay > 0 && settlement.getMaxManpower() < settlement.getManpowerCap() && !Sieges.isBesieged(settlement)) {
 			// a conquered city slowly grows back to the size it had before the conquest
 			long growth = days * AWDiplomacyStatics.conqueredManpowerGrowthPerDay;
@@ -1117,6 +1129,7 @@ public class Settlements {
 		releaseGarrison(world, settlement);
 		settlement.setFaction(winner);
 		settlement.setOwnerId(null); // a conquered kingdom capital is a city of the winners now
+		settlement.setTreasury(0); // the winners take what was in it
 		checkFactionGone(world, oldFaction);
 		settlement.getPendingRespawns().clear();
 		settlement.missingLeaderChecks = 0;

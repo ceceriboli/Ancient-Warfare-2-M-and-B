@@ -18,6 +18,7 @@ import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
 import net.shadowmage.ancientwarfare.npc.gamedata.KingdomData;
 import net.shadowmage.ancientwarfare.npc.network.PacketFactionDialogue;
+import net.shadowmage.ancientwarfare.npc.war.Coins;
 import net.shadowmage.ancientwarfare.npc.war.Service;
 import net.shadowmage.ancientwarfare.npc.war.Settlement;
 import net.shadowmage.ancientwarfare.npc.war.Settlements;
@@ -55,6 +56,7 @@ public class FactionDialogue {
 	private static final String K_ALLY = "ally:";
 	private static final String K_BREAK = "break:";
 	private static final String K_REALM = "realm";
+	private static final String K_TAXES = "taxes";
 	private static final String K_CULTURES = "cultures:";
 	private static final String K_CULTURE = "culture:";
 	private static final int PAGE_SIZE = 6;
@@ -158,6 +160,11 @@ public class FactionDialogue {
 			if (owner) {
 				buttons.add(button(new TextComponentTranslation("gui.aw.kingdom.diplomacy"), KINGDOM_PREFIX + K_PARTNERS + "0"));
 				buttons.add(button(new TextComponentTranslation("gui.aw.kingdom.realm"), KINGDOM_PREFIX + K_REALM));
+				int taxes = Service.getCollectableTaxes(player.world, player, Settlements.getSettlementOf(npc));
+				if (taxes > 0) {
+					buttons.add(button(new TextComponentTranslation("gui.aw.dialogue.taxes", taxes, Coins.getName()), KINGDOM_PREFIX + K_TAXES)
+							.hover(new TextComponentTranslation("gui.aw.dialogue.taxes.hover")));
+				}
 			}
 			if (AWDiplomacyStatics.serviceEnabled && AWDiplomacyStatics.siegesEnabled) {
 				buttons.add(button(new TextComponentTranslation(owner ? "gui.aw.kingdom.campaign" : "gui.aw.dialogue.propose"), PROPOSE)
@@ -205,6 +212,8 @@ public class FactionDialogue {
 		} else if (action.startsWith(K_BREAK)) {
 			String other = action.substring(K_BREAK.length());
 			sendPartnerPage(player, npc, other, isPartner(player, kingdom, other) ? KingdomDiplomacy.breakAlliance(server, kingdom, other) : null);
+		} else if (action.equals(K_TAXES)) {
+			sendPage(player, npc, Service.payTaxes(player, Settlements.getSettlementOf(npc)), button(new TextComponentTranslation("gui.aw.dialogue.back"), BACK));
 		} else if (action.equals(K_REALM)) {
 			sendRealmPage(player, npc, null);
 		} else if (action.startsWith(K_CULTURES)) {
@@ -294,11 +303,15 @@ public class FactionDialogue {
 		ITextComponent text = new TextComponentString(kingdom.name);
 		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.capital", city == null ? new TextComponentString("-") : Settlements.displayName(city)));
 		text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.manpower", city == null ? 0 : city.getManpower(), city == null ? 0 : city.getMaxManpower()));
+		if (city != null) {
+			text.appendText(" ").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.treasury", city.getTreasury(), Coins.getName()));
+		}
 		List<Settlement> cities = Kingdoms.getCities(player.world, kingdom);
 		int shown = 0;
 		for (Settlement other : cities) {
 			if (other != city && shown++ < 5) {
 				text.appendText("\n").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.conquered", Settlements.displayName(other), other.getManpower(), other.getMaxManpower()));
+				text.appendText(" ").appendSibling(new TextComponentTranslation("gui.aw.kingdom.realm.treasury", other.getTreasury(), Coins.getName()));
 			}
 		}
 		if (city != null && city.getTributeBonus() > 0) {

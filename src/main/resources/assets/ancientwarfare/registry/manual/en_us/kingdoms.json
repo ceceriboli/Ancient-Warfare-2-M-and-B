@@ -108,6 +108,14 @@
         },
         {
             "content_type": "heading",
+            "text": "Taxes",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "Every city collects taxes each Minecraft day while it is not under attack: one Gold Dragon for every 20 points of its maximum manpower, at least one. A city keeps at most 14 days of taxes; a plundered or conquered city loses them all.\nThe taxes of your kingdom are yours. Speak to the Governor of a city and choose “Collect taxes”: at your capital you collect the taxes of every city of the kingdom, at another city only those of that city. /awkingdom info shows the treasury of each city."
+        },        {
+            "content_type": "heading",
             "text": "Coins and Wages",
             "level": 2
         },

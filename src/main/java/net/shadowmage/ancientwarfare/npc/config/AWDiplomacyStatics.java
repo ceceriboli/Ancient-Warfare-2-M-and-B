@@ -19,6 +19,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int serviceWageSiege = 8;
 	public static String serviceWageCoin = "gold";
 	public static double kingdomTributeRatio = 0.5;
+	public static double cityTaxPerManpower = 0.05;
+	public static int cityTaxMaxDays = 14;
 	public static String[] kingdomCultures = new String[0];
 	public static int kingdomRadius = 64;
 	public static int kingdomStartManpower = 20;
@@ -176,6 +178,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		serviceWageRaid = config.get(serverOptions, "service_wage_raid", serviceWageRaid, "Wage for a raid\nDefault=" + serviceWageRaid + "\n" + "Wages a member earns for serving in a campaign that is a raid, in coins (see service_wage_coin). They are collected from the ruler of the faction. A kingdom owner earns nothing from its own kingdom. 0 = no wages.", 0, 10000).getInt();
 		serviceWageSiege = config.get(serverOptions, "service_wage_siege", serviceWageSiege, "Wage for a full siege\nDefault=" + serviceWageSiege + "\n" + "Like service_wage_raid, for a campaign that is a full siege with engines.", 0, 10000).getInt();
 		serviceWageCoin = config.get(serverOptions, "service_wage_coin", serviceWageCoin, "Wage coin\nDefault=" + serviceWageCoin + "\n" + "The Ancient Warfare coin wages are paid in: copper (Copper Owl), silver (Silver Stag), gold (Gold Dragon) or ancient.").getString();
+		cityTaxPerManpower = config.get(serverOptions, "city_tax_per_manpower", cityTaxPerManpower, "City taxes\nDefault=" + cityTaxPerManpower + "\n" + "Coins (see service_wage_coin) a city collects every Minecraft day for each point of its own maximum manpower (at least 1 a day), while it is not under attack. The owner of a kingdom collects them at the governors of its cities.", 0.0D, 100.0D).getDouble();
+		cityTaxMaxDays = config.get(serverOptions, "city_tax_max_days", cityTaxMaxDays, "City treasury limit\nDefault=" + cityTaxMaxDays + "\n" + "A city keeps at most this many days of taxes; a plundered or conquered city loses them.", 1, 1000).getInt();
 		kingdomRadius = config.get(serverOptions, "kingdom_radius", kingdomRadius, "Kingdom city radius\nDefault=" + kingdomRadius + "\n" + "Half the side of the square city founded around a town hall, in blocks. It must not overlap another city.", 8, 256).getInt();
 		kingdomStartManpower = config.get(serverOptions, "kingdom_start_manpower", kingdomStartManpower, "Kingdom starting manpower\nDefault=" + kingdomStartManpower + "\n" + "Manpower of a new kingdom city, plus manpower_per_unit for each soldier of the player inside it.", 0, 10000).getInt();
 		kingdomGarrison = config.get(serverOptions, "kingdom_garrison", kingdomGarrison, "Kingdom garrison\nDefault=" + kingdomGarrison + "\n" + "Recruits of the kingdom (occupation_unit_weights) come to a kingdom city every reinforcement_interval_ticks until its garrison has this many units. 0 = none.", 0, 200).getInt();

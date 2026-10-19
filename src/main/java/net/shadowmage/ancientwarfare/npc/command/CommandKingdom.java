@@ -93,6 +93,8 @@ public class CommandKingdom extends CommandBase {
 					boolean isCapital = city.getOwnerId() != null;
 					sender.sendMessage(new TextComponentTranslation(isCapital ? "command.aw.kingdom.info.capital" : "command.aw.kingdom.info.conquered", Settlements.displayName(city),
 							city.getManpower(), city.getMaxManpower(), city.getTributeBonus()));
+					sender.sendMessage(new TextComponentTranslation("command.aw.kingdom.info.treasury", city.getTreasury(), net.shadowmage.ancientwarfare.npc.war.Coins.getName(),
+							net.shadowmage.ancientwarfare.npc.war.Settlements.getDailyTax(city)));
 				}
 				break;
 			case RENAME:

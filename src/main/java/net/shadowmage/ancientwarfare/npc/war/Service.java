@@ -24,7 +24,6 @@ import net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
 import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
-import net.shadowmage.ancientwarfare.npc.item.ItemCoin;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.faction.FactionRelations;
 import net.shadowmage.ancientwarfare.npc.faction.FactionTracker;
@@ -332,6 +331,7 @@ public class Service {
 		}
 		int loss = Math.min(settlement.getManpower(), (int) Math.ceil(siege.getTotalWaves() * siege.getAttackersPerWave() * AWDiplomacyStatics.servicePlunderRatio));
 		settlement.setManpower(settlement.getManpower() - loss);
+		settlement.setTreasury(0); // the raiders carry off the taxes too
 		data.markDirty();
 		AncientWarfareNPC.LOG.info("{} {}: nobody came to defend city {}, it loses {} manpower", siege.getKind().getName(), siege.getId(), settlement.getId(), loss);
 		MinecraftServer server = world.getMinecraftServer();
@@ -488,13 +488,8 @@ public class Service {
 		}
 	}
 
-	private static ItemCoin.CoinMetal getWageMetal() {
-		ItemCoin.CoinMetal metal = ItemCoin.CoinMetal.byName(AWDiplomacyStatics.serviceWageCoin.trim().toLowerCase(java.util.Locale.ROOT));
-		return metal == null ? ItemCoin.CoinMetal.SILVER : metal;
-	}
-
 	private static ITextComponent getWageName() {
-		return new TextComponentTranslation("item.coin." + getWageMetal().getName() + ".name");
+		return Coins.getName();
 	}
 
 	/**
@@ -529,16 +524,52 @@ public class Service {
 			return new TextComponentTranslation("gui.aw.dialogue.wages_none");
 		}
 		getMembership(world).addWages(player.getUniqueID(), -wages);
-		int left = wages;
-		while (left > 0) {
-			ItemStack stack = ItemCoin.getCoinStack(getWageMetal(), Math.min(left, 64));
-			left -= stack.getCount();
-			if (!player.inventory.addItemStackToInventory(stack) && !stack.isEmpty()) {
-				player.dropItem(stack, false);
-			}
-		}
-		AncientWarfareNPC.LOG.info("{} collected {} wages ({}) from the {}", player.getName(), wages, getWageMetal().getName(), faction);
+		Coins.give(player, wages);
+		AncientWarfareNPC.LOG.info("{} collected {} wages ({}) from the {}", player.getName(), wages, Coins.getMetal().getName(), faction);
 		return new TextComponentTranslation("gui.aw.dialogue.wages_paid", wages, getWageName());
+	}
+
+	/**
+	 * @return the cities whose taxes the owner of a kingdom collects at the ruler of the given city: every city of the kingdom at the
+	 * capital, only that city elsewhere; empty for other players
+	 */
+	public static List<Settlement> getTaxCities(World world, EntityPlayerMP player, @Nullable Settlement city) {
+		if (city == null || !city.isActive() || !Kingdoms.isOwner(world, player.getUniqueID(), city.getFaction())) {
+			return Collections.emptyList();
+		}
+		if (city.getOwnerId() == null) {
+			return Collections.singletonList(city);
+		}
+		return Kingdoms.getCities(world, Kingdoms.get(world, city.getFaction()));
+	}
+
+	public static int getCollectableTaxes(World world, EntityPlayerMP player, @Nullable Settlement city) {
+		int total = 0;
+		for (Settlement taxed : getTaxCities(world, player, city)) {
+			total += taxed.getTreasury();
+		}
+		return total;
+	}
+
+	/**
+	 * The owner of a kingdom collects the taxes of its cities at the ruler of the given city (see getTaxCities).
+	 *
+	 * @return the answer of the governor
+	 */
+	public static ITextComponent payTaxes(EntityPlayerMP player, @Nullable Settlement city) {
+		World world = player.world;
+		int total = 0;
+		for (Settlement taxed : getTaxCities(world, player, city)) {
+			total += taxed.getTreasury();
+			taxed.setTreasury(0);
+		}
+		if (total <= 0) {
+			return new TextComponentTranslation("gui.aw.dialogue.taxes_none");
+		}
+		Settlements.getData(world).markDirty();
+		Coins.give(player, total);
+		AncientWarfareNPC.LOG.info("{} collected {} taxes ({}) at city {}", player.getName(), total, Coins.getMetal().getName(), city == null ? -1 : city.getId());
+		return new TextComponentTranslation("gui.aw.dialogue.taxes_paid", total, getWageName());
 	}
 
 	private static void strike(MinecraftServer server, World world, FactionMembershipData.Member member, @Nullable EntityPlayerMP player, ITextComponent city) {
