@@ -21,6 +21,17 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static double kingdomTributeRatio = 0.5;
 	public static double cityTaxPerManpower = 0.05;
 	public static int cityTaxMaxDays = 14;
+	// recruits and veterans (on probation, see Recruits)
+	public static boolean recruitingEnabled = true;
+	public static int recruitCost = 1;
+	public static int recruitMaxPerOrder = 10;
+	public static int upgradeLevelTier2 = 3;
+	public static int upgradeLevelTier3 = 6;
+	public static int upgradeCostTier2 = 5;
+	public static int upgradeCostTier3 = 12;
+	public static String[] recruitTier1Equipment = {"mainhand=minecraft:wooden_sword", "head=minecraft:leather_helmet"};
+	public static String[] recruitTier2Equipment = {"mainhand=minecraft:iron_sword", "head=minecraft:chainmail_helmet", "chest=minecraft:chainmail_chestplate", "legs=minecraft:chainmail_leggings", "feet=minecraft:chainmail_boots"};
+	public static String[] recruitTier3Equipment = {"mainhand=minecraft:iron_sword", "offhand=minecraft:shield", "head=minecraft:iron_helmet", "chest=minecraft:iron_chestplate", "legs=minecraft:iron_leggings", "feet=minecraft:iron_boots"};
 	public static String[] kingdomCultures = new String[0];
 	public static int kingdomRadius = 64;
 	public static int kingdomStartManpower = 20;
@@ -180,6 +191,16 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		serviceWageCoin = config.get(serverOptions, "service_wage_coin", serviceWageCoin, "Wage coin\nDefault=" + serviceWageCoin + "\n" + "The Ancient Warfare coin wages are paid in: copper (Copper Owl), silver (Silver Stag), gold (Gold Dragon) or ancient.").getString();
 		cityTaxPerManpower = config.get(serverOptions, "city_tax_per_manpower", cityTaxPerManpower, "City taxes\nDefault=" + cityTaxPerManpower + "\n" + "Coins (see service_wage_coin) a city collects every Minecraft day for each point of its own maximum manpower (at least 1 a day), while it is not under attack. The owner of a kingdom collects them at the governors of its cities.", 0.0D, 100.0D).getDouble();
 		cityTaxMaxDays = config.get(serverOptions, "city_tax_max_days", cityTaxMaxDays, "City treasury limit\nDefault=" + cityTaxMaxDays + "\n" + "A city keeps at most this many days of taxes; a plundered or conquered city loses them.", 1, 1000).getInt();
+		recruitingEnabled = config.get(serverOptions, "recruiting_enabled", recruitingEnabled, "Recruits and veterans\nDefault=" + recruitingEnabled + "\n" + "The owner of a kingdom recruits soldiers at the governors of its cities (coins and manpower of the city) and trains the ones that gained levels into better equipped tiers.").getBoolean();
+		recruitCost = config.get(serverOptions, "recruit_cost", recruitCost, "Recruit cost\nDefault=" + recruitCost + "\n" + "Coins (see service_wage_coin) for each recruit; each recruit also costs 1 manpower of the city.", 0, 10000).getInt();
+		recruitMaxPerOrder = config.get(serverOptions, "recruit_max_per_order", recruitMaxPerOrder, "Recruits per order\nDefault=" + recruitMaxPerOrder + "\n" + "Most recruits hired at once.", 1, 64).getInt();
+		upgradeLevelTier2 = config.get(serverOptions, "upgrade_level_tier_2", upgradeLevelTier2, "Level for tier 2\nDefault=" + upgradeLevelTier2 + "\n" + "Level (gained in battle) a soldier needs to be trained to tier 2.", 0, 100).getInt();
+		upgradeLevelTier3 = config.get(serverOptions, "upgrade_level_tier_3", upgradeLevelTier3, "Level for tier 3\nDefault=" + upgradeLevelTier3 + "\n" + "Level a soldier needs to be trained to tier 3.", 0, 100).getInt();
+		upgradeCostTier2 = config.get(serverOptions, "upgrade_cost_tier_2", upgradeCostTier2, "Cost of tier 2\nDefault=" + upgradeCostTier2 + "\n" + "Coins to train a soldier to tier 2.", 0, 10000).getInt();
+		upgradeCostTier3 = config.get(serverOptions, "upgrade_cost_tier_3", upgradeCostTier3, "Cost of tier 3\nDefault=" + upgradeCostTier3 + "\n" + "Coins to train a soldier to tier 3.", 0, 10000).getInt();
+		recruitTier1Equipment = config.get(serverOptions, "recruit_tier_1_equipment", recruitTier1Equipment, "Recruit equipment\n" + "Equipment of a new recruit, as slot=item (slots: mainhand, offhand, head, chest, legs, feet).").getStringList();
+		recruitTier2Equipment = config.get(serverOptions, "recruit_tier_2_equipment", recruitTier2Equipment, "Tier 2 equipment\n" + "Equipment given when a soldier is trained to tier 2 (what it wore in those slots is dropped).").getStringList();
+		recruitTier3Equipment = config.get(serverOptions, "recruit_tier_3_equipment", recruitTier3Equipment, "Tier 3 equipment\n" + "Equipment given when a soldier is trained to tier 3.").getStringList();
 		kingdomRadius = config.get(serverOptions, "kingdom_radius", kingdomRadius, "Kingdom city radius\nDefault=" + kingdomRadius + "\n" + "Half the side of the square city founded around a town hall, in blocks. It must not overlap another city.", 8, 256).getInt();
 		kingdomStartManpower = config.get(serverOptions, "kingdom_start_manpower", kingdomStartManpower, "Kingdom starting manpower\nDefault=" + kingdomStartManpower + "\n" + "Manpower of a new kingdom city, plus manpower_per_unit for each soldier of the player inside it.", 0, 10000).getInt();
 		kingdomGarrison = config.get(serverOptions, "kingdom_garrison", kingdomGarrison, "Kingdom garrison\nDefault=" + kingdomGarrison + "\n" + "Recruits of the kingdom (occupation_unit_weights) come to a kingdom city every reinforcement_interval_ticks until its garrison has this many units. 0 = none.", 0, 200).getInt();

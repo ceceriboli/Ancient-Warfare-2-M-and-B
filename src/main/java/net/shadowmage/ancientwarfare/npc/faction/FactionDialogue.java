@@ -19,6 +19,7 @@ import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
 import net.shadowmage.ancientwarfare.npc.gamedata.KingdomData;
 import net.shadowmage.ancientwarfare.npc.network.PacketFactionDialogue;
 import net.shadowmage.ancientwarfare.npc.war.Coins;
+import net.shadowmage.ancientwarfare.npc.war.Recruits;
 import net.shadowmage.ancientwarfare.npc.war.Service;
 import net.shadowmage.ancientwarfare.npc.war.Settlement;
 import net.shadowmage.ancientwarfare.npc.war.Settlements;
@@ -165,6 +166,10 @@ public class FactionDialogue {
 					buttons.add(button(new TextComponentTranslation("gui.aw.dialogue.taxes", taxes, Coins.getName()), KINGDOM_PREFIX + K_TAXES)
 							.hover(new TextComponentTranslation("gui.aw.dialogue.taxes.hover")));
 				}
+				if (Recruits.isEnabled()) {
+					buttons.add(button(new TextComponentTranslation("gui.aw.recruits.button"), KINGDOM_PREFIX + Recruits.RECRUIT));
+					buttons.add(button(new TextComponentTranslation("gui.aw.recruits.train_button"), KINGDOM_PREFIX + Recruits.TRAIN));
+				}
 			}
 			if (AWDiplomacyStatics.serviceEnabled && AWDiplomacyStatics.siegesEnabled) {
 				buttons.add(button(new TextComponentTranslation(owner ? "gui.aw.kingdom.campaign" : "gui.aw.dialogue.propose"), PROPOSE)
@@ -212,6 +217,8 @@ public class FactionDialogue {
 		} else if (action.startsWith(K_BREAK)) {
 			String other = action.substring(K_BREAK.length());
 			sendPartnerPage(player, npc, other, isPartner(player, kingdom, other) ? KingdomDiplomacy.breakAlliance(server, kingdom, other) : null);
+		} else if (Recruits.isAction(action)) {
+			Recruits.handle(player, npc, action);
 		} else if (action.equals(K_TAXES)) {
 			sendPage(player, npc, Service.payTaxes(player, Settlements.getSettlementOf(npc)), button(new TextComponentTranslation("gui.aw.dialogue.back"), BACK));
 		} else if (action.equals(K_REALM)) {
@@ -472,6 +479,48 @@ public class FactionDialogue {
 		}
 		tag.setTag("buttons", list);
 		NetworkHandler.sendToPlayer(player, new PacketFactionDialogue(tag));
+	}
+
+	/**
+	 * A page built by another feature (see Recruits): its button actions come back as kingdom actions ("k:" + action) of the owner.
+	 */
+	public static void showKingdomPage(EntityPlayerMP player, NpcFaction npc, ITextComponent text, List<PageButton> pageButtons) {
+		List<Button> buttons = new ArrayList<>();
+		for (PageButton pageButton : pageButtons) {
+			Button button = button(pageButton.label, pageButton.back ? BACK : KINGDOM_PREFIX + pageButton.action);
+			button.enabled = pageButton.enabled;
+			button.hover = pageButton.hover;
+			buttons.add(button);
+		}
+		sendPage(player, npc, text, buttons.toArray(new Button[0]));
+	}
+
+	public static class PageButton {
+		private final ITextComponent label;
+		private final String action;
+		private final boolean enabled;
+		private final boolean back;
+		@Nullable
+		private final ITextComponent hover;
+
+		public PageButton(ITextComponent label, String action, boolean enabled, @Nullable ITextComponent hover) {
+			this(label, action, enabled, hover, false);
+		}
+
+		private PageButton(ITextComponent label, String action, boolean enabled, @Nullable ITextComponent hover, boolean back) {
+			this.label = label;
+			this.action = action;
+			this.enabled = enabled;
+			this.hover = hover;
+			this.back = back;
+		}
+
+		/**
+		 * @return a button back to the main page of the ruler
+		 */
+		public static PageButton back() {
+			return new PageButton(new TextComponentTranslation("gui.aw.dialogue.back"), "", true, null, true);
+		}
 	}
 
 	private static void sendClose(EntityPlayerMP player) {
