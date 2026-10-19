@@ -15,6 +15,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean newPlayerNeutralStandings = true;
 	public static String kingdomDefaultCulture = "empire";
 	public static boolean kingdomsEnabled = true;
+	public static int serviceWageRaid = 3;
+	public static int serviceWageSiege = 8;
+	public static String serviceWageItem = "minecraft:gold_ingot";
 	public static double kingdomTributeRatio = 0.5;
 	public static String[] kingdomCultures = new String[0];
 	public static int kingdomRadius = 64;
@@ -170,6 +173,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		kingdomsEnabled = config.get(serverOptions, "kingdoms_enabled", kingdomsEnabled, "Player kingdoms\nDefault=" + kingdomsEnabled + "\n" + "The first town hall a player places founds their kingdom: a faction of their own with a city around the town hall and a governor. Needs settlements_enabled.").getBoolean();
 		kingdomCultures = config.get(serverOptions, "kingdom_cultures", kingdomCultures, "Kingdom cultures\n" + "Factions a kingdom owner can choose as the culture of their kingdom (look, units, dialogues, natural rivals). Empty = every faction that is not one of the eternal_enemies.").getStringList();
 		kingdomTributeRatio = config.get(serverOptions, "kingdom_tribute_ratio", kingdomTributeRatio, "Kingdom tribute\nDefault=" + kingdomTributeRatio + "\n" + "The cities a kingdom conquered add this fraction of their maximum manpower to the maximum manpower of its capital (and the same amount as manpower when it grows). The capital pays the campaigns of the kingdom.", 0.0D, 10.0D).getDouble();
+		serviceWageRaid = config.get(serverOptions, "service_wage_raid", serviceWageRaid, "Wage for a raid\nDefault=" + serviceWageRaid + "\n" + "Wages a member earns for serving in a campaign that is a raid, in units of service_wage_item. They are collected from the ruler of the faction. A kingdom owner earns nothing from its own kingdom. 0 = no wages.", 0, 10000).getInt();
+		serviceWageSiege = config.get(serverOptions, "service_wage_siege", serviceWageSiege, "Wage for a full siege\nDefault=" + serviceWageSiege + "\n" + "Like service_wage_raid, for a campaign that is a full siege with engines.", 0, 10000).getInt();
+		serviceWageItem = config.get(serverOptions, "service_wage_item", serviceWageItem, "Wage item\nDefault=" + serviceWageItem + "\n" + "The item wages are paid in (a registry name).").getString();
 		kingdomRadius = config.get(serverOptions, "kingdom_radius", kingdomRadius, "Kingdom city radius\nDefault=" + kingdomRadius + "\n" + "Half the side of the square city founded around a town hall, in blocks. It must not overlap another city.", 8, 256).getInt();
 		kingdomStartManpower = config.get(serverOptions, "kingdom_start_manpower", kingdomStartManpower, "Kingdom starting manpower\nDefault=" + kingdomStartManpower + "\n" + "Manpower of a new kingdom city, plus manpower_per_unit for each soldier of the player inside it.", 0, 10000).getInt();
 		kingdomGarrison = config.get(serverOptions, "kingdom_garrison", kingdomGarrison, "Kingdom garrison\nDefault=" + kingdomGarrison + "\n" + "Recruits of the kingdom (occupation_unit_weights) come to a kingdom city every reinforcement_interval_ticks until its garrison has this many units. 0 = none.", 0, 200).getInt();

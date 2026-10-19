@@ -238,6 +238,10 @@ public class FactionMembership {
 					player.sendMessage(clickable(new TextComponentTranslation("command.aw.service.click.propose"), TextFormatting.GOLD, "/awservice propose",
 							new TextComponentTranslation("command.aw.service.click.propose.hover")));
 				}
+				if (!Kingdoms.isOwner(player.world, player.getUniqueID(), npcFaction) && net.shadowmage.ancientwarfare.npc.war.Service.getWages(player.world, (EntityPlayerMP) player) > 0) {
+					player.sendMessage(clickable(net.shadowmage.ancientwarfare.npc.war.Service.describeWages(player.world, (EntityPlayerMP) player), TextFormatting.GOLD,
+							"/awservice wages", new TextComponentTranslation("gui.aw.dialogue.wages.hover")));
+				}
 				if (!Kingdoms.isOwner(player.world, player.getUniqueID(), npcFaction)) {
 					player.sendMessage(clickable(new TextComponentTranslation("command.aw.membership.click.renounce"), TextFormatting.RED,
 							"/awmembership leave", new TextComponentTranslation("command.aw.membership.click.renounce.hover", factionName(npcFaction))));

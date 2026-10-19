@@ -78,6 +78,11 @@ public class CommandService extends CommandBase {
 			}
 			return;
 		}
+		if (cmd.equals("wages")) {
+			EntityPlayerMP player = getCommandSenderAsPlayer(sender);
+			player.sendMessage(Service.payWages(player));
+			return;
+		}
 		if (!sender.canUseCommand(2, getName())) {
 			throw new CommandException("commands.generic.permission");
 		}

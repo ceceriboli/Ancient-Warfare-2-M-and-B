@@ -41,6 +41,7 @@ public class FactionDialogue {
 	private static final String RENOUNCE = "renounce";
 	private static final String RENOUNCE_CONFIRM = "renounce_yes";
 	private static final String PROPOSE = "propose";
+	private static final String WAGES = "wages";
 	private static final String TARGET_PREFIX = "target:";
 	private static final String PROPOSE_PREFIX = "propose:";
 	private static final int MAX_TARGETS = 6;
@@ -106,6 +107,15 @@ public class FactionDialogue {
 			}
 		} else if (BACK.equals(action)) {
 			sendMainPage(player, npc, new TextComponentTranslation("gui.aw.dialogue.anything_else"));
+		} else if (WAGES.equals(action) && member && !owner) {
+			ITextComponent answer;
+			try {
+				answer = Service.payWages(player);
+			}
+			catch (CommandException e) {
+				answer = error(e);
+			}
+			sendPage(player, npc, answer, button(new TextComponentTranslation("gui.aw.dialogue.back"), BACK));
 		} else if (RENOUNCE.equals(action) && member && !owner) {
 			sendPage(player, npc, new TextComponentTranslation("gui.aw.dialogue.renounce.confirm", FactionMembership.factionName(npcFaction)),
 					button(new TextComponentTranslation("gui.aw.dialogue.renounce.yes"), RENOUNCE_CONFIRM), button(new TextComponentTranslation("gui.aw.dialogue.no"), BACK));
@@ -152,6 +162,9 @@ public class FactionDialogue {
 			if (AWDiplomacyStatics.serviceEnabled && AWDiplomacyStatics.siegesEnabled) {
 				buttons.add(button(new TextComponentTranslation(owner ? "gui.aw.kingdom.campaign" : "gui.aw.dialogue.propose"), PROPOSE)
 						.hover(new TextComponentTranslation(owner ? "gui.aw.kingdom.campaign.hover" : "command.aw.service.click.propose.hover")));
+			}
+			if (!owner && Service.getWages(player.world, player) > 0) {
+				buttons.add(button(Service.describeWages(player.world, player), WAGES).hover(new TextComponentTranslation("gui.aw.dialogue.wages.hover")));
 			}
 			if (!owner) {
 				buttons.add(button(new TextComponentTranslation("gui.aw.dialogue.renounce"), RENOUNCE));

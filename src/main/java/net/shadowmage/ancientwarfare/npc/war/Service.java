@@ -4,6 +4,9 @@ import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Items;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.math.BlockPos;
@@ -371,7 +374,7 @@ public class Service {
 			EntityPlayerMP player = server.getPlayerList().getPlayerByUUID(entry.getKey());
 			boolean presentAtEnd = player != null && target != null && player.world == world && player.getDistanceSq(target) <= presenceSq;
 			if (presentAtEnd || call.getPresenceTicks() >= AWDiplomacyStatics.serviceMinPresenceTicks) {
-				serve(world, member, player, city);
+				serve(world, member, player, city, siege.getKind());
 				if (outcome == Sieges.Outcome.TAKEN && call.isAttacking() && settlement != null && AWDiplomacyStatics.factionChestsEnabled
 						&& AWDiplomacyStatics.chestPlunderTicks > 0) {
 					// war booty: the chests of the conquered city are open to those who took it
@@ -461,9 +464,20 @@ public class Service {
 		}
 	}
 
-	private static void serve(World world, FactionMembershipData.Member member, @Nullable EntityPlayerMP player, ITextComponent city) {
+	private static void serve(World world, FactionMembershipData.Member member, @Nullable EntityPlayerMP player, ITextComponent city, Siege.Kind kind) {
 		if (AWDiplomacyStatics.serviceRewardStanding > 0) {
 			FactionTracker.INSTANCE.adjustStandingFor(world, member.playerName, member.faction, AWDiplomacyStatics.serviceRewardStanding);
+		}
+		// wages, collected from the ruler (nothing for the owner of the kingdom: it is its own)
+		int wage = Kingdoms.isOwner(world, member.playerId, member.faction) ? 0 : kind == Siege.Kind.SIEGE ? AWDiplomacyStatics.serviceWageSiege : AWDiplomacyStatics.serviceWageRaid;
+		if (wage > 0) {
+			getMembership(world).addWages(member.playerId, wage);
+			if (player != null) {
+				ITextComponent pay = new TextComponentTranslation("command.aw.service.wages_earned", wage, getWageName(), getMembership(world).getMember(member.playerId).getWages(),
+						FactionMembership.factionName(member.faction));
+				pay.getStyle().setColor(TextFormatting.GOLD);
+				player.sendMessage(pay);
+			}
 		}
 		getMembership(world).setStrikes(member.playerId, member.getStrikes() - 1, member.getLastStrikeDay());
 		AncientWarfareNPC.LOG.info("{} answered the call to arms of the {} ({} strikes left)", member.playerName, member.faction, member.getStrikes());
@@ -473,6 +487,62 @@ public class Service {
 			message.getStyle().setColor(TextFormatting.GREEN);
 			player.sendMessage(message);
 		}
+	}
+
+	@Nullable
+	private static Item getWageItem() {
+		Item item = Item.getByNameOrId(AWDiplomacyStatics.serviceWageItem);
+		return item == null || item == Items.AIR ? null : item;
+	}
+
+	private static ITextComponent getWageName() {
+		Item item = getWageItem();
+		return item == null ? new TextComponentString("?") : new TextComponentTranslation(item.getUnlocalizedName() + ".name");
+	}
+
+	/**
+	 * @return the wages the player has earned and not collected yet
+	 */
+	public static int getWages(World world, EntityPlayerMP player) {
+		FactionMembershipData.Member member = getMembership(world).getMember(player.getUniqueID());
+		return member == null ? 0 : member.getWages();
+	}
+
+	public static ITextComponent describeWages(World world, EntityPlayerMP player) {
+		return new TextComponentTranslation("gui.aw.dialogue.wages", getWages(world, player), getWageName());
+	}
+
+	/**
+	 * The ruler of the faction pays the wages the member earned in military service, in service_wage_item (what does not fit in the
+	 * inventory is dropped at the player's feet).
+	 *
+	 * @return the answer of the ruler
+	 */
+	public static ITextComponent payWages(EntityPlayerMP player) throws CommandException {
+		World world = player.world;
+		String faction = FactionMembership.getFaction(world, player.getUniqueID());
+		if (faction == null) {
+			throw new CommandException("command.aw.membership.not_member");
+		}
+		if (!FactionMembership.findNearestLeader(world, player, faction, AWDiplomacyStatics.leaderJoinRange).isPresent()) {
+			throw new CommandException("command.aw.service.propose.no_ruler", FactionMembership.factionName(faction));
+		}
+		int wages = getWages(world, player);
+		Item item = getWageItem();
+		if (wages <= 0 || item == null) {
+			return new TextComponentTranslation("gui.aw.dialogue.wages_none");
+		}
+		getMembership(world).addWages(player.getUniqueID(), -wages);
+		int left = wages;
+		while (left > 0) {
+			ItemStack stack = new ItemStack(item, Math.min(left, item.getItemStackLimit()));
+			left -= stack.getCount();
+			if (!player.inventory.addItemStackToInventory(stack) && !stack.isEmpty()) {
+				player.dropItem(stack, false);
+			}
+		}
+		AncientWarfareNPC.LOG.info("{} collected {} wages ({}) from the {}", player.getName(), wages, AWDiplomacyStatics.serviceWageItem, faction);
+		return new TextComponentTranslation("gui.aw.dialogue.wages_paid", wages, getWageName());
 	}
 
 	private static void strike(MinecraftServer server, World world, FactionMembershipData.Member member, @Nullable EntityPlayerMP player, ITextComponent city) {

@@ -72,6 +72,17 @@ public class FactionMembershipData extends WorldSavedData {
 		}
 	}
 
+	/**
+	 * Wages earned in military service (units of the wage item), collected from the ruler of the faction.
+	 */
+	public void addWages(UUID playerId, int amount) {
+		Member member = members.get(playerId);
+		if (member != null && amount != 0) {
+			member.wages = Math.max(0, member.wages + amount);
+			markDirty();
+		}
+	}
+
 	public boolean remove(UUID playerId) {
 		if (members.remove(playerId) != null) {
 			markDirty();
@@ -99,6 +110,7 @@ public class FactionMembershipData extends WorldSavedData {
 				}
 				member.strikes = memberTag.getInteger("strikes");
 				member.lastStrikeDay = memberTag.getLong("lastStrikeDay");
+				member.wages = memberTag.getInteger("wages");
 				member.lastProposalDay = memberTag.hasKey("lastProposalDay") ? memberTag.getLong("lastProposalDay") : Long.MIN_VALUE;
 				members.put(playerId, member);
 			}
@@ -118,6 +130,7 @@ public class FactionMembershipData extends WorldSavedData {
 			memberTag.setTag("inherited", inheritedTag);
 			memberTag.setInteger("strikes", member.strikes);
 			memberTag.setLong("lastStrikeDay", member.lastStrikeDay);
+			memberTag.setInteger("wages", member.wages);
 			if (member.lastProposalDay != Long.MIN_VALUE) {
 				memberTag.setLong("lastProposalDay", member.lastProposalDay);
 			}
@@ -138,6 +151,11 @@ public class FactionMembershipData extends WorldSavedData {
 		private int strikes;
 		private long lastStrikeDay;
 		private long lastProposalDay = Long.MIN_VALUE;
+		private int wages;
+
+		public int getWages() {
+			return wages;
+		}
 
 		/**
 		 * @return the day of the last accepted campaign proposal, Long.MIN_VALUE if none
