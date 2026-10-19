@@ -100,6 +100,7 @@ public class Kingdoms {
 	public static KingdomData.Kingdom create(World world, EntityPlayer owner, String culture) {
 		int color = FactionRegistry.getFaction(culture).getColor();
 		KingdomData.Kingdom kingdom = getData(world).create(owner.getUniqueID(), owner.getName(), owner.getName() + " Kingdom", culture, color);
+		kingdom.graceUntil = Diplomacy.getDay(world) + AWDiplomacyStatics.kingdomGraceDays;
 		register(kingdom.id, kingdom.name, kingdom.culture, kingdom.color);
 		sync();
 		AncientWarfareNPC.LOG.info("Founded kingdom {} ({}, culture {}) for {}", kingdom.id, kingdom.name, culture, owner.getName());
@@ -161,6 +162,33 @@ public class Kingdoms {
 			}
 		}
 		Diplomacy.getData(world).markDirty();
+	}
+
+	/**
+	 * @return true while the kingdom is in its starting grace period: its capital cannot be attacked (see Sieges.canStart) and it can break its
+	 * truces to declare war, which ends the protection
+	 */
+	public static boolean isInGrace(World world, String kingdomId) {
+		KingdomData.Kingdom kingdom = isKingdom(kingdomId) ? get(world, kingdomId) : null;
+		return kingdom != null && !kingdom.destroyed && Diplomacy.getDay(world) < kingdom.graceUntil;
+	}
+
+	/**
+	 * The kingdom gives up its protection (it declared war during its grace period).
+	 */
+	public static void endGrace(World world, String kingdomId) {
+		KingdomData.Kingdom kingdom = isKingdom(kingdomId) ? get(world, kingdomId) : null;
+		if (kingdom != null && kingdom.graceUntil > 0) {
+			kingdom.graceUntil = 0;
+			getData(world).markDirty();
+		}
+	}
+
+	/**
+	 * @return true if the city is the capital of a kingdom in its grace period
+	 */
+	public static boolean isProtected(World world, Settlement city) {
+		return city.getOwnerId() != null && isInGrace(world, city.getFaction());
 	}
 
 	/**

@@ -79,6 +79,8 @@ public class KingdomData extends WorldSavedData {
 		public String ownerName;
 		public int cityId = -1;
 		public boolean destroyed = false;
+		// Minecraft day until which the capital cannot be attacked (the starting truce), see Kingdoms.isInGrace
+		public long graceUntil = 0;
 
 		public Kingdom(String id, String name, String culture, int color, UUID ownerId, String ownerName) {
 			this.id = id;
@@ -98,6 +100,7 @@ public class KingdomData extends WorldSavedData {
 			tag.setString("ownerName", ownerName);
 			tag.setInteger("city", cityId);
 			tag.setBoolean("destroyed", destroyed);
+			tag.setLong("graceUntil", graceUntil);
 			return tag;
 		}
 
@@ -106,6 +109,7 @@ public class KingdomData extends WorldSavedData {
 					tag.getUniqueId("owner"), tag.getString("ownerName"));
 			kingdom.cityId = tag.getInteger("city");
 			kingdom.destroyed = tag.getBoolean("destroyed");
+			kingdom.graceUntil = tag.getLong("graceUntil");
 			return kingdom;
 		}
 	}

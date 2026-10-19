@@ -105,12 +105,24 @@ public class KingdomDiplomacy {
 			return answer("gui.aw.kingdom.answer.allied", other);
 		}
 		long truce = getTruceDaysLeft(world, kingdom, other);
-		if (truce > 0) {
+		boolean grace = Kingdoms.isInGrace(world, kingdom);
+		if (truce > 0 && !grace) {
 			return answer("gui.aw.kingdom.answer.truce", other, truce);
 		}
+		if (truce > 0) {
+			// the starting truce can be broken: the capital loses its protection
+			DiplomacyData data = Diplomacy.getData(world);
+			data.get(kingdom, other).setTruceUntil(Diplomacy.getDay(world));
+			data.markDirty();
+		}
 		FactionRelations.setRelation(server, kingdom, other, FactionRelation.WAR, "command.aw.kingdom.announce.war");
-		AncientWarfareNPC.LOG.info("Kingdom {} declared war on {}", kingdom, other);
-		return answer("gui.aw.kingdom.answer.war_declared", other);
+		AncientWarfareNPC.LOG.info("Kingdom {} declared war on {}{}", kingdom, other, grace ? " (grace period over)" : "");
+		ITextComponent done = answer("gui.aw.kingdom.answer.war_declared", other);
+		if (grace) {
+			Kingdoms.endGrace(world, kingdom);
+			done.appendText(" ").appendSibling(new TextComponentTranslation("gui.aw.kingdom.answer.grace_ended"));
+		}
+		return done;
 	}
 
 	public static ITextComponent proposePeace(MinecraftServer server, String kingdom, String other) {

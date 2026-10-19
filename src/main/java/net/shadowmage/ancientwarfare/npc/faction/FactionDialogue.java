@@ -190,7 +190,7 @@ public class FactionDialogue {
 			sendPartnerPage(player, npc, action.substring(K_PARTNER.length()), null);
 		} else if (action.startsWith(K_WAR_ASK)) {
 			String other = action.substring(K_WAR_ASK.length());
-			sendPage(player, npc, new TextComponentTranslation("gui.aw.kingdom.war.confirm", FactionMembership.factionName(other)),
+			sendPage(player, npc, new TextComponentTranslation(Kingdoms.isInGrace(player.world, kingdom) ? "gui.aw.kingdom.war.confirm_grace" : "gui.aw.kingdom.war.confirm", FactionMembership.factionName(other)),
 					button(new TextComponentTranslation("gui.aw.kingdom.war.yes"), KINGDOM_PREFIX + K_WAR + other),
 					button(new TextComponentTranslation("gui.aw.dialogue.no"), KINGDOM_PREFIX + K_PARTNER + other));
 		} else if (action.startsWith(K_WAR)) {
@@ -268,7 +268,7 @@ public class FactionDialogue {
 			buttons.add(button(new TextComponentTranslation("gui.aw.kingdom.break_alliance"), KINGDOM_PREFIX + K_BREAK + other));
 		} else {
 			Button war = button(new TextComponentTranslation("gui.aw.kingdom.declare_war"), KINGDOM_PREFIX + K_WAR_ASK + other);
-			war.enabled = KingdomDiplomacy.getTruceDaysLeft(player.world, kingdom, other) == 0;
+			war.enabled = KingdomDiplomacy.getTruceDaysLeft(player.world, kingdom, other) == 0 || Kingdoms.isInGrace(player.world, kingdom);
 			buttons.add(war.hover(new TextComponentTranslation("gui.aw.kingdom.declare_war.hover")));
 			buttons.add(button(new TextComponentTranslation("gui.aw.kingdom.propose_alliance"), KINGDOM_PREFIX + K_ALLY + other)
 					.hover(new TextComponentTranslation("gui.aw.kingdom.propose_alliance.hover")));

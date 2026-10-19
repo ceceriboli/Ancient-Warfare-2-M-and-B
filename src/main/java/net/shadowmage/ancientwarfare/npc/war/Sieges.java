@@ -36,6 +36,7 @@ import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionSiegeEngineer;
 import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.faction.FactionRelations;
+import net.shadowmage.ancientwarfare.npc.faction.Kingdoms;
 import net.shadowmage.ancientwarfare.npc.gamedata.SettlementData;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 import net.shadowmage.ancientwarfare.npc.registry.NpcDefaultsRegistry;
@@ -120,6 +121,9 @@ public class Sieges {
 		}
 		if (!FactionRelations.isHostile(world, attackerFaction, settlement.getFaction())) {
 			return "command.aw.siege.error.not_hostile";
+		}
+		if (Kingdoms.isProtected(world, settlement)) {
+			return "command.aw.siege.error.protected";
 		}
 		return null;
 	}

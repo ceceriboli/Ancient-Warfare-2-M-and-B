@@ -80,6 +80,7 @@ public class Settlements {
 	private static final int MIN_BOUNDS_BELOW = 24;
 	private static final int MIN_BOUNDS_ABOVE = 40;
 	private static final int STRUCTURE_SCAN_INTERVAL = 100;
+	private static final int KINGDOM_SOLDIER_INTERVAL = 200;
 	private static final int STRUCTURE_RETRY_TICKS = 6000;
 	private static final int MAX_FOUNDED_PER_SCAN = 4;
 	private static final int MAX_STRUCTURE_CHUNKS = 400;
@@ -238,6 +239,9 @@ public class Settlements {
 		int dimension = world.provider.getDimension();
 		mergeOverlappingCities(world, data);
 		updateKingdomTribute(data);
+		if (now % KINGDOM_SOLDIER_INTERVAL == 0) {
+			growKingdomManpower(world, data);
+		}
 		for (Settlement settlement : new ArrayList<>(data.getAll())) {
 			if (settlement.getDimension() != dimension || !settlement.isActive() || settlement.getType() != Settlement.Type.FACTION_CITY) {
 				continue;
@@ -287,6 +291,33 @@ public class Settlements {
 						break search;
 					}
 				}
+			}
+		}
+	}
+
+	/**
+	 * The soldiers of the owner of a kingdom inside its capital are its manpower: when there are more of them than ever before, the maximum
+	 * manpower of the capital grows to kingdom_start_manpower + manpower_per_unit for each, and the manpower grows by the same amount. It
+	 * never shrinks when soldiers die.
+	 */
+	private static void growKingdomManpower(WorldServer world, SettlementData data) {
+		for (Settlement capital : data.getAll()) {
+			if (capital.getOwnerId() == null || !capital.isActive() || capital.getDimension() != world.provider.getDimension() || !Kingdoms.isKingdom(capital.getFaction())) {
+				continue;
+			}
+			int soldiers = 0;
+			for (NpcPlayerOwned npc : world.getEntitiesWithinAABB(NpcPlayerOwned.class, capital.getAABB())) {
+				if (npc.isEntityAlive() && !npc.isPassive() && capital.getOwnerId().equals(npc.getOwner().getUUID())) {
+					soldiers++;
+				}
+			}
+			int base = AWDiplomacyStatics.kingdomStartManpower + (int) Math.ceil(soldiers * AWDiplomacyStatics.manpowerPerUnit);
+			if (base > capital.getBaseMaxManpower()) {
+				int delta = base - capital.getBaseMaxManpower();
+				capital.setMaxManpower(base);
+				capital.setManpower(capital.getManpower() + delta);
+				data.markDirty();
+				AncientWarfareNPC.LOG.info("The capital {} of {} grows to {} manpower: {} soldiers of its owner", capital.getId(), capital.getFaction(), capital.getMaxManpower(), soldiers);
 			}
 		}
 	}
