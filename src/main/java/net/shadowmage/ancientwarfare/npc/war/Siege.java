@@ -179,6 +179,9 @@ public class Siege {
 	@Nullable
 	private UUID proposer;
 	private int proposerPenalty;
+	// manpower the attacking faction paid for this full siege (WarLevies), and own soldiers of players that joined its assault
+	private int paid;
+	private int ownSoldiers;
 
 	// not saved
 	private final List<WeakReference<NpcFaction>> attackers = new ArrayList<>();
@@ -392,6 +395,22 @@ public class Siege {
 		attackers.removeIf(ref -> ref.get() == null || ref.get() == npc);
 	}
 
+	public int getPaid() {
+		return paid;
+	}
+
+	void setPaid(int paid) {
+		this.paid = paid;
+	}
+
+	public int getOwnSoldiers() {
+		return ownSoldiers;
+	}
+
+	void addOwnSoldiers(int count) {
+		ownSoldiers += count;
+	}
+
 	public NBTTagCompound writeToNBT(NBTTagCompound tag) {
 		tag.setInteger("id", id);
 		tag.setString("kind", kind.getName());
@@ -419,6 +438,8 @@ public class Siege {
 			callList.appendTag(callTag);
 		}
 		tag.setTag("calls", callList);
+		tag.setInteger("paid", paid);
+		tag.setInteger("ownSoldiers", ownSoldiers);
 		if (proposer != null) {
 			tag.setUniqueId("proposer", proposer);
 			tag.setInteger("proposerPenalty", proposerPenalty);
@@ -445,6 +466,8 @@ public class Siege {
 		siege.musterUntil = tag.getLong("musterUntil");
 		siege.leash = tag.getInteger("leash");
 		siege.musterPos = tag.hasKey("musterPos") ? BlockPos.fromLong(tag.getLong("musterPos")) : null;
+		siege.paid = tag.getInteger("paid");
+		siege.ownSoldiers = tag.getInteger("ownSoldiers");
 		if (tag.hasUniqueId("proposer")) {
 			siege.proposer = tag.getUniqueId("proposer");
 			siege.proposerPenalty = tag.getInteger("proposerPenalty");

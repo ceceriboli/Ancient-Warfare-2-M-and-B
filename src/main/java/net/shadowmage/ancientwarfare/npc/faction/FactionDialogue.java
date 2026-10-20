@@ -24,6 +24,7 @@ import net.shadowmage.ancientwarfare.npc.war.Service;
 import net.shadowmage.ancientwarfare.npc.war.Settlement;
 import net.shadowmage.ancientwarfare.npc.war.Settlements;
 import net.shadowmage.ancientwarfare.npc.war.Siege;
+import net.shadowmage.ancientwarfare.npc.war.WarLevies;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -409,8 +410,16 @@ public class FactionDialogue {
 				: new TextComponentTranslation("gui.aw.dialogue.siege_too_recent"), PROPOSE_PREFIX + cityId + ":siege")
 				.hover(new TextComponentTranslation("command.aw.service.propose.siege.hover", Service.proposalStanding(Siege.Kind.SIEGE),
 						Service.proposalPenalty(Siege.Kind.SIEGE)));
-		siege.enabled = siegeAllowed;
 		String faction = npc.getFaction();
+		boolean levyAllowed = WarLevies.canLaySiege(world, faction, city.getDimension());
+		if (siegeAllowed && !levyAllowed) {
+			siege = button(new TextComponentTranslation("gui.aw.dialogue.siege_no_levies"), PROPOSE_PREFIX + cityId + ":siege")
+					.hover(Service.levyRefusal(world, faction, city));
+		} else if (siegeAllowed) {
+			siege.hover(new TextComponentTranslation("gui.aw.levies.hover.member", Service.levyHover(world, faction, city),
+					new TextComponentTranslation("command.aw.service.propose.siege.hover", Service.proposalStanding(Siege.Kind.SIEGE), Service.proposalPenalty(Siege.Kind.SIEGE))));
+		}
+		siege.enabled = siegeAllowed && levyAllowed;
 		Settlement capital = Kingdoms.isOwner(world, player.getUniqueID(), faction) ? Kingdoms.getCity(world, Kingdoms.get(world, faction)) : null;
 		if (capital != null) {
 			// the owner of a kingdom pays with the manpower of its capital, not with standing
@@ -419,10 +428,11 @@ public class FactionDialogue {
 			raid = button(new TextComponentTranslation("gui.aw.kingdom.campaign.raid", raidCost), PROPOSE_PREFIX + cityId + ":raid")
 					.hover(new TextComponentTranslation("gui.aw.kingdom.campaign.cost.hover", raidCost, Settlements.displayName(capital), capital.getManpower()));
 			raid.enabled = capital.getManpower() >= raidCost;
-			siege = button(siegeAllowed ? new TextComponentTranslation("gui.aw.kingdom.campaign.siege", siegeCost)
-					: new TextComponentTranslation("gui.aw.dialogue.siege_too_recent"), PROPOSE_PREFIX + cityId + ":siege")
-					.hover(new TextComponentTranslation("gui.aw.kingdom.campaign.cost.hover", siegeCost, Settlements.displayName(capital), capital.getManpower()));
-			siege.enabled = siegeAllowed && capital.getManpower() >= siegeCost;
+			// a full siege is paid by all the cities of the kingdom (WarLevies), not by the capital alone
+			siege = button(!siegeAllowed ? new TextComponentTranslation("gui.aw.dialogue.siege_too_recent")
+					: levyAllowed ? new TextComponentTranslation("gui.aw.kingdom.campaign.siege", siegeCost) : new TextComponentTranslation("gui.aw.dialogue.siege_no_levies"),
+					PROPOSE_PREFIX + cityId + ":siege").hover(levyAllowed ? Service.levyHover(world, faction, city) : Service.levyRefusal(world, faction, city));
+			siege.enabled = siegeAllowed && levyAllowed;
 		}
 		sendPage(player, npc, new TextComponentTranslation("gui.aw.dialogue.kind", describe(player, city)), raid, siege,
 				button(new TextComponentTranslation("gui.aw.dialogue.back"), PROPOSE));

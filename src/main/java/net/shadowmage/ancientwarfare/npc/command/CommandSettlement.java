@@ -11,27 +11,41 @@ import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
+import net.shadowmage.ancientwarfare.core.gamedata.AWGameData;
+import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
+import net.shadowmage.ancientwarfare.npc.faction.FactionRelation;
+import net.shadowmage.ancientwarfare.npc.faction.FactionRelations;
+import net.shadowmage.ancientwarfare.npc.faction.KingdomDiplomacy;
+import net.shadowmage.ancientwarfare.npc.faction.Kingdoms;
+import net.shadowmage.ancientwarfare.npc.gamedata.DiplomacyData;
+import net.shadowmage.ancientwarfare.npc.gamedata.FactionMembershipData;
+import net.shadowmage.ancientwarfare.npc.gamedata.KingdomData;
 import net.shadowmage.ancientwarfare.npc.gamedata.SettlementData;
 import net.shadowmage.ancientwarfare.npc.war.Settlement;
 import net.shadowmage.ancientwarfare.npc.war.Settlements;
 import net.shadowmage.ancientwarfare.npc.war.Siege;
 import net.shadowmage.ancientwarfare.npc.war.Sieges;
+import net.shadowmage.ancientwarfare.npc.war.WarLevies;
+import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 
 import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
- * /awsettlement list | info [id] | setmanpower (id) (amount) | rename (id) (name), for operators
+ * /awsettlement list | info [id] | faction [faction] | setmanpower (id) (amount) | rename (id) (name), for operators
  */
 public class CommandSettlement extends CommandBase {
 	private static final String LIST = "list";
 	private static final String INFO = "info";
 	private static final String SET_MANPOWER = "setmanpower";
 	private static final String RENAME = "rename";
+	private static final String FACTION = "faction";
 	private static final int MAX_NAME_LENGTH = 32;
 
 	@Override
@@ -66,6 +80,13 @@ public class CommandSettlement extends CommandBase {
 					throw new CommandException("command.aw.settlement.none_here");
 				}
 				info(server, sender, settlement);
+				break;
+			case FACTION:
+				if (args.length > 1) {
+					factionInfo(server, sender, world, args[1]);
+				} else {
+					factionList(sender, world);
+				}
 				break;
 			case SET_MANPOWER:
 				if (args.length < 3) {
@@ -164,10 +185,137 @@ public class CommandSettlement extends CommandBase {
 		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.garrison", garrison, leaderState));
 	}
 
+	private static String yesNo(boolean value) {
+		return value ? "yes" : "no";
+	}
+
+	private static String daysSince(World world, long mark) {
+		long since = Sieges.sinceRest(world, mark);
+		return since == Long.MAX_VALUE ? "-" : String.valueOf(since / 24000L);
+	}
+
+	private static Set<String> factionsWithCities(SettlementData data, int dimension) {
+		Set<String> factions = new TreeSet<>();
+		for (Settlement city : data.getAll()) {
+			if (city.isActive() && city.getType() == Settlement.Type.FACTION_CITY && city.getDimension() == dimension) {
+				factions.add(city.getFaction());
+			}
+		}
+		return factions;
+	}
+
+	private static int countSieges(SettlementData data, String faction) {
+		int count = 0;
+		for (Siege siege : data.getSieges()) {
+			Settlement city = data.get(siege.getSettlementId());
+			if (faction.equals(siege.getAttackerFaction()) || city != null && faction.equals(city.getFaction())) {
+				count++;
+			}
+		}
+		return count;
+	}
+
+	/**
+	 * /awsettlement faction: one line for each faction with cities in this dimension.
+	 */
+	private void factionList(ICommandSender sender, World world) {
+		SettlementData data = Settlements.getData(world);
+		int dimension = world.provider.getDimension();
+		Set<String> factions = factionsWithCities(data, dimension);
+		if (factions.isEmpty()) {
+			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.none"));
+			return;
+		}
+		for (String faction : factions) {
+			int cities = 0;
+			for (Settlement city : data.getAll()) {
+				if (city.isActive() && city.getType() == Settlement.Type.FACTION_CITY && city.getDimension() == dimension && faction.equals(city.getFaction())) {
+					cities++;
+				}
+			}
+			int total = WarLevies.getTotal(world, faction, dimension);
+			int max = WarLevies.getMax(world, faction, dimension);
+			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.row", FactionMembership.factionName(faction), faction, cities, total, max,
+					max == 0 ? 0 : total * 100 / max, WarLevies.getAvailable(world, faction, dimension), yesNo(WarLevies.canLaySiege(world, faction, dimension)),
+					FactionRelations.getDeclaredEnemies(world, faction).size(), countSieges(data, faction)));
+		}
+	}
+
+	/**
+	 * /awsettlement faction (faction): every indicator of the faction: kingdom, manpower and levies, cities, relations, sieges, members.
+	 */
+	private void factionInfo(MinecraftServer server, ICommandSender sender, World world, String faction) throws CommandException {
+		if (!FactionRegistry.getFactionNames().contains(faction)) {
+			throw new CommandException("command.aw.settlement.faction.unknown", faction);
+		}
+		SettlementData data = Settlements.getData(world);
+		int dimension = world.provider.getDimension();
+		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.header", FactionMembership.factionName(faction), faction));
+		if (Kingdoms.isKingdom(faction)) {
+			KingdomData.Kingdom kingdom = Kingdoms.get(world, faction);
+			if (kingdom != null) {
+				sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.kingdom", kingdom.ownerName, FactionMembership.factionName(kingdom.culture)));
+			}
+		}
+		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.manpower", WarLevies.getTotal(world, faction, dimension),
+				WarLevies.getMax(world, faction, dimension), WarLevies.getFloor(world, faction, dimension), WarLevies.getAvailable(world, faction, dimension),
+				yesNo(WarLevies.canLaySiege(world, faction, dimension))));
+		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.cities"));
+		for (Settlement city : data.getAll()) {
+			if (city.getType() != Settlement.Type.FACTION_CITY || city.getDimension() != dimension || !faction.equals(city.getFaction())) {
+				continue;
+			}
+			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.city", city.getId(), Settlements.displayName(city), city.getStatus().getName(),
+					city.getManpower(), city.getMaxManpower(), city.getGarrisonCap(), city.getTreasury(), daysSince(world, city.getLastSiegeEnd()),
+					daysSince(world, city.getLastFullSiegeEnd()), Sieges.isBesieged(city) ? new TextComponentTranslation("command.aw.settlement.faction.city.besieged") : ""));
+		}
+		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.relations"));
+		long day = Diplomacy.getDay(world);
+		for (String other : factionsWithCities(data, dimension)) {
+			if (other.equals(faction)) {
+				continue;
+			}
+			FactionRelation relation = KingdomDiplomacy.getRelation(world, faction, other);
+			DiplomacyData.Entry entry = Diplomacy.getData(world).get(faction, other);
+			StringBuilder details = new StringBuilder();
+			if (relation == FactionRelation.WAR) {
+				details.append(", ").append(Math.max(0L, day - entry.getSince())).append(" days, exhaustion ").append(entry.getExhaustion(faction, other))
+						.append(" (theirs ").append(entry.getExhaustion(other, faction)).append(")");
+			}
+			long truce = KingdomDiplomacy.getTruceDaysLeft(world, faction, other);
+			if (truce > 0) {
+				details.append(", truce for ").append(truce).append(" days");
+			}
+			if (Diplomacy.isEternalEnemy(other) || Diplomacy.isEternalEnemy(faction)) {
+				details.append(", eternal enemies");
+			}
+			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.relation", FactionMembership.factionName(other),
+					relation.name().toLowerCase(Locale.ROOT), details.toString()));
+		}
+		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.sieges", countSieges(data, faction)));
+		for (Siege siege : data.getSieges()) {
+			Settlement city = data.get(siege.getSettlementId());
+			if (city != null && (faction.equals(siege.getAttackerFaction()) || faction.equals(city.getFaction()))) {
+				sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.siege", siege.getId(), siege.getKind().getName(), Settlements.displayName(city),
+						FactionMembership.factionName(siege.getAttackerFaction()), siege.getWavesSpawned(), siege.getTotalWaves(), siege.getPaid()));
+			}
+		}
+		StringBuilder members = new StringBuilder();
+		for (FactionMembershipData.Member member : AWGameData.INSTANCE.getData(world, FactionMembershipData.class).getMembers()) {
+			if (faction.equals(member.faction)) {
+				members.append(members.length() > 0 ? ", " : "").append(member.playerName).append(" (").append(member.getStrikes()).append(" strikes)");
+			}
+		}
+		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.faction.members", members.length() == 0 ? "-" : members.toString()));
+	}
+
 	@Override
 	public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
 		if (args.length == 1) {
-			return CommandBase.getListOfStringsMatchingLastWord(args, LIST, INFO, SET_MANPOWER, RENAME);
+			return CommandBase.getListOfStringsMatchingLastWord(args, LIST, INFO, FACTION, SET_MANPOWER, RENAME);
+		}
+		if (args.length == 2 && FACTION.equals(args[0])) {
+			return CommandBase.getListOfStringsMatchingLastWord(args, FactionRegistry.getFactionNames());
 		}
 		return Collections.emptyList();
 	}

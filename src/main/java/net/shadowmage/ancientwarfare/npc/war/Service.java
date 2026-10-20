@@ -765,6 +765,24 @@ public class Service {
 	}
 
 	/**
+	 * @return the answer of a ruler whose faction cannot pay a full siege: its manpower, the floor it keeps and what a siege would need
+	 */
+	public static ITextComponent levyRefusal(World world, String faction, Settlement city) {
+		int dimension = city.getDimension();
+		return new TextComponentTranslation("command.aw.service.propose.refused.levies", WarLevies.getTotal(world, faction, dimension),
+				WarLevies.getMax(world, faction, dimension), WarLevies.getFloor(world, faction, dimension), AWDiplomacyStatics.fullSiegeMinAttackers);
+	}
+
+	/**
+	 * @return the hover of the full siege button: about how much it costs the faction, what it has and the floor it keeps
+	 */
+	public static ITextComponent levyHover(World world, String faction, Settlement city) {
+		int dimension = city.getDimension();
+		return new TextComponentTranslation("gui.aw.levies.hover", campaignCost(world, city, Siege.Kind.SIEGE, faction), WarLevies.getTotal(world, faction, dimension),
+				WarLevies.getMax(world, faction, dimension), WarLevies.getFloor(world, faction, dimension));
+	}
+
+	/**
 	 * @return the standing a member needs to propose a raid or a full siege
 	 */
 	public static int proposalStanding(Siege.Kind kind) {
@@ -802,7 +820,7 @@ public class Service {
 			line.appendSibling(clickable(new TextComponentTranslation("command.aw.service.propose.raid"), TextFormatting.GREEN,
 					"/awservice propose " + city.getId() + " raid", new TextComponentTranslation("command.aw.service.propose.raid.hover",
 							proposalStanding(Siege.Kind.RAID), proposalPenalty(Siege.Kind.RAID))));
-			if (isFullSiegeAllowed(world, city)) {
+			if (isFullSiegeAllowed(world, city) && WarLevies.canLaySiege(world, faction, city.getDimension())) {
 				line.appendText(" ");
 				line.appendSibling(clickable(new TextComponentTranslation("command.aw.service.propose.siege"), TextFormatting.RED,
 						"/awservice propose " + city.getId() + " siege",
@@ -847,10 +865,14 @@ public class Service {
 		if (data.getSieges().size() >= AWDiplomacyStatics.maxActiveSieges) {
 			return new TextComponentTranslation("command.aw.service.propose.refused.busy");
 		}
+		if (kind == Siege.Kind.SIEGE && !WarLevies.canLaySiege(world, faction, city.getDimension())) {
+			// a full siege is paid by the whole faction (WarLevies), the kingdom of the player too
+			return levyRefusal(world, faction, city);
+		}
 		Settlement capital = null;
 		int cost = 0;
-		if (owner) {
-			// a kingdom pays its campaigns with the manpower of its capital: one for each attacker
+		if (owner && kind == Siege.Kind.RAID) {
+			// a kingdom pays its raids with the manpower of its capital: one for each attacker (full sieges: WarLevies, in Sieges.start)
 			capital = Kingdoms.getCity(world, Kingdoms.get(world, faction));
 			cost = campaignCost(world, city, kind, faction);
 			if (capital == null) {

@@ -112,6 +112,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int structureAutoLeaderMinUnits = 5;
 	public static boolean replaceMissingLeader = true;
 	public static int missingLeaderManpowerCost = 10;
+	public static boolean siegeLeviesEnabled = true;
+	public static double siegeLevyFloor = 0.5D;
+	public static double siegeLevyLossRefund = 0.2D;
 	public static boolean spawnersTriggerInCreative = false;
 	public static boolean settlementsEnabled = true;
 	public static int settlementDefaultRadius = 48;
@@ -369,6 +372,12 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		replaceMissingLeader = config.get(serverOptions, "replace_missing_leader", replaceMissingLeader, "Replace a vanished leader\nDefault=" + replaceMissingLeader + "\n" + "If true, a city whose leader vanished without being killed (missing for 3 checks while its last position is loaded) raises a new leader\n" + "there, paying missing_leader_manpower_cost manpower, instead of falling. A killed leader still makes the city fall or be conquered.").getBoolean();
 
 		missingLeaderManpowerCost = config.get(serverOptions, "missing_leader_manpower_cost", missingLeaderManpowerCost, "Cost of a new leader\nDefault=" + missingLeaderManpowerCost + "\n" + "Manpower a city pays to replace a vanished leader. With less manpower the city falls as before.", 0, 10000).getInt();
+
+		siegeLeviesEnabled = config.get(serverOptions, "siege_levies_enabled", siegeLeviesEnabled, "Full sieges cost manpower\nDefault=" + siegeLeviesEnabled + "\n" + "If true, a full siege costs the attacking faction one manpower for each attacker, taken from all its cities in proportion to their manpower.\n" + "Raids stay free. A lost siege gives back up to siege_levy_loss_refund of the cost, a siege that did not take place (peace, stopped,\n" + "called off) all of it, a taken city nothing. Own soldiers of players that join the assault are given back one for one.").getBoolean();
+
+		siegeLevyFloor = config.get(serverOptions, "siege_levy_floor", siegeLevyFloor, "Manpower kept at home\nDefault=" + siegeLevyFloor + "\n" + "Share of its maximum manpower a faction always keeps: a full siege never takes it below this, and under this a faction lays no full\n" + "sieges (only raids).", 0.0D, 1.0D).getDouble();
+
+		siegeLevyLossRefund = config.get(serverOptions, "siege_levy_loss_refund", siegeLevyLossRefund, "Survivors of a lost siege\nDefault=" + siegeLevyLossRefund + "\n" + "After a lost full siege the faction gets back a random share, from 0 to this, of the manpower it paid.", 0.0D, 1.0D).getDouble();
 
 		pathQueue = config.get(serverOptions, "path_queue", pathQueue, "Queued path searches\nDefault=" + pathQueue + "\n" + "If true, an npc that already walks a path and asks for a new one when path_budget_per_tick is spent keeps walking for now, and its\n" + "request is searched in one of the next ticks. An npc without a path is never made to wait.").getBoolean();
 

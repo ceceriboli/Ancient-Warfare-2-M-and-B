@@ -117,6 +117,7 @@ public class Armies {
 			}
 		}
 		if (joined > 0) {
+			siege.addOwnSoldiers(joined);
 			player.sendMessage(new TextComponentTranslation("command.aw.army.join", joined));
 			AncientWarfareNPC.LOG.info("{}: {} own soldiers join the assault of {} {}", player.getName(), joined, siege.getKind().getName(), siege.getId());
 		}

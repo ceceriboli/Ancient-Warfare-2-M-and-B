@@ -157,6 +157,10 @@ public class Sieges {
 		int defenderManpower = size[4];
 		Siege siege = Siege.create(data.getNextSiegeId(), kind, origin, settlement, attackerFaction, waves, perWave);
 		data.addSiege(siege);
+		if (kind == Siege.Kind.SIEGE) {
+			// a full siege is paid with the manpower of the attacking faction (WarLevies)
+			siege.setPaid(WarLevies.pay(world, attackerFaction, settlement.getDimension(), waves * perWave));
+		}
 		settlement.setActiveSiegeId(siege.getId());
 		if (origin == Siege.Origin.AMBIENT) {
 			announce(world, siege, "start", settlement);
@@ -190,6 +194,13 @@ public class Sieges {
 	}
 
 	private static int[] computeSize(World world, Settlement settlement, Siege.Kind kind, String attacker) {
+		return computeSize(world, settlement, kind, attacker, 0);
+	}
+
+	/**
+	 * @param alreadyPaid manpower the attacker already paid for this siege (a campaign sized again), counted as available
+	 */
+	private static int[] computeSize(World world, Settlement settlement, Siege.Kind kind, String attacker, int alreadyPaid) {
 		boolean full = kind == Siege.Kind.SIEGE;
 		int strength = countGarrison(world, settlement) + settlement.getManpower();
 		// a strong faction attacks with more than a weak one on the same city
@@ -201,6 +212,10 @@ public class Sieges {
 		int max = full ? AWDiplomacyStatics.fullSiegeMaxAttackers : AWDiplomacyStatics.raidMaxAttackers;
 		// a faction cannot send more than a share of the manpower it has (but not less than the minimum)
 		max = Math.min(max, Math.max(min, (int) (attackerManpower * (full ? AWDiplomacyStatics.fullSiegeAttackerShare : AWDiplomacyStatics.raidAttackerShare))));
+		if (full && WarLevies.isEnabled()) {
+			// a full siege cannot cost more than the faction can spend above the floor of its manpower (WarLevies)
+			max = Math.min(max, Math.max(min, WarLevies.getAvailable(world, attacker, settlement.getDimension()) + alreadyPaid));
+		}
 		int attackers = Math.min(max, Math.max(min, (int) Math.round(total)));
 		int waves = Math.max(1, Math.min(full ? AWDiplomacyStatics.fullSiegeWaves : AWDiplomacyStatics.raidWaves, attackers));
 		return new int[] {strength, waves, (int) Math.ceil((double) attackers / waves), attackerManpower, defenderManpower};
@@ -226,7 +241,7 @@ public class Sieges {
 	static Siege.Kind chooseKind(World world, Settlement settlement, String attacker, long now) {
 		// full sieges come only from factions with a known city (in the settlement list), the others only raid
 		boolean fullSiegeAllowed = sinceRest(world, settlement.getLastFullSiegeEnd()) >= (long) AWDiplomacyStatics.fullSiegeCooldownDays * DAY_TICKS
-				&& Diplomacy.getFactionsWithCities(world).contains(attacker);
+				&& Diplomacy.getFactionsWithCities(world).contains(attacker) && WarLevies.canLaySiege(world, attacker, settlement.getDimension());
 		return fullSiegeAllowed && world.rand.nextDouble() < AWDiplomacyStatics.fullSiegeShare ? Siege.Kind.SIEGE : Siege.Kind.RAID;
 	}
 
@@ -398,8 +413,18 @@ public class Sieges {
 			// a campaign waits for a called player, also while the city is far away and not loaded
 			if (Service.hasCalledPlayerNear(world, siege, settlement)) {
 				// sized again now that the city is loaded and its garrison counted, as for an attack started near a player
-				int[] size = computeSize(world, settlement, siege.getKind(), siege.getAttackerFaction());
+				int[] size = computeSize(world, settlement, siege.getKind(), siege.getAttackerFaction(), siege.getPaid());
 				siege.setSize(size[1], size[2]);
+				if (siege.getKind() == Siege.Kind.SIEGE && WarLevies.isEnabled()) {
+					// the new size is paid, or the difference given back
+					int difference = size[1] * size[2] - siege.getPaid();
+					if (difference > 0) {
+						siege.setPaid(siege.getPaid() + WarLevies.pay(world, siege.getAttackerFaction(), settlement.getDimension(), difference));
+					} else if (difference < 0) {
+						siege.setPaid(siege.getPaid() - WarLevies.refund(world, siege.getAttackerFaction(), settlement.getDimension(), -difference,
+								"smaller campaign " + siege.getId()));
+					}
+				}
 				siege.setState(Siege.State.WARMUP);
 				data.markDirty();
 				announce(world, siege, "start", settlement);
@@ -552,6 +577,7 @@ public class Sieges {
 		}
 		Armies.releaseAll(world, siege.getId());
 		AssaultBuilds.removeAll(world, siege.getId());
+		WarLevies.onSiegeEnded(world, data, siege, outcome);
 		Service.onSiegeEnded(world, siege, settlement, outcome);
 		AncientWarfareNPC.LOG.info("{} {} of city {} by {} ended: {}", siege.getKind().getName(), siege.getId(), siege.getSettlementId(),
 				siege.getAttackerFaction(), outcome);
