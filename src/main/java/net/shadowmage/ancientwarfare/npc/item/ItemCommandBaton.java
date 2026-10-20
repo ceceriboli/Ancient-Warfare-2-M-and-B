@@ -73,6 +73,7 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.select"));
 		tooltip.add(I18n.format("guistrings.npc.baton.select_many"));
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.order", InputHandler.ALT_ITEM_USE_1.getDisplayName()));
+		tooltip.add(I18n.format("guistrings.npc.baton.tip.patrol", InputHandler.ALT_ITEM_USE_1.getDisplayName()));
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.hold", InputHandler.ALT_ITEM_USE_2.getDisplayName()));
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.follow", InputHandler.ALT_ITEM_USE_3.getDisplayName()));
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.retreat", InputHandler.ALT_ITEM_USE_4.getDisplayName()));
@@ -165,7 +166,15 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 		// one key per order: what you look at decides the order of the first key; the other orders need no aim
 		switch (altFunction) {
 			case ALT_FUNCTION_1:
-				giveOrderAt(player);
+				if (player.isSneaking()) {
+					// sneak: patrol the area around the block looked at
+					RayTraceResult hit = RayTraceUtils.getPlayerTarget(player, range, 0);
+					if (hit != null && hit.typeOfHit == Type.BLOCK) {
+						NpcCommand.handleCommandClient(CommandType.PATROL, hit);
+					}
+				} else {
+					giveOrderAt(player);
+				}
 				return false;
 			case ALT_FUNCTION_2:
 				NpcCommand.handleCommandClient(CommandType.HOLD, new RayTraceResult(player));

@@ -79,6 +79,7 @@ public class NpcCombat extends NpcPlayerOwned implements IRangedAttackMob {
 		tasks.addTask(8, new NpcAIMedicBase<NpcCombat>(this));
 		tasks.addTask(8, new NpcAIDistressResponse(this));
 		tasks.addTask(9, patrolAI);
+		tasks.addTask(9, new net.shadowmage.ancientwarfare.npc.ai.owned.NpcAIPlayerOwnedPatrolArea(this));
 
 		tasks.addTask(10, new NpcAIMoveHome(this, 50F, 5F, 20F, 5F));
 

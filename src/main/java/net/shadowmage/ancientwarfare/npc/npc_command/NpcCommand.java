@@ -25,7 +25,7 @@ public class NpcCommand {
 		GUARD, //attack click on friendly player or npc
 		SET_HOME, SET_UPKEEP, CLEAR_HOME, CLEAR_UPKEEP, CLEAR_COMMAND, NONE,
 		// group orders (GroupOrders), after NONE so that the saved ordinals of the others do not change
-		FOLLOW, HOLD, RETREAT;
+		FOLLOW, HOLD, RETREAT, PATROL;
 
         // Experimental: move commands are also persistent; NPCs will return to that task after performing others
 		public boolean isPersistent() {
@@ -57,13 +57,28 @@ public class NpcCommand {
 			cmd = new Command(type, entityID);
 		}
 		List<Entity> targets = ItemCommandBaton.getCommandedEntities(player.world, EntityTools.getItemFromEitherHand(player, ItemCommandBaton.class));
+		if (type == CommandType.ATTACK) {
+			// "attack" on a friend (a governor or a soldier of the player's faction, an ally...) means guard it
+			Entity target = cmd.getEntityTarget(player.world);
+			for (Entity e : targets) {
+				if (e instanceof NpcPlayerOwned && target != null && !((NpcPlayerOwned) e).isHostileTowards(target)) {
+					type = CommandType.GUARD;
+					cmd = new Command(type, entityID);
+				}
+				break;
+			}
+		}
 		int count = 0;
 		for (Entity e : targets) {
 			if (e instanceof NpcPlayerOwned) {
 				NpcPlayerOwned npc = (NpcPlayerOwned) e;
 				GroupOrders.beforeOrder(npc, type);
+				if (type == CommandType.MOVE && block) {
+					// sent somewhere, it stays there afterwards instead of walking back to its old home
+					npc.setHomePosAndDistance(pos, 6);
+				}
 				if (GroupOrders.isGroupOrder(type)) {
-					GroupOrders.apply(npc, player, type);
+					GroupOrders.apply(npc, player, type, pos);
 				} else {
 					npc.handlePlayerCommand(cmd);
 				}

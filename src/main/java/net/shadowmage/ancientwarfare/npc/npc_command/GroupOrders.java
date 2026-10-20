@@ -21,6 +21,9 @@ import java.util.List;
 public final class GroupOrders {
 	public static final String TAG_HOLD = "awHold";
 	public static final String TAG_RETREAT_UNTIL = "awRetreatUntil";
+	public static final String TAG_PATROL = "awPatrol";
+	public static final String TAG_PATROL_RADIUS = "awPatrolRadius";
+	private static final int PATROL_RADIUS = 12;
 	private static final int HOLD_RANGE = 4;
 
 	private GroupOrders() {}
@@ -45,7 +48,7 @@ public final class GroupOrders {
 	 * @return true if the order is one of the group orders of this class (given at once, not kept as the npc's command)
 	 */
 	public static boolean isGroupOrder(CommandType type) {
-		return type == CommandType.FOLLOW || type == CommandType.HOLD || type == CommandType.RETREAT;
+		return type == CommandType.FOLLOW || type == CommandType.HOLD || type == CommandType.RETREAT || type == CommandType.PATROL;
 	}
 
 	/**
@@ -58,10 +61,27 @@ public final class GroupOrders {
 			data.removeTag(TAG_HOLD);
 			npc.setDoNotPursue(false);
 		}
+		if (type != CommandType.PATROL) {
+			data.removeTag(TAG_PATROL);
+			data.removeTag(TAG_PATROL_RADIUS);
+		}
+		// an order replaces following the player (recruits and reinforcements start following him): only follow and retreat keep it
+		if (type != CommandType.FOLLOW && type != CommandType.RETREAT) {
+			npc.clearFollowingEntity();
+		}
 	}
 
-	public static void apply(NpcPlayerOwned npc, EntityPlayer player, CommandType type) {
+	public static void apply(NpcPlayerOwned npc, EntityPlayer player, CommandType type, net.minecraft.util.math.BlockPos pos) {
 		switch (type) {
+			case PATROL:
+				// walks around the area, fights what it meets, comes back (home = center), see NpcAIPlayerOwnedPatrolArea
+				npc.setPlayerCommand(Command.NONE);
+				npc.clearFollowingEntity();
+				npc.getNavigator().clearPath();
+				npc.setHomePosAndDistance(pos, PATROL_RADIUS);
+				npc.getEntityData().setLong(TAG_PATROL, pos.toLong());
+				npc.getEntityData().setInteger(TAG_PATROL_RADIUS, PATROL_RADIUS);
+				break;
 			case FOLLOW:
 				npc.setPlayerCommand(Command.NONE);
 				npc.setFollowingEntity(player);
