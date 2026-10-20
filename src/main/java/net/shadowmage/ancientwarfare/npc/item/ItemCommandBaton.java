@@ -72,12 +72,12 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.select"));
 		tooltip.add(I18n.format("guistrings.npc.baton.select_many"));
-		tooltip.add(I18n.format("guistrings.npc.baton.tip.order", InputHandler.ALT_ITEM_USE_1.getDisplayName()));
+		tooltip.add(I18n.format("guistrings.npc.baton.tip.other", InputHandler.ALT_ITEM_USE_1.getDisplayName(), I18n.format(getMode(stack).getTranslationKey())));
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.patrol", InputHandler.ALT_ITEM_USE_1.getDisplayName()));
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.hold", InputHandler.ALT_ITEM_USE_2.getDisplayName()));
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.follow", InputHandler.ALT_ITEM_USE_3.getDisplayName()));
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.retreat", InputHandler.ALT_ITEM_USE_4.getDisplayName()));
-		tooltip.add(I18n.format("guistrings.npc.baton.tip.other", InputHandler.ALT_ITEM_USE_5.getDisplayName(), I18n.format(getMode(stack).getTranslationKey())));
+		tooltip.add(I18n.format("guistrings.npc.baton.tip.order", InputHandler.ALT_ITEM_USE_5.getDisplayName()));
 	}
 
 	/*
@@ -163,7 +163,7 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 
 	@Override
 	public boolean onKeyActionClient(EntityPlayer player, ItemStack stack, ItemAltFunction altFunction) {
-		// one key per order: what you look at decides the order of the first key; the other orders need no aim
+		// the first key gives the order chosen with sneak + scroll; the last one decides the order by what you look at; the others need no aim
 		switch (altFunction) {
 			case ALT_FUNCTION_1:
 				if (player.isSneaking()) {
@@ -172,10 +172,9 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 					if (hit != null && hit.typeOfHit == Type.BLOCK) {
 						NpcCommand.handleCommandClient(CommandType.PATROL, hit);
 					}
-				} else {
-					giveOrderAt(player);
+					return false;
 				}
-				return false;
+				break;
 			case ALT_FUNCTION_2:
 				NpcCommand.handleCommandClient(CommandType.HOLD, new RayTraceResult(player));
 				return false;
@@ -185,10 +184,12 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 			case ALT_FUNCTION_4:
 				NpcCommand.handleCommandClient(CommandType.RETREAT, new RayTraceResult(player));
 				return false;
+			case ALT_FUNCTION_5:
+				giveOrderAt(player);
+				return false;
 			default:
 		}
-		// the last key gives the order chosen with sneak + scroll (home, upkeep, clear...)
-		if (altFunction == ItemAltFunction.ALT_FUNCTION_5) {
+		if (altFunction == ItemAltFunction.ALT_FUNCTION_1) {
 			switch (getMode(stack)) {
 				case CLEAR_COMMAND: {
 					RayTraceResult hit = new RayTraceResult(player);
