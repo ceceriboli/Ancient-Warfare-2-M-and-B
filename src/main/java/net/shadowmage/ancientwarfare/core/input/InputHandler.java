@@ -79,7 +79,12 @@ public class InputHandler {
 		boolean state = Keyboard.getEventKeyState();
 
 		if (state) {
-			keybindingCallbacks.stream().filter(k -> k.getKeyBinding().isKeyDown()).forEach(InputCallbackDispatcher::onKeyPressed);
+			// a binding without modifier counts as released while shift is held (Forge KeyModifier.NONE), so sneak + key never reached the items:
+			// the key pressed in this event also counts for such a binding when its context is active
+			int eventKey = Keyboard.getEventKey();
+			keybindingCallbacks.stream().filter(k -> k.getKeyBinding().isKeyDown() || eventKey != 0 && eventKey == k.getKeyBinding().getKeyCode()
+					&& k.getKeyBinding().getKeyModifier() == net.minecraftforge.client.settings.KeyModifier.NONE && k.getKeyBinding().getKeyConflictContext().isActive())
+					.forEach(InputCallbackDispatcher::onKeyPressed);
 		}
 	}
 
