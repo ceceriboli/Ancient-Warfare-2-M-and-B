@@ -73,11 +73,7 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.select"));
 		tooltip.add(I18n.format("guistrings.npc.baton.select_many"));
 		tooltip.add(I18n.format("guistrings.npc.baton.tip.other", InputHandler.ALT_ITEM_USE_1.getDisplayName(), I18n.format(getMode(stack).getTranslationKey())));
-		tooltip.add(I18n.format("guistrings.npc.baton.tip.patrol", InputHandler.ALT_ITEM_USE_1.getDisplayName()));
-		tooltip.add(I18n.format("guistrings.npc.baton.tip.hold", InputHandler.ALT_ITEM_USE_2.getDisplayName()));
-		tooltip.add(I18n.format("guistrings.npc.baton.tip.follow", InputHandler.ALT_ITEM_USE_3.getDisplayName()));
-		tooltip.add(I18n.format("guistrings.npc.baton.tip.retreat", InputHandler.ALT_ITEM_USE_4.getDisplayName()));
-		tooltip.add(I18n.format("guistrings.npc.baton.tip.order", InputHandler.ALT_ITEM_USE_5.getDisplayName()));
+
 	}
 
 	/*
@@ -163,32 +159,7 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 
 	@Override
 	public boolean onKeyActionClient(EntityPlayer player, ItemStack stack, ItemAltFunction altFunction) {
-		// the first key gives the order chosen with sneak + scroll; the last one decides the order by what you look at; the others need no aim
-		switch (altFunction) {
-			case ALT_FUNCTION_1:
-				if (player.isSneaking()) {
-					// sneak: patrol the area around the block looked at
-					RayTraceResult hit = RayTraceUtils.getPlayerTarget(player, range, 0);
-					if (hit != null && hit.typeOfHit == Type.BLOCK) {
-						NpcCommand.handleCommandClient(CommandType.PATROL, hit);
-					}
-					return false;
-				}
-				break;
-			case ALT_FUNCTION_2:
-				NpcCommand.handleCommandClient(CommandType.HOLD, new RayTraceResult(player));
-				return false;
-			case ALT_FUNCTION_3:
-				NpcCommand.handleCommandClient(CommandType.FOLLOW, new RayTraceResult(player));
-				return false;
-			case ALT_FUNCTION_4:
-				NpcCommand.handleCommandClient(CommandType.RETREAT, new RayTraceResult(player));
-				return false;
-			case ALT_FUNCTION_5:
-				giveOrderAt(player);
-				return false;
-			default:
-		}
+		// as in Ancient Warfare: the key gives the order chosen with sneak + scroll
 		if (altFunction == ItemAltFunction.ALT_FUNCTION_1) {
 			switch (getMode(stack)) {
 				case CLEAR_COMMAND: {
@@ -250,29 +221,19 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 				case RETREAT:
 					NpcCommand.handleCommandClient(CommandType.RETREAT, new RayTraceResult(player));
 					break;
+				case PATROL: {
+					// patrol the area around the block looked at
+					RayTraceResult hit = RayTraceUtils.getPlayerTarget(player, range, 0);
+					if (hit != null && hit.typeOfHit == Type.BLOCK) {
+						NpcCommand.handleCommandClient(CommandType.PATROL, hit);
+					}
+				}
+				break;
 			}
 		}
 		return false;
 	}
 
-	/**
-	 * The main order, decided by what the player looks at: an enemy is attacked, one of your soldiers, a horse or a player is guarded (a horse
-	 * is mounted), a block is the place to go; looking at nothing (the sky) the soldiers follow you.
-	 */
-	@SideOnly(Side.CLIENT)
-	private void giveOrderAt(EntityPlayer player) {
-		RayTraceResult hit = RayTraceUtils.getPlayerTarget(player, range, 0);
-		if (hit == null || hit.typeOfHit == Type.MISS) {
-			NpcCommand.handleCommandClient(CommandType.FOLLOW, new RayTraceResult(player));
-		} else if (hit.typeOfHit == Type.BLOCK) {
-			NpcCommand.handleCommandClient(CommandType.MOVE, hit);
-		} else if (hit.entityHit instanceof EntityLivingBase) {
-			Entity entity = hit.entityHit;
-			boolean friendly = entity instanceof EntityPlayer || entity instanceof net.minecraft.entity.passive.AbstractHorse
-					|| entity instanceof NpcBase && ((NpcBase) entity).hasCommandPermissions(player.getUniqueID(), player.getName());
-			NpcCommand.handleCommandClient(friendly ? CommandType.GUARD : CommandType.ATTACK, hit);
-		}
-	}
 
 	private void onNpcClicked(NpcBase npc, ItemStack stack) {
 		CommandSet.loadFromStack(stack).onNpcClicked(npc, stack);
@@ -451,7 +412,8 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 		CLEAR_UPKEEP("clearUpkeep", "guistrings.npc.baton.clear_upkeep"),
 		FOLLOW("follow", "guistrings.npc.baton.follow"),
 		HOLD("hold", "guistrings.npc.baton.hold"),
-		RETREAT("retreat", "guistrings.npc.baton.retreat");
+		RETREAT("retreat", "guistrings.npc.baton.retreat"),
+		PATROL("patrol", "guistrings.npc.baton.order.patrol");
 
 		private String name;
 		final String key;
