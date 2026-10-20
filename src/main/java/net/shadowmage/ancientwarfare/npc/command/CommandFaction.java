@@ -126,9 +126,11 @@ public class CommandFaction extends CommandBase {
 	@Override
 	public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
 		if (args.length == 1) {
-			return CommandBase.getListOfStringsMatchingLastWord(args, "get");
+			return CommandBase.getListOfStringsMatchingLastWord(args, "get", "set", "setall", "add", "subtract");
 		} else if (args.length == 2) {
 			return CommandBase.getListOfStringsMatchingLastWord(args, server.getOnlinePlayerNames());
+		} else if (args.length == 3 && (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("subtract"))) {
+			return CommandBase.getListOfStringsMatchingLastWord(args, FactionRegistry.getFactionNames());
 		}
 		return Collections.emptyList();
 	}
