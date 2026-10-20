@@ -104,7 +104,11 @@ public class ItemNpcSpawner extends ItemBaseNPC {
 			}
 			npc.setPosition(hit.getX() + 0.5d, hit.getY(), hit.getZ() + 0.5d);
 			npc.setHomeAreaAtCurrentPosition();
-			player.world.spawnEntity(npc);
+			boolean packed = stack.hasTagCompound() && stack.getTagCompound().hasKey(NPC_STORED_DATA_TAG);
+			if (player.world.spawnEntity(npc) && npc instanceof NpcPlayerOwned && !packed) {
+				// a new soldier inside a city of the player's kingdom adds to its manpower (a soldier packed into an item is not new)
+				net.shadowmage.ancientwarfare.npc.war.Settlements.onOwnSoldierCreated((NpcPlayerOwned) npc, player);
+			}
 			if (!player.capabilities.isCreativeMode) {
 				stack.shrink(1);
 			}

@@ -87,7 +87,6 @@ public class Settlements {
 	private static final int MIN_BOUNDS_BELOW = 24;
 	private static final int MIN_BOUNDS_ABOVE = 40;
 	private static final int STRUCTURE_SCAN_INTERVAL = 100;
-	private static final int KINGDOM_SOLDIER_INTERVAL = 200;
 	private static final int STRUCTURE_RETRY_TICKS = 6000;
 	private static final int MAX_FOUNDED_PER_SCAN = 4;
 	private static final int MAX_STRUCTURE_CHUNKS = 400;
@@ -254,9 +253,7 @@ public class Settlements {
 		int dimension = world.provider.getDimension();
 		mergeOverlappingCities(world, data);
 		updateKingdomTribute(data);
-		if (now % KINGDOM_SOLDIER_INTERVAL == 0) {
-			growKingdomManpower(world, data);
-		}
+
 		for (Settlement settlement : new ArrayList<>(data.getAll())) {
 			if (settlement.getDimension() != dimension || !settlement.isActive() || settlement.getType() != Settlement.Type.FACTION_CITY) {
 				continue;
@@ -311,37 +308,32 @@ public class Settlements {
 	}
 
 	/**
-	 * The soldiers of the owner of a kingdom inside one of its cities (the capital, a city founded with another Town Hall, a conquered one) are
-	 * its manpower: when there are more of them than ever before, the maximum manpower of the city grows to kingdom_start_manpower +
-	 * manpower_per_unit for each, and the manpower grows by the same amount. It never shrinks when soldiers die.
+	 * A new fighting soldier of the owner of a kingdom was placed with its spawner item inside a city of the kingdom: the maximum manpower of
+	 * that city grows by manpower_per_unit, and the manpower by the same amount. Only at its creation: moving soldiers around changes nothing,
+	 * and a soldier packed back into an item and placed again does not count.
 	 */
-	private static void growKingdomManpower(WorldServer world, SettlementData data) {
-		for (Settlement capital : data.getAll()) {
-			if (!capital.isActive() || capital.getDimension() != world.provider.getDimension() || !Kingdoms.isKingdom(capital.getFaction())) {
-				continue;
-			}
-			KingdomData.Kingdom kingdom = Kingdoms.get(world, capital.getFaction());
-			if (kingdom == null) {
-				continue;
-			}
-			int soldiers = 0;
-			for (NpcPlayerOwned npc : world.getEntitiesWithinAABB(NpcPlayerOwned.class, capital.getAABB())) {
-				// the soldiers sent as free reinforcements do not make the manpower grow (they would make it grow forever)
-				if (npc.isEntityAlive() && !npc.isPassive() && kingdom.ownerId.equals(npc.getOwner().getUUID()) && !npc.getEntityData().hasKey(TAG_KINGDOM_GARRISON)) {
-					soldiers++;
-				}
-			}
-			int base = AWDiplomacyStatics.kingdomStartManpower + (int) Math.ceil(soldiers * AWDiplomacyStatics.manpowerPerUnit);
-			if (base > capital.getBaseMaxManpower()) {
-				int delta = base - capital.getBaseMaxManpower();
-				capital.setMaxManpower(base);
-				capital.setManpower(capital.getManpower() + delta);
-				data.markDirty();
-				AncientWarfareNPC.LOG.info("The city {} of {} grows to {} manpower: {} soldiers of its owner", capital.getId(), capital.getFaction(), capital.getMaxManpower(), soldiers);
-			}
+	public static void onOwnSoldierCreated(NpcPlayerOwned npc, EntityPlayer owner) {
+		if (npc.world.isRemote || !AWDiplomacyStatics.kingdomsEnabled || !AWDiplomacyStatics.settlementsEnabled || npc.isPassive()) {
+			return;
 		}
+		KingdomData.Kingdom kingdom = Kingdoms.getOwnedBy(npc.world, owner.getUniqueID());
+		if (kingdom == null) {
+			return;
+		}
+		SettlementData data = getData(npc.world);
+		Settlement city = data.getActiveAt(npc.world.provider.getDimension(), npc.getPosition(), Settlement.Type.FACTION_CITY);
+		if (city == null || !city.getFaction().equals(kingdom.id)) {
+			return;
+		}
+		int added = (int) Math.ceil(AWDiplomacyStatics.manpowerPerUnit);
+		if (added <= 0) {
+			return;
+		}
+		city.setMaxManpower(city.getBaseMaxManpower() + added);
+		city.setManpower(city.getManpower() + added);
+		data.markDirty();
+		AncientWarfareNPC.LOG.info("City {} of {} grows to {} manpower: new soldier {} of {}", city.getId(), city.getFaction(), city.getMaxManpower(), npc.getName(), owner.getName());
 	}
-
 	/**
 	 * The other cities of a kingdom (the ones it conquered) pay tribute to its capital, the city with the owner: kingdom_tribute_ratio of
 	 * their own maximum manpower is added to the capital's maximum, and granted as manpower when it grows. The capital pays the campaigns.
@@ -1387,7 +1379,7 @@ public class Settlements {
 	/**
 	 * A city of a player kingdom is reinforced with soldiers of the owner (like recruits and crafted soldiers: they can be made to follow and
 	 * ordered with the command baton, and never fight the owner's other soldiers). They wait for the owner to be online, are counted in
-	 * Settlement.ownGarrison until they die, and do not count for the growth of the capital's manpower (growKingdomManpower).
+	 * Settlement.ownGarrison until they die, and do not make the manpower grow (only soldiers placed with their item do, onOwnSoldierCreated).
 	 */
 	private static void reinforceKingdomCity(WorldServer world, Settlement settlement) {
 		KingdomData.Kingdom kingdom = Kingdoms.get(world, settlement.getFaction());
