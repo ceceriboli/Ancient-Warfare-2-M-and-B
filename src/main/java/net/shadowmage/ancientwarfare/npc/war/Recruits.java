@@ -216,7 +216,7 @@ public class Recruits {
 	/**
 	 * Gives the soldier the equipment of the tier (recruit_tier_N_equipment, "slot=item" entries); what it wore in those slots is dropped.
 	 */
-	private static void equip(NpcCombat soldier, int tier) {
+	static void equip(NpcCombat soldier, int tier) {
 		String[] entries = tier >= 3 ? AWDiplomacyStatics.recruitTier3Equipment : tier == 2 ? AWDiplomacyStatics.recruitTier2Equipment : AWDiplomacyStatics.recruitTier1Equipment;
 		for (String entry : entries) {
 			String[] parts = entry.trim().split("=", 2);

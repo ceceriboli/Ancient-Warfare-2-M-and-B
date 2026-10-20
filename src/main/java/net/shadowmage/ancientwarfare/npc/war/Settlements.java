@@ -32,6 +32,8 @@ import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionLeader;
 import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
 import net.shadowmage.ancientwarfare.npc.faction.FactionMembership;
 import net.shadowmage.ancientwarfare.npc.faction.Kingdoms;
+import net.shadowmage.ancientwarfare.npc.gamedata.KingdomData;
+import net.shadowmage.ancientwarfare.npc.entity.NpcCombat;
 import net.shadowmage.ancientwarfare.npc.gamedata.SettlementData;
 import net.shadowmage.ancientwarfare.npc.registry.FactionRegistry;
 import net.shadowmage.ancientwarfare.structure.gamedata.StructureEntry;
@@ -63,6 +65,8 @@ public class Settlements {
 	private Settlements() {}
 
 	public static final String TAG_SETTLEMENT = "awSettlement";
+	// a soldier of the owner of a kingdom sent as reinforcement to a city of the kingdom: the id of the city
+	public static final String TAG_KINGDOM_GARRISON = "awKingdomGarrison";
 	public static final String TAG_ROLE = "awSettlementRole";
 	public static final String TAG_SIEGE = "awSiege";
 	// faction of the city an attacker besieges: the only npcs it is hostile to (with those that attack it), see NpcFaction.isHostileTowards
@@ -186,6 +190,14 @@ public class Settlements {
 	}
 
 	public static void onLivingDeath(Entity entity, DamageSource source) {
+		if (!entity.world.isRemote && entity.getEntityData().hasKey(TAG_KINGDOM_GARRISON)) {
+			// a soldier of the kingdom owner sent as reinforcement died: the city may get a new one
+			Settlement city = getData(entity.world).get(entity.getEntityData().getInteger(TAG_KINGDOM_GARRISON));
+			if (city != null) {
+				city.setOwnGarrison(city.getOwnGarrison() - 1);
+				getData(entity.world).markDirty();
+			}
+		}
 		if (entity.world.isRemote || !(entity instanceof NpcFaction)) {
 			return;
 		}
@@ -310,7 +322,8 @@ public class Settlements {
 			}
 			int soldiers = 0;
 			for (NpcPlayerOwned npc : world.getEntitiesWithinAABB(NpcPlayerOwned.class, capital.getAABB())) {
-				if (npc.isEntityAlive() && !npc.isPassive() && capital.getOwnerId().equals(npc.getOwner().getUUID())) {
+				// the soldiers sent as free reinforcements do not make the manpower grow (they would make it grow forever)
+				if (npc.isEntityAlive() && !npc.isPassive() && capital.getOwnerId().equals(npc.getOwner().getUUID()) && !npc.getEntityData().hasKey(TAG_KINGDOM_GARRISON)) {
 					soldiers++;
 				}
 			}
@@ -1313,7 +1326,7 @@ public class Settlements {
 		if (settlement.getGarrisonCap() <= 0 || Sieges.isBesieged(settlement) || !world.isAreaLoaded(settlement.getMin(), settlement.getMax())) {
 			return;
 		}
-		int garrison = settlement.getPendingRespawns().size();
+		int garrison = settlement.getPendingRespawns().size() + settlement.getOwnGarrison();
 		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, settlement.getAABB())) {
 			if (npc.isEntityAlive() && isDefender(npc, settlement)) {
 				garrison++;
@@ -1325,6 +1338,10 @@ public class Settlements {
 				settlement.setGarrisonCap(garrison);
 				getData(world).markDirty();
 			}
+			return;
+		}
+		if (Kingdoms.isKingdom(settlement.getFaction())) {
+			reinforceKingdomCity(world, settlement);
 			return;
 		}
 		List<String> types = new ArrayList<>();
@@ -1341,6 +1358,32 @@ public class Settlements {
 		if (world.spawnEntity(unit)) {
 			tag(unit, settlement, ROLE_GARRISON);
 			world.spawnParticle(EnumParticleTypes.CLOUD, unit.posX, unit.posY + 1D, unit.posZ, 10, 0.3D, 0.5D, 0.3D, 0.02D);
+		}
+	}
+
+	/**
+	 * A city of a player kingdom is reinforced with soldiers of the owner (like recruits and crafted soldiers: they can be made to follow and
+	 * ordered with the command baton, and never fight the owner's other soldiers). They wait for the owner to be online, are counted in
+	 * Settlement.ownGarrison until they die, and do not count for the growth of the capital's manpower (growKingdomManpower).
+	 */
+	private static void reinforceKingdomCity(WorldServer world, Settlement settlement) {
+		KingdomData.Kingdom kingdom = Kingdoms.get(world, settlement.getFaction());
+		EntityPlayer owner = kingdom == null ? null : world.getMinecraftServer().getPlayerList().getPlayerByUUID(kingdom.ownerId);
+		if (owner == null) {
+			return;
+		}
+		NpcCombat soldier = new NpcCombat(world);
+		soldier.setOwner(owner);
+		BlockPos pos = findRecruitPos(world, settlement);
+		soldier.setLocationAndAngles(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, world.rand.nextFloat() * 360F, 0F);
+		soldier.setHomeAreaAtCurrentPosition();
+		Recruits.equip(soldier, 1);
+		soldier.setHealth(soldier.getMaxHealth());
+		soldier.getEntityData().setInteger(TAG_KINGDOM_GARRISON, settlement.getId());
+		if (world.spawnEntity(soldier)) {
+			settlement.setOwnGarrison(settlement.getOwnGarrison() + 1);
+			getData(world).markDirty();
+			world.spawnParticle(EnumParticleTypes.CLOUD, soldier.posX, soldier.posY + 1D, soldier.posZ, 10, 0.3D, 0.5D, 0.3D, 0.02D);
 		}
 	}
 

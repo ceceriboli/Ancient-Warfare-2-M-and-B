@@ -52,6 +52,8 @@ public class Settlement {
 	private int maxManpower;
 	private int manpowerCap;
 	private int garrisonCap;
+	// soldiers of the kingdom owner sent as reinforcements to this city (alive, loaded or not), see Settlements.reinforce
+	private int ownGarrison;
 	private long lastRegenDay;
 	private int activeSiegeId;
 	private long lastSiegeEnd;
@@ -263,6 +265,14 @@ public class Settlement {
 		this.garrisonCap = Math.max(0, garrisonCap);
 	}
 
+	public int getOwnGarrison() {
+		return ownGarrison;
+	}
+
+	void setOwnGarrison(int ownGarrison) {
+		this.ownGarrison = Math.max(0, ownGarrison);
+	}
+
 	long getLastRegenDay() {
 		return lastRegenDay;
 	}
@@ -337,6 +347,7 @@ public class Settlement {
 		tag.setInteger("maxManpower", maxManpower);
 		tag.setInteger("manpowerCap", manpowerCap);
 		tag.setInteger("garrisonCap", garrisonCap);
+		tag.setInteger("ownGarrison", ownGarrison);
 		tag.setLong("lastRegenDay", lastRegenDay);
 		tag.setInteger("activeSiege", activeSiegeId);
 		tag.setLong("lastSiegeEnd", lastSiegeEnd);
@@ -387,6 +398,7 @@ public class Settlement {
 		settlement.maxManpower = tag.getInteger("maxManpower");
 		settlement.manpowerCap = tag.getInteger("manpowerCap");
 		settlement.garrisonCap = tag.getInteger("garrisonCap");
+		settlement.ownGarrison = tag.getInteger("ownGarrison");
 		settlement.lastRegenDay = tag.getLong("lastRegenDay");
 		settlement.activeSiegeId = tag.getInteger("activeSiege");
 		settlement.lastSiegeEnd = tag.getLong("lastSiegeEnd");
