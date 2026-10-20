@@ -108,17 +108,23 @@ public class Kingdoms {
 	}
 
 	/**
-	 * A player placed a town hall: if it is their first and it is not inside a city, it founds their kingdom. A member of a faction leaves it
+	 * A player placed a town hall: if it is their first and it is not inside a city, it founds their kingdom (the owner of a kingdom founds
+	 * another city of it instead, see foundNewCity). A member of a faction leaves it
 	 * first (like renouncing), then the kingdom is created with its starting relations, its city and governor, and the player becomes its
 	 * member.
 	 */
 	public static void onTownHallPlaced(World world, EntityPlayer player, BlockPos pos) {
 		if (world.isRemote || !(world instanceof WorldServer) || !(player instanceof EntityPlayerMP) || !AWDiplomacyStatics.kingdomsEnabled
-				|| !AWDiplomacyStatics.settlementsEnabled || getOwnedBy(world, player.getUniqueID()) != null) {
+				|| !AWDiplomacyStatics.settlementsEnabled) {
 			return;
 		}
 		MinecraftServer server = world.getMinecraftServer();
 		if (server == null) {
+			return;
+		}
+		KingdomData.Kingdom owned = getOwnedBy(world, player.getUniqueID());
+		if (owned != null) {
+			foundNewCity(server, (WorldServer) world, (EntityPlayerMP) player, owned, pos);
 			return;
 		}
 		if (!Settlements.canFoundKingdomCity(world, pos)) {
@@ -131,7 +137,7 @@ public class Kingdoms {
 		String culture = isValidCulture(AWDiplomacyStatics.kingdomDefaultCulture) ? AWDiplomacyStatics.kingdomDefaultCulture : "empire";
 		KingdomData.Kingdom kingdom = create(world, player, culture);
 		setStartingRelations(server, kingdom.id, culture);
-		Settlement city = Settlements.foundKingdomCity((WorldServer) world, kingdom.id, player, pos);
+		Settlement city = Settlements.foundKingdomCity((WorldServer) world, kingdom.id, player, pos, true);
 		if (city != null) {
 			kingdom.cityId = city.getId();
 			getData(world).markDirty();
@@ -142,6 +148,37 @@ public class Kingdoms {
 				city == null ? "?" : city.getName()), TextFormatting.GOLD);
 		server.getPlayerList().sendMessage(announcement);
 		player.sendMessage(colored(new TextComponentTranslation("command.aw.kingdom.founded_help"), TextFormatting.GRAY));
+	}
+
+	/**
+	 * A town hall placed by the owner of a kingdom far enough (kingdom_city_min_distance) from every city of the kingdom founds another city of
+	 * it, with its governor: no new kingdom. Like a conquered city it pays tribute to the capital and its taxes are collected at its governor
+	 * or at the capital. Closer, or overlapping another city, the town hall is only an Ancient Warfare town hall.
+	 */
+	private static void foundNewCity(MinecraftServer server, WorldServer world, EntityPlayerMP player, KingdomData.Kingdom kingdom, BlockPos pos) {
+		int minDistance = AWDiplomacyStatics.kingdomCityMinDistance;
+		for (Settlement city : getCities(world, kingdom)) {
+			if (city.getDimension() != world.provider.getDimension()) {
+				continue;
+			}
+			BlockPos center = city.getCenter();
+			int distance = (int) Math.sqrt(Math.pow(center.getX() - pos.getX(), 2) + Math.pow(center.getZ() - pos.getZ(), 2));
+			if (distance < minDistance) {
+				player.sendMessage(colored(new TextComponentTranslation("command.aw.kingdom.city_too_close", minDistance, Settlements.displayName(city), distance),
+						TextFormatting.YELLOW));
+				return;
+			}
+		}
+		if (!Settlements.canFoundKingdomCity(world, pos)) {
+			player.sendMessage(colored(new TextComponentTranslation("command.aw.kingdom.too_close", AWDiplomacyStatics.kingdomRadius), TextFormatting.YELLOW));
+			return;
+		}
+		Settlement city = Settlements.foundKingdomCity(world, kingdom.id, player, pos, false);
+		if (city == null) {
+			return;
+		}
+		server.getPlayerList().sendMessage(colored(new TextComponentTranslation("command.aw.kingdom.announce.new_city", player.getName(), city.getName(),
+				kingdom.name), TextFormatting.GOLD));
 	}
 
 	/**

@@ -421,11 +421,12 @@ public class Settlements {
 	}
 
 	/**
-	 * Founds the capital of a player kingdom around its town hall: a faction city of the kingdom owned by the player, with a governor
-	 * (the kingdom's leader) next to the town hall. Manpower: kingdom_start_manpower plus the player's own soldiers in the city.
+	 * Founds a city of a player kingdom around its town hall, with a governor (the kingdom's leader) next to the town hall. The capital is the
+	 * city owned by the player; the other ones have no owner, like the conquered ones (they pay tribute to the capital). Manpower:
+	 * kingdom_start_manpower plus the player's own soldiers in the city.
 	 */
 	@Nullable
-	public static Settlement foundKingdomCity(WorldServer world, String faction, EntityPlayer owner, BlockPos townHall) {
+	public static Settlement foundKingdomCity(WorldServer world, String faction, EntityPlayer owner, BlockPos townHall, boolean capital) {
 		SettlementData data = getData(world);
 		int radius = AWDiplomacyStatics.kingdomRadius;
 		BlockPos min = new BlockPos(townHall.getX() - radius, Math.max(0, townHall.getY() - MIN_BOUNDS_BELOW), townHall.getZ() - radius);
@@ -434,7 +435,9 @@ public class Settlements {
 		BlockPos post = findStandableNear(world, townHall, min, max);
 		Settlement settlement = Settlement.createFactionCity(data.getNextId(), world.provider.getDimension(), name, "", faction, min, max, null, post, 0,
 				getDay(world));
-		settlement.setOwnerId(owner.getUniqueID());
+		if (capital) {
+			settlement.setOwnerId(owner.getUniqueID());
+		}
 		settlement.setLastSiegeEnd(Sieges.restClock(world));
 		settlement.setLastFullSiegeEnd(Sieges.restClock(world));
 		int ownSoldiers = 0;
@@ -454,8 +457,8 @@ public class Settlements {
 			tag(governor, settlement, ROLE_LEADER);
 		}
 		data.markDirty();
-		AncientWarfareNPC.LOG.info("Founded kingdom city {} ({}) of {} for {} at {}, governor {}, {} own soldiers, {} manpower", settlement.getId(), name, faction,
-				owner.getName(), townHall, governor == null ? "not spawned" : "at " + governor.getPosition(), ownSoldiers, manpower);
+		AncientWarfareNPC.LOG.info("Founded kingdom city {} ({}) of {} for {} at {}{}, governor {}, {} own soldiers, {} manpower", settlement.getId(), name, faction,
+				owner.getName(), townHall, capital ? " (capital)" : "", governor == null ? "not spawned" : "at " + governor.getPosition(), ownSoldiers, manpower);
 		return settlement;
 	}
 
