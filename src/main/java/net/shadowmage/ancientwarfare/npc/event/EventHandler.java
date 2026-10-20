@@ -244,7 +244,9 @@ public class EventHandler {
 			return false;
 		}
 
-		return WorldTools.getTile(world, pos).map(te -> te.getTileData().getBoolean(GENERATED_INVENTORY_TAG) || te instanceof ISpecialLootContainer).orElse(false);
+		// furnaces are used, not robbed: opening one is never stealing
+		return WorldTools.getTile(world, pos).map(te -> !(te instanceof net.minecraft.tileentity.TileEntityFurnace)
+				&& (te.getTileData().getBoolean(GENERATED_INVENTORY_TAG) || te instanceof ISpecialLootContainer)).orElse(false);
 	}
 
 	@SubscribeEvent

@@ -357,9 +357,26 @@ public abstract class NpcFaction extends NpcBase {
 		}
 	}
 
+	/**
+	 * @return true for a player who is a member of the faction of this npc (its kingdom too), or one of the npcs of such a player: a hit from
+	 * them is an accident, not a reason to fight back (killing one still makes the player a traitor, see FactionMembership)
+	 */
+	private boolean isFromOwnMember(@Nullable Entity source) {
+		UUID player = source instanceof EntityPlayer ? source.getUniqueID() : source instanceof NpcPlayerOwned ? ((NpcBase) source).getOwner().getUUID() : null;
+		return player != null && getFaction().equals(net.shadowmage.ancientwarfare.npc.faction.FactionMembership.getFaction(world, player));
+	}
+
+	@Override
+	protected boolean ignoresRevengeFrom(EntityLivingBase entity) {
+		return !world.isRemote && isFromOwnMember(entity);
+	}
+
 	@Override
 	protected void damageEntity(DamageSource damageSrc, float damageAmount) {
 		super.damageEntity(damageSrc, damageAmount);
+		if (!world.isRemote && isFromOwnMember(damageSrc.getTrueSource())) {
+			return;
+		}
 
 		if (damageSrc.damageType.equals("player")) {
 			//noinspection ConstantConditions

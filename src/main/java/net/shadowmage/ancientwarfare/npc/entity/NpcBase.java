@@ -580,10 +580,17 @@ public abstract class NpcBase extends EntityCreature implements IEntityAdditiona
 
 	@Override
 	public final void setRevengeTarget(@Nullable EntityLivingBase entity) {
-		if (entity != null && !canTarget(entity)) {
+		if (entity != null && (!canTarget(entity) || ignoresRevengeFrom(entity))) {
 			return;
 		}
 		super.setRevengeTarget(entity);
+	}
+
+	/**
+	 * @return true if a hit from the entity is not a reason to fight back (see NpcFaction: members of its faction)
+	 */
+	protected boolean ignoresRevengeFrom(EntityLivingBase entity) {
+		return false;
 	}
 
 	public final ItemStack getItemStackFromSlot(int slot) {

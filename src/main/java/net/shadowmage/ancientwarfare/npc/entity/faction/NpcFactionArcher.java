@@ -54,7 +54,8 @@ public class NpcFactionArcher extends NpcFaction implements IRangedAttackMob {
 		tasks.addTask(0, new EntityAIRestrictOpenDoor(this));
 		tasks.addTask(0, new NpcAIDoor(this, true));
 		tasks.addTask(1, new NpcAIFollowPlayer(this));
-		tasks.addTask(2, new NpcAIMoveHome(this, 50.f, 5.f, 30.f, 5.f));
+		// below the attack, as for soldiers: an archer far from home finishes its fight before going back
+		tasks.addTask(4, new NpcAIMoveHome(this, 50.f, 5.f, 30.f, 5.f));
 		tasks.addTask(2, new NpcAIFactionArcherStayAtHome(this));
 		tasks.addTask(3, new NpcAIFactionRangedAttack(this));
 
