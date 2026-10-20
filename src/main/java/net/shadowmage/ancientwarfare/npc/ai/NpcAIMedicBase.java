@@ -99,6 +99,11 @@ public class NpcAIMedicBase<T extends NpcBase> extends NpcAI<T> {
 	@Override
 	public void startExecuting() {
 		npc.addAITask(TASK_GUARD);
+		if (targetToHeal instanceof EntityPlayer) {
+			// temporary: to find out why a medic takes long to heal a player next to it
+			net.shadowmage.ancientwarfare.npc.AncientWarfareNPC.LOG.info("[medic] {} starts healing {} ({}/{} health, {} blocks away)", npc.getName(), targetToHeal.getName(),
+					targetToHeal.getHealth(), targetToHeal.getMaxHealth(), String.format("%.1f", npc.getDistance(targetToHeal)));
+		}
 	}
 
 	@Override
@@ -109,6 +114,10 @@ public class NpcAIMedicBase<T extends NpcBase> extends NpcAI<T> {
 			npc.addAITask(TASK_MOVE);
 			moveToEntity(targetToHeal, dist);
 			healDelay = HEAL_DELAY_MAX;
+			if (targetToHeal instanceof EntityPlayer && npc.ticksExisted % 40 == 0) {
+				net.shadowmage.ancientwarfare.npc.AncientWarfareNPC.LOG.info("[medic] {} too far to heal {}: {} blocks (needs {}), path {}", npc.getName(), targetToHeal.getName(),
+						String.format("%.1f", Math.sqrt(dist)), String.format("%.1f", Math.sqrt(attackDistance)), npc.getNavigator().noPath() ? "none" : "moving");
+			}
 		} else {
 			npc.removeAITask(TASK_MOVE);
 			healDelay--;
@@ -116,6 +125,10 @@ public class NpcAIMedicBase<T extends NpcBase> extends NpcAI<T> {
 				healDelay = HEAL_DELAY_MAX;
 				npc.swingArm(EnumHand.MAIN_HAND);
 				targetToHeal.heal(getAmountToHealEachTry());
+				if (targetToHeal instanceof EntityPlayer) {
+					net.shadowmage.ancientwarfare.npc.AncientWarfareNPC.LOG.info("[medic] {} heals {} by {}: now {}/{}", npc.getName(), targetToHeal.getName(),
+							getAmountToHealEachTry(), targetToHeal.getHealth(), targetToHeal.getMaxHealth());
+				}
 			}
 		}
 	}
@@ -126,6 +139,10 @@ public class NpcAIMedicBase<T extends NpcBase> extends NpcAI<T> {
 
 	@Override
 	public void resetTask() {
+		if (targetToHeal instanceof EntityPlayer) {
+			net.shadowmage.ancientwarfare.npc.AncientWarfareNPC.LOG.info("[medic] {} stops healing {} ({}/{} health{})", npc.getName(), targetToHeal.getName(),
+					targetToHeal.getHealth(), targetToHeal.getMaxHealth(), validateTarget() ? ", interrupted by another task" : "");
+		}
 		npc.removeAITask(TASK_MOVE + TASK_GUARD);
 		targetToHeal = null;
 	}
