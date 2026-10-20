@@ -86,6 +86,7 @@ public class NpcCommand {
 			}
 		}
 		GroupOrders.reportOrder(player, type, count);
+		net.shadowmage.ancientwarfare.npc.AncientWarfareNPC.LOG.info("{} ordered {} soldiers: {}{}", player.getName(), count, type, block ? " at " + pos : "");
 		ItemCommandBaton.glow(targets);
 	}
 
