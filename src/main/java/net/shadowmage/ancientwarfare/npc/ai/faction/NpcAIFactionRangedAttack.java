@@ -4,6 +4,7 @@ import net.minecraft.entity.IRangedAttackMob;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.util.EnumHand;
 import net.shadowmage.ancientwarfare.npc.ai.NpcAIAttack;
+import net.shadowmage.ancientwarfare.npc.ai.RangedAim;
 import net.shadowmage.ancientwarfare.npc.config.AWNPCStatics;
 import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
 
@@ -12,6 +13,7 @@ public class NpcAIFactionRangedAttack extends NpcAIAttack<NpcBase> {
 
 	private int attackDistanceSq;
 	private final int rangedAttackDelay;
+	private final RangedAim aim;
 
 	public <T extends NpcBase & IRangedAttackMob> NpcAIFactionRangedAttack(T npc, double moveSpeed, int attackDistanceSq, int attackDelay) {
 		super(npc);
@@ -19,6 +21,7 @@ public class NpcAIFactionRangedAttack extends NpcAIAttack<NpcBase> {
 		this.moveSpeed = moveSpeed;
 		this.attackDistanceSq = attackDistanceSq;
 		this.rangedAttackDelay = attackDelay;
+		aim = new RangedAim(npc);
 	}
 
 	public <T extends NpcBase & IRangedAttackMob> NpcAIFactionRangedAttack(T npc) {
@@ -27,7 +30,8 @@ public class NpcAIFactionRangedAttack extends NpcAIAttack<NpcBase> {
 
 	@Override
 	protected boolean shouldCloseOnTarget(double dist) {
-		return (dist > getAttackDistanceSq() || !npc.getEntitySenses().canSee(getTarget()));
+		// out of range, out of sight, no clear line for an arrow or its arrows keep missing: it moves (RangedAim)
+		return dist > getAttackDistanceSq() || !npc.getEntitySenses().canSee(getTarget()) || aim.mustMove(getTarget());
 	}
 
 	private double getAttackDistanceSq() {
@@ -46,6 +50,7 @@ public class NpcAIFactionRangedAttack extends NpcAIAttack<NpcBase> {
 			npc.resetActiveHand();
 			float pwr = (float) (getAttackDistanceSq() / dist);
 			pwr = Math.min(Math.max(pwr, 0.1F), 1F);
+			aim.onShot(getTarget());
 			rangedAttacker.attackEntityWithRangedAttack(getTarget(), pwr);
 			setAttackDelay(rangedAttackDelay);
 		}
