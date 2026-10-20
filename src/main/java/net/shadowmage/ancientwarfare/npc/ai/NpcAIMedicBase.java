@@ -17,6 +17,8 @@ public class NpcAIMedicBase<T extends NpcBase> extends NpcAI<T> {
 	private static final int HEAL_DELAY_MAX = 20;
 	private static final int INJURED_RECHECK_DELAY_MAX = 20;
 	private static final float AMOUNT_TO_HEAL_EACH_TRY = 0.5f;
+	// looks for the injured around it, not in its whole follow range (35 blocks: a whole city of npcs and animals)
+	private static final double HEAL_SCAN_RANGE = 10;
 
 	private int injuredRecheckDelay = 0;
 	private int healDelay = 0;
@@ -53,8 +55,8 @@ public class NpcAIMedicBase<T extends NpcBase> extends NpcAI<T> {
 			return false;
 		}
 		injuredRecheckDelay = INJURED_RECHECK_DELAY_MAX;
-		double dist = npc.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).getAttributeValue();
-		AxisAlignedBB bb = npc.getEntityBoundingBox().expand(dist, dist / 2, dist);
+		double dist = Math.min(HEAL_SCAN_RANGE, npc.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).getAttributeValue());
+		AxisAlignedBB bb = npc.getEntityBoundingBox().grow(dist, dist / 2, dist);
 		List<EntityLivingBase> potentialTargets = npc.world.getEntitiesWithinAABB(EntityLivingBase.class, bb, selector);
 		if (potentialTargets.isEmpty()) {
 			return validateTarget();
