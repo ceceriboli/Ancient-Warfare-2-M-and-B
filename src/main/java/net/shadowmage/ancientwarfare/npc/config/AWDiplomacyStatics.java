@@ -102,7 +102,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static double allianceJoinWarChance = 0.2;
 	public static double allianceBreakChancePerDay = 0.1;
 	public static int allianceMinDays = 5;
-	public static int spawnerMinPlayerRange = 48;
+	public static int spawnerMinPlayerRange = 128;
 	public static boolean spawnersTriggerInCreative = false;
 	public static boolean settlementsEnabled = true;
 	public static int settlementDefaultRadius = 48;
