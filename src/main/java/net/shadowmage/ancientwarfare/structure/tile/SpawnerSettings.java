@@ -100,6 +100,7 @@ public class SpawnerSettings {
 	private int spawnYOffset = 0;
 
 	private boolean isOneShotSpawner;
+	private boolean isUnlimitedSpawner;
 	private String factionName = "";
 
 	float blockHardness = 2.f;
@@ -256,7 +257,9 @@ public class SpawnerSettings {
 	}
 
 	private boolean isContinuousSpawnerOfFriendlyFaction(EntityPlayer player) {
-		return !isOneShotSpawner && !factionName.isEmpty() && !FactionTracker.INSTANCE.isHostileToPlayer(world, player.getUniqueID(), player.getName(), factionName);
+		// only a spawner without limit is held back for a friendly faction (no endless farming); a limited one spawns its npcs like the
+		// structure's other inhabitants, also for a neutral player (standing 0)
+		return isUnlimitedSpawner && !factionName.isEmpty() && !FactionTracker.INSTANCE.isHostileToPlayer(world, player.getUniqueID(), player.getName(), factionName);
 	}
 
 	private List<EntityPlayer> getPlayersWithinAABB() {
@@ -354,12 +357,14 @@ public class SpawnerSettings {
 		}
 
 		isOneShotSpawner = false;
+		isUnlimitedSpawner = false;
 		factionName = "";
 		if (spawnGroups.size() == 1 && spawnGroups.get(0).entitiesToSpawn.size() == 1) {
 			EntitySpawnSettings entitySettings = spawnGroups.get(0).entitiesToSpawn.get(0);
 			if (entitySettings.maxToSpawn == 1 && entitySettings.minToSpawn == 1 && entitySettings.remainingSpawnCount == 1) {
 				isOneShotSpawner = true;
 			}
+			isUnlimitedSpawner = entitySettings.remainingSpawnCount < 0;
 			Entity entity = EntityList.createEntityByIDFromName(entitySettings.entityId, world);
 			factionName = entity instanceof NpcFaction ? entitySettings.customTag.getString(FACTION_NAME_TAG) : "";
 		}
