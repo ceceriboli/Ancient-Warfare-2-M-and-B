@@ -44,11 +44,12 @@ public class NpcAIMedicBase<T extends NpcBase> extends NpcAI<T> {
 			return false;
 		}
 
-		if (validateTarget()) {
+		boolean healingPlayer = targetToHeal instanceof EntityPlayer && validateTarget();
+		if (healingPlayer || validateTarget() && injuredRecheckDelay-- > 0) {
 			return true;
 		}
 
-		if (injuredRecheckDelay-- > 0) {
+		if (!validateTarget() && injuredRecheckDelay-- > 0) {
 			return false;
 		}
 		injuredRecheckDelay = INJURED_RECHECK_DELAY_MAX;
@@ -56,9 +57,22 @@ public class NpcAIMedicBase<T extends NpcBase> extends NpcAI<T> {
 		AxisAlignedBB bb = npc.getEntityBoundingBox().expand(dist, dist / 2, dist);
 		List<EntityLivingBase> potentialTargets = npc.world.getEntitiesWithinAABB(EntityLivingBase.class, bb, selector);
 		if (potentialTargets.isEmpty()) {
-			return false;
+			return validateTarget();
 		}
 		potentialTargets.sort(sorter);
+		// injured players first: while healing an npc (40 health at 0.5 a second) or an animal, a hurt player nearby was never healed
+		for (EntityLivingBase base : potentialTargets) {
+			if (base instanceof EntityPlayer) {
+				if (targetToHeal != base) {
+					net.shadowmage.ancientwarfare.npc.AncientWarfareNPC.LOG.info("{} heals {}", npc.getName(), base.getName());
+				}
+				targetToHeal = base;
+				return true;
+			}
+		}
+		if (validateTarget()) {
+			return true;
+		}
 		List<EntityLivingBase> sub = potentialTargets.stream().filter(input -> input instanceof NpcBase || input instanceof EntityPlayer).collect(Collectors.toList());
 		for (EntityLivingBase base : sub) {
 			targetToHeal = base;
