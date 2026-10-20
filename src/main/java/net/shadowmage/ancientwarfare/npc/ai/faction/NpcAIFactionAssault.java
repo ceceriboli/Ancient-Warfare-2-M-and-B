@@ -76,6 +76,8 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	private static final int BRIDGE_MAX_LENGTH = 10;
 	private static final int BRIDGE_PLACE_TICKS = 8;
 	private static final double AT_CELL_DIST_SQ = 1.5D * 1.5D;
+	private static final int SWIM_OUT_RANGE = 6;
+	private static final int SWIM_OUT_TICKS = 60;
 
 	private enum BuildMode {
 		NONE, LADDER, BRIDGE
@@ -114,6 +116,9 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 	private BlockPos bridgeStart;
 	private int bridgeNext;
 	private int bridgeEnd;
+	@Nullable
+	private BlockPos swimOutTo;
+	private long swimOutUntil;
 
 	public NpcAIFactionAssault(NpcBase npc) {
 		super(npc);
@@ -134,6 +139,10 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 			return true;
 		}
 		EntityLivingBase enemy = npc.getAttackTarget();
+		if (enemy != null && enemy.isEntityAlive() && npc.isInWater() && npc.getDistanceSq(enemy) > MELEE_REACH_SQ && startSwimOut(enemy.getPosition())) {
+			// standing in water (archers shooting from a pond at an enemy on the bank) it first gets out, then fights
+			return true;
+		}
 		if (enemy == null || !enemy.isEntityAlive()) {
 			stuckSince = -1;
 			fightEnemy = null;
@@ -217,6 +226,10 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 		if (target == null) {
 			return;
 		}
+		if (swimOutTo != null) {
+			continueSwimOut();
+			return;
+		}
 		if (breachPos != null) {
 			continueBreach();
 			return;
@@ -226,7 +239,7 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 			return;
 		}
 		// a rider goes on foot, then ladders and bridges (when the way is not a wall at the height of the target), then the breach
-		if (checkNoProgress() && (dismount() || startClearFoliage() || startBuild() || breachAllowed && startBreach())) {
+		if (checkNoProgress() && (startSwimOut(target) || dismount() || startClearFoliage() || startBuild() || breachAllowed && startBreach())) {
 			return;
 		}
 		if (repathDelay > 0) {
@@ -359,6 +372,55 @@ public class NpcAIFactionAssault extends NpcAI<NpcBase> {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * An attacker in water heads for the nearest place on land where it can stand (within SWIM_OUT_RANGE blocks, up to two blocks above its
+	 * feet, preferring the side of the given position), swimming up and pushing against the bank as a player does: in water, an entity pushing against a
+	 * block with free space above it is lifted out (vanilla). The walk on resumes from there.
+	 *
+	 * @return true if it started
+	 */
+	private boolean startSwimOut(@Nullable BlockPos towards) {
+		if (!npc.isInWater() || npc.isRiding()) {
+			return false;
+		}
+		BlockPos origin = npc.getPosition();
+		BlockPos best = null;
+		double bestScore = Double.MAX_VALUE;
+		for (BlockPos pos : BlockPos.getAllInBoxMutable(origin.add(-SWIM_OUT_RANGE, -1, -SWIM_OUT_RANGE), origin.add(SWIM_OUT_RANGE, 2, SWIM_OUT_RANGE))) {
+			if (!npc.world.isAirBlock(pos) || !npc.world.isAirBlock(pos.up()) || !npc.getNavigator().canEntityStandOnPos(pos)
+					|| npc.world.getBlockState(pos.down()).getMaterial().isLiquid()) {
+				continue;
+			}
+			double score = Math.sqrt(pos.distanceSq(origin)) + (towards == null ? 0D : 0.25D * Math.sqrt(pos.distanceSq(towards)));
+			if (score < bestScore) {
+				bestScore = score;
+				best = pos.toImmutable();
+			}
+		}
+		if (best == null) {
+			return false;
+		}
+		swimOutTo = best;
+		swimOutUntil = npc.world.getTotalWorldTime() + SWIM_OUT_TICKS;
+		pushUntil = Math.max(pushUntil, swimOutUntil);
+		npc.getNavigator().clearPath();
+		return true;
+	}
+
+	private void continueSwimOut() {
+		//noinspection ConstantConditions
+		if (npc.world.getTotalWorldTime() > swimOutUntil || !npc.isInWater() && npc.onGround) {
+			swimOutTo = null;
+			repathDelay = 0;
+			return;
+		}
+		double x = swimOutTo.getX() + 0.5D;
+		double z = swimOutTo.getZ() + 0.5D;
+		npc.getJumpHelper().setJumping();
+		npc.getMoveHelper().setMoveTo(x, swimOutTo.getY(), z, moveSpeed);
+		npc.getLookHelper().setLookPosition(x, swimOutTo.getY() + 1D, z, 30F, 30F);
 	}
 
 	/**
