@@ -45,6 +45,7 @@ import javax.annotation.Nullable;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -431,7 +432,7 @@ public class Settlements {
 		int radius = AWDiplomacyStatics.kingdomRadius;
 		BlockPos min = new BlockPos(townHall.getX() - radius, Math.max(0, townHall.getY() - MIN_BOUNDS_BELOW), townHall.getZ() - radius);
 		BlockPos max = new BlockPos(townHall.getX() + radius, 255, townHall.getZ() + radius);
-		String name = SettlementNames.generate(world.rand, data.getAll());
+		String name = SettlementNames.generate(world.rand, data.getAll(), faction);
 		BlockPos post = findStandableNear(world, townHall, min, max);
 		Settlement settlement = Settlement.createFactionCity(data.getNextId(), world.provider.getDimension(), name, "", faction, min, max, null, post, 0,
 				getDay(world));
@@ -541,7 +542,7 @@ public class Settlements {
 		BlockPos max = bounds.max;
 		String structureName = bounds.structureName;
 
-		String name = SettlementNames.generate(world.rand, data.getAll());
+		String name = SettlementNames.generate(world.rand, data.getAll(), leader.getFaction());
 		List<NpcFaction> garrison = new ArrayList<>();
 		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, new AxisAlignedBB(min, max.add(1, 1, 1)))) {
 			if (npc != leader && !npc.isPassive() && leader.getFaction().equals(npc.getFaction()) && !isSiegeOrArmyUnit(npc)
@@ -635,11 +636,14 @@ public class Settlements {
 		private final String faction;
 		private final BlockPos pos;
 		private final int garrison;
+		// the structure has no leader spawner: the city gets a leader at once (structure_auto_leader_min_units)
+		private final boolean needsLeader;
 
-		private LeaderSpawn(String faction, BlockPos pos, int garrison) {
+		private LeaderSpawn(String faction, BlockPos pos, int garrison, boolean needsLeader) {
 			this.faction = faction;
 			this.pos = pos;
 			this.garrison = garrison;
+			this.needsLeader = needsLeader;
 		}
 	}
 
@@ -689,11 +693,21 @@ public class Settlements {
 				structureScanDue.put(key, now + STRUCTURE_RETRY_TICKS);
 				continue;
 			}
+			if (spawn.needsLeader && hasLoadedLeader(world, entry)) {
+				// a leader placed as an entity founds the city itself (see foundCity)
+				structureScanDue.put(key, now + STRUCTURE_RETRY_TICKS);
+				continue;
+			}
 			foundCityFromSpawner(world, data, spawn);
 			founded++;
 		}
 	}
 
+	private static boolean hasLoadedLeader(WorldServer world, StructureEntry entry) {
+		BlockPos min = entry.getBB().min;
+		BlockPos max = entry.getBB().max;
+		return !world.getEntitiesWithinAABB(NpcFactionLeader.class, new AxisAlignedBB(min, max.add(1, 1, 1))).isEmpty();
+	}
 	private static boolean overlapsCity(SettlementData data, int dimension, StructureEntry entry) {
 		BlockPos min = entry.getBB().min;
 		BlockPos max = entry.getBB().max;
@@ -756,13 +770,68 @@ public class Settlements {
 			}
 		}
 		if (highest == null) {
-			return null;
+			return findLeaderlessGarrison(world, spawners);
 		}
 		int garrison = 0;
 		for (TileAdvancedSpawner spawner : spawners) {
 			garrison += countGarrisonSpawns(world, spawner.getSettings(), faction);
 		}
-		return new LeaderSpawn(faction, highest.getPos(), Math.max(0, Math.min(MAX_ESTIMATED_GARRISON, garrison) - 1));
+		return new LeaderSpawn(faction, highest.getPos(), Math.max(0, Math.min(MAX_ESTIMATED_GARRISON, garrison) - 1), false);
+	}
+
+	/**
+	 * A structure without leader spawner whose spawners create at least structure_auto_leader_min_units fighting units of one faction (the
+	 * faction with the most) becomes a city of that faction too: its leader will be placed at the highest spawner of that faction.
+	 *
+	 * @return the spawn of that leader, or null if the structure has too few fighting units (or the option is off)
+	 */
+	@Nullable
+	private static LeaderSpawn findLeaderlessGarrison(WorldServer world, List<TileAdvancedSpawner> spawners) {
+		int minUnits = AWDiplomacyStatics.structureAutoLeaderMinUnits;
+		if (minUnits <= 0 || spawners.isEmpty()) {
+			return null;
+		}
+		Map<String, Integer> units = new HashMap<>();
+		Map<String, TileAdvancedSpawner> highest = new HashMap<>();
+		for (TileAdvancedSpawner spawner : spawners) {
+			for (String faction : getSpawnedFactions(spawner.getSettings())) {
+				int count = countGarrisonSpawns(world, spawner.getSettings(), faction);
+				if (count <= 0) {
+					continue;
+				}
+				units.merge(faction, count, Integer::sum);
+				TileAdvancedSpawner top = highest.get(faction);
+				if (top == null || spawner.getPos().getY() > top.getPos().getY()) {
+					highest.put(faction, spawner);
+				}
+			}
+		}
+		String faction = null;
+		for (Map.Entry<String, Integer> entry : units.entrySet()) {
+			if (faction == null || entry.getValue() > units.get(faction)) {
+				faction = entry.getKey();
+			}
+		}
+		if (faction == null || units.get(faction) < minUnits) {
+			return null;
+		}
+		return new LeaderSpawn(faction, highest.get(faction).getPos(), Math.min(MAX_ESTIMATED_GARRISON, units.get(faction)), true);
+	}
+
+	/**
+	 * @return the existing factions of the npcs a spawner creates
+	 */
+	private static Set<String> getSpawnedFactions(SpawnerSettings settings) {
+		Set<String> factions = new HashSet<>();
+		for (SpawnerSettings.EntitySpawnGroup group : settings.getSpawnGroups()) {
+			for (SpawnerSettings.EntitySpawnSettings spawn : group.getEntitiesToSpawn()) {
+				NBTTagCompound tag = spawn.getCustomTag();
+				if (tag != null && FactionRegistry.getFactionNames().contains(tag.getString("factionName"))) {
+					factions.add(tag.getString("factionName"));
+				}
+			}
+		}
+		return factions;
 	}
 
 	/**
@@ -809,7 +878,7 @@ public class Settlements {
 	 */
 	private static void foundCityFromSpawner(WorldServer world, SettlementData data, LeaderSpawn spawn) {
 		Bounds bounds = findBounds(world, spawn.pos);
-		String name = SettlementNames.generate(world.rand, data.getAll());
+		String name = SettlementNames.generate(world.rand, data.getAll(), spawn.faction);
 		Settlement settlement = Settlement.createFactionCity(data.getNextId(), world.provider.getDimension(), name, bounds.structureName, spawn.faction, bounds.min,
 				bounds.max, null, spawn.pos, 0, getDay(world));
 		// no siege right after the founding (siege_cooldown_days)
@@ -819,6 +888,19 @@ public class Settlements {
 		settlement.setManpower(manpower);
 		settlement.setMaxManpower(manpower);
 		data.add(settlement);
+		if (spawn.needsLeader) {
+			// a structure without leader: a leader of the faction is placed at once at its highest spawner
+			NpcFactionLeader leader = spawnGovernor(world, settlement, spawn.faction);
+			if (leader != null) {
+				settlement.setLeader(leader.getUniqueID(), leader.getPosition());
+				tag(leader, settlement, ROLE_LEADER);
+				data.markDirty();
+			}
+			AncientWarfareNPC.LOG.info("Founded city {} ({}) of faction {} from its structure {} without leader: about {} garrison units, {} manpower, leader {}",
+					settlement.getId(), name, settlement.getFaction(), bounds.structureName, spawn.garrison, manpower,
+					leader == null ? "not placed" : "placed at " + leader.getPosition());
+			return;
+		}
 		AncientWarfareNPC.LOG.info("Founded city {} ({}) of faction {} from its structure, leader spawner at {}, about {} garrison units, {} manpower, leader to come",
 				settlement.getId(), name, settlement.getFaction(), spawn.pos, spawn.garrison, manpower);
 	}
