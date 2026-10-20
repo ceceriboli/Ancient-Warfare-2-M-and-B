@@ -59,6 +59,15 @@
         },
         {
             "content_type": "heading",
+            "text": "Protected Structures",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "Many faction structures have a Protection Flag: a banner in the faction’s colours, with small sun-like particles floating around it. While the flag belongs to the faction, the full blocks and loot chests of the structure take 100 times longer to mine (spawners are not protected, and creative mode is not affected).\nTo capture the flag, right click it once no hostile NPC is alive in the structure and no spawner is left inside; otherwise the NPC or spawner in the way is marked for a few seconds. A captured flag shows the head of the player who took it, and the structure is no longer protected against that player and his team.\nInside an active city of your own faction (including the cities it conquered, and the cities of your kingdom) you mine normally, whoever holds the flag.\nThe server operator can turn the protection off or change how much slower it is with block_protection and block_protection_multiplier in config/ancientwarfare/AncientWarfare.cfg."
+        },
+        {
+            "content_type": "heading",
             "text": "Military Service",
             "level": 2
         },
