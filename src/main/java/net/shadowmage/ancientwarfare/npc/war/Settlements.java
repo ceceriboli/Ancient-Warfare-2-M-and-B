@@ -309,8 +309,8 @@ public class Settlements {
 
 	/**
 	 * A new fighting soldier of the owner of a kingdom was placed with its spawner item inside a city of the kingdom: the maximum manpower of
-	 * that city grows by manpower_per_unit, and the manpower by the same amount. Only at its creation: moving soldiers around changes nothing,
-	 * and a soldier packed back into an item and placed again does not count.
+	 * that city grows by manpower_per_unit, the manpower by the same amount, and the garrison its reinforcements bring back by one. Only at its
+	 * creation: moving soldiers around changes nothing, and a soldier packed back into an item and placed again does not count.
 	 */
 	public static void onOwnSoldierCreated(NpcPlayerOwned npc, EntityPlayer owner) {
 		if (npc.world.isRemote || !AWDiplomacyStatics.kingdomsEnabled || !AWDiplomacyStatics.settlementsEnabled || npc.isPassive()) {
@@ -331,8 +331,10 @@ public class Settlements {
 		}
 		city.setMaxManpower(city.getBaseMaxManpower() + added);
 		city.setManpower(city.getManpower() + added);
+		city.setGarrisonCap(city.getGarrisonCap() + 1);
 		data.markDirty();
-		AncientWarfareNPC.LOG.info("City {} of {} grows to {} manpower: new soldier {} of {}", city.getId(), city.getFaction(), city.getMaxManpower(), npc.getName(), owner.getName());
+		AncientWarfareNPC.LOG.info("City {} of {} grows to {} manpower and a garrison of {}: new soldier {} of {}", city.getId(), city.getFaction(), city.getMaxManpower(),
+				city.getGarrisonCap(), npc.getName(), owner.getName());
 	}
 	/**
 	 * The other cities of a kingdom (the ones it conquered) pay tribute to its capital, the city with the owner: kingdom_tribute_ratio of
@@ -1330,8 +1332,9 @@ public class Settlements {
 		}
 		garrison += countOwnerSoldiers(world, settlement);
 		if (garrison >= settlement.getGarrisonCap()) {
-			// the real garrison is larger (e.g. cities merged into this one): it is the garrison reinforcements bring back
-			if (garrison > settlement.getGarrisonCap()) {
+			// the real garrison is larger (e.g. cities merged into this one): it is the garrison reinforcements bring back. Not in a kingdom:
+			// the owner's soldiers walked in would raise it, there it grows only with new soldiers (onOwnSoldierCreated)
+			if (garrison > settlement.getGarrisonCap() && !Kingdoms.isKingdom(settlement.getFaction())) {
 				settlement.setGarrisonCap(garrison);
 				getData(world).markDirty();
 			}
