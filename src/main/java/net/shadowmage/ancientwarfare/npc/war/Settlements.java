@@ -1326,10 +1326,19 @@ public class Settlements {
 		if (settlement.getGarrisonCap() <= 0 || Sieges.isBesieged(settlement) || !world.isAreaLoaded(settlement.getMin(), settlement.getMax())) {
 			return;
 		}
-		int garrison = settlement.getPendingRespawns().size() + settlement.getOwnGarrison();
+		int garrison = settlement.getPendingRespawns().size();
 		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, settlement.getAABB())) {
 			if (npc.isEntityAlive() && isDefender(npc, settlement)) {
 				garrison++;
+			}
+		}
+		KingdomData.Kingdom owned = Kingdoms.get(world, settlement.getFaction());
+		if (owned != null) {
+			// every fighting soldier of the kingdom owner inside the city counts (reinforcements, recruits, crafted soldiers)
+			for (NpcPlayerOwned npc : world.getEntitiesWithinAABB(NpcPlayerOwned.class, settlement.getAABB())) {
+				if (npc.isEntityAlive() && !npc.isPassive() && owned.ownerId.equals(npc.getOwner().getUUID())) {
+					garrison++;
+				}
 			}
 		}
 		if (garrison >= settlement.getGarrisonCap()) {
