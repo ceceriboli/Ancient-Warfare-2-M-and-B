@@ -694,7 +694,13 @@ guistrings.npc.baton.clear_upkeep=Clear Upkeep
 guistrings.npc.baton.follow=Follow Me
 guistrings.npc.baton.hold=Hold Position
 guistrings.npc.baton.retreat=Retreat
-guistrings.npc.baton.select_many=Sneak + RMB = add your soldiers nearby (on one of them: those of its type); again = clear the group
+guistrings.npc.baton.select_many=Sneak + right click: all your soldiers nearby (on one: those of its type), again to clear
+guistrings.npc.baton.tip.select=Right click a soldier: add or remove it
+guistrings.npc.baton.tip.order=%s: order at what you look at (enemy: attack, ground: go there, sky: follow me)
+guistrings.npc.baton.tip.hold=%s: hold position
+guistrings.npc.baton.tip.follow=%s: follow me
+guistrings.npc.baton.tip.retreat=%s: retreat
+guistrings.npc.baton.tip.other=%s: %s (sneak + scroll to change)
 guistrings.npc.baton.group=Group: %s soldiers (+%s)
 guistrings.npc.baton.group_cleared=Group cleared
 guistrings.npc.baton.ordered=%s: %s soldiers

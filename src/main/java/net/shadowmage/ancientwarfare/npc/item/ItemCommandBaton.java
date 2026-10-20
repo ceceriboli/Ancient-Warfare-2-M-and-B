@@ -70,17 +70,13 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 			stack.setTagInfo("mode", new NBTBuilder().setString("mode", BatonMode.getDefault().getName()).build());
 		}
 
-		String keyText, text;
-		text = "RMB" + " = " + I18n.format("guistrings.npc.baton.add_remove");
-		tooltip.add(text);
-
-		keyText = InputHandler.ALT_ITEM_USE_1.getDisplayName();
-		text = keyText + " = " + "Execute Command: " + I18n.format(getMode(stack).getTranslationKey());
-		tooltip.add(text);
-
-		text = "Use scroll wheel to change mode when sneaking";
-		tooltip.add(text);
+		tooltip.add(I18n.format("guistrings.npc.baton.tip.select"));
 		tooltip.add(I18n.format("guistrings.npc.baton.select_many"));
+		tooltip.add(I18n.format("guistrings.npc.baton.tip.order", InputHandler.ALT_ITEM_USE_1.getDisplayName()));
+		tooltip.add(I18n.format("guistrings.npc.baton.tip.hold", InputHandler.ALT_ITEM_USE_2.getDisplayName()));
+		tooltip.add(I18n.format("guistrings.npc.baton.tip.follow", InputHandler.ALT_ITEM_USE_3.getDisplayName()));
+		tooltip.add(I18n.format("guistrings.npc.baton.tip.retreat", InputHandler.ALT_ITEM_USE_4.getDisplayName()));
+		tooltip.add(I18n.format("guistrings.npc.baton.tip.other", InputHandler.ALT_ITEM_USE_5.getDisplayName(), I18n.format(getMode(stack).getTranslationKey())));
 	}
 
 	/*
@@ -166,7 +162,24 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 
 	@Override
 	public boolean onKeyActionClient(EntityPlayer player, ItemStack stack, ItemAltFunction altFunction) {
-		if (altFunction == ItemAltFunction.ALT_FUNCTION_1) {
+		// one key per order: what you look at decides the order of the first key; the other orders need no aim
+		switch (altFunction) {
+			case ALT_FUNCTION_1:
+				giveOrderAt(player);
+				return false;
+			case ALT_FUNCTION_2:
+				NpcCommand.handleCommandClient(CommandType.HOLD, new RayTraceResult(player));
+				return false;
+			case ALT_FUNCTION_3:
+				NpcCommand.handleCommandClient(CommandType.FOLLOW, new RayTraceResult(player));
+				return false;
+			case ALT_FUNCTION_4:
+				NpcCommand.handleCommandClient(CommandType.RETREAT, new RayTraceResult(player));
+				return false;
+			default:
+		}
+		// the last key gives the order chosen with sneak + scroll (home, upkeep, clear...)
+		if (altFunction == ItemAltFunction.ALT_FUNCTION_5) {
 			switch (getMode(stack)) {
 				case CLEAR_COMMAND: {
 					RayTraceResult hit = new RayTraceResult(player);
@@ -232,6 +245,25 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 		return false;
 	}
 
+	/**
+	 * The main order, decided by what the player looks at: an enemy is attacked, one of your soldiers, a horse or a player is guarded (a horse
+	 * is mounted), a block is the place to go; looking at nothing (the sky) the soldiers follow you.
+	 */
+	@SideOnly(Side.CLIENT)
+	private void giveOrderAt(EntityPlayer player) {
+		RayTraceResult hit = RayTraceUtils.getPlayerTarget(player, range, 0);
+		if (hit == null || hit.typeOfHit == Type.MISS) {
+			NpcCommand.handleCommandClient(CommandType.FOLLOW, new RayTraceResult(player));
+		} else if (hit.typeOfHit == Type.BLOCK) {
+			NpcCommand.handleCommandClient(CommandType.MOVE, hit);
+		} else if (hit.entityHit instanceof EntityLivingBase) {
+			Entity entity = hit.entityHit;
+			boolean friendly = entity instanceof EntityPlayer || entity instanceof net.minecraft.entity.passive.AbstractHorse
+					|| entity instanceof NpcBase && ((NpcBase) entity).hasCommandPermissions(player.getUniqueID(), player.getName());
+			NpcCommand.handleCommandClient(friendly ? CommandType.GUARD : CommandType.ATTACK, hit);
+		}
+	}
+
 	private void onNpcClicked(NpcBase npc, ItemStack stack) {
 		CommandSet.loadFromStack(stack).onNpcClicked(npc, stack);
 	}
@@ -264,6 +296,17 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 	 *
 	 * @author Shadowmage
 	 */
+	/**
+	 * The soldiers of the group glow for 2 seconds: the player sees who got selected or ordered.
+	 */
+	public static void glow(List<? extends Entity> entities) {
+		for (Entity entity : entities) {
+			if (entity instanceof EntityLivingBase) {
+				((EntityLivingBase) entity).addPotionEffect(new net.minecraft.potion.PotionEffect(net.minecraft.init.MobEffects.GLOWING, 40, 0, false, false));
+			}
+		}
+	}
+
 	private static class CommandSet {
 
 		private Set<UUID> ids = new HashSet<>();
@@ -316,6 +359,7 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 					added++;
 				}
 			}
+			glow(getEntities(player.world));
 			if (added == 0 && like == null) {
 				ids.clear();
 				player.sendStatusMessage(new TextComponentTranslation("guistrings.npc.baton.group_cleared"), true);
@@ -330,6 +374,7 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 				ids.remove(npc.getPersistentID());
 			} else {
 				ids.add(npc.getPersistentID());
+				glow(java.util.Collections.singletonList(npc));
 			}
 			validateEntities(npc.world);
 			writeToStack(stack);

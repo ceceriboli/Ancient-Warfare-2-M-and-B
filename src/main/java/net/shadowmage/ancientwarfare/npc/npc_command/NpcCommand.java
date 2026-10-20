@@ -71,6 +71,7 @@ public class NpcCommand {
 			}
 		}
 		GroupOrders.reportOrder(player, type, count);
+		ItemCommandBaton.glow(targets);
 	}
 
 	public static class Command {
