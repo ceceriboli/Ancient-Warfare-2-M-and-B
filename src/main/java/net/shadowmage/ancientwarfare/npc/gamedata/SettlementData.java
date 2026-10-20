@@ -133,7 +133,7 @@ public class SettlementData extends WorldSavedData {
 		for (Settlement settlement : settlements.values()) {
 			if (settlement.getName().isEmpty()) {
 				// saved before cities had their own names
-				settlement.setName(SettlementNames.generate(new Random(settlement.getId() * 7919L + settlement.getCenter().toLong()), settlements.values()));
+				settlement.setName(SettlementNames.generate(new Random(settlement.getId() * 7919L + settlement.getCenter().toLong()), settlements.values(), settlement.getFaction()));
 				markDirty();
 			}
 		}
