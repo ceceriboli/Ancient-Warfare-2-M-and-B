@@ -90,6 +90,7 @@ public class Sieges {
 	private static final int OUTSIDE_SPAWN_ATTEMPTS = 48;
 	private static final double ENGINE_TARGET_RANGE = 96D;
 	private static final int ENGINE_SPACING = 6;
+	private static final int ENGINE_CITY_MARGIN = 4;
 	private static final int RECONNECT_GRACE_TICKS = 200;
 	private static final int IDLE_RESET_LOG_TICKS = 1200;
 	private static final int DAY_TICKS = 24000;
@@ -955,7 +956,8 @@ public class Sieges {
 	}
 
 	/**
-	 * Places the siege engines between the city leader and the first wave, facing the leader, each with a siege engineer of the attackers on it.
+	 * Places the siege engines between the city leader and the first wave, outside the city bounds (a few blocks clear of them, so not on its
+	 * walls), facing the leader, each with a siege engineer of the attackers on it.
 	 */
 	private static void spawnEngines(WorldServer world, Siege siege, Settlement settlement, BlockPos center, BlockPos waveOrigin) {
 		int count = AWDiplomacyStatics.fullSiegeEngines;
@@ -979,8 +981,14 @@ public class Sieges {
 		int spawned = 0;
 		for (int i = 0; i < count; i++) {
 			double offset = (i - (count - 1) / 2D) * ENGINE_SPACING;
-			BlockPos column = new BlockPos(center.getX() + dx * distance - dz * offset, 64, center.getZ() + dz * distance + dx * offset);
-			if (!world.isAreaLoaded(column, 4)) {
+			// outside the city (and its walls): pushed outwards, towards the wave, until clear of the bounds
+			double along = distance;
+			BlockPos column = new BlockPos(center.getX() + dx * along - dz * offset, 64, center.getZ() + dz * along + dx * offset);
+			while (isInsideCity(settlement, column, ENGINE_CITY_MARGIN) && along < length + OUTSIDE_SPAWN_EXTRA) {
+				along += 2D;
+				column = new BlockPos(center.getX() + dx * along - dz * offset, 64, center.getZ() + dz * along + dx * offset);
+			}
+			if (isInsideCity(settlement, column, ENGINE_CITY_MARGIN) || !world.isAreaLoaded(column, 4)) {
 				continue;
 			}
 			BlockPos pos = world.getTopSolidOrLiquidBlock(column);
@@ -992,6 +1000,11 @@ public class Sieges {
 			}
 		}
 		AncientWarfareNPC.LOG.info("siege {}: {} of {} siege engines placed", siege.getId(), spawned, count);
+	}
+
+	private static boolean isInsideCity(Settlement settlement, BlockPos pos, int margin) {
+		return pos.getX() >= settlement.getMin().getX() - margin && pos.getX() <= settlement.getMax().getX() + margin
+				&& pos.getZ() >= settlement.getMin().getZ() - margin && pos.getZ() <= settlement.getMax().getZ() + margin;
 	}
 
 	private static boolean spawnEngine(WorldServer world, Siege siege, String type, BlockPos pos, BlockPos center) {
