@@ -106,6 +106,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int spawnerMinPlayerRange = 128;
 	public static int pathCacheTicks = 10;
 	public static int pathBudgetPerTick = 40;
+	public static boolean pathQueue = true;
+	public static boolean pathSharedCache = true;
+	public static int targetScanInterval = 10;
 	public static boolean spawnersTriggerInCreative = false;
 	public static boolean settlementsEnabled = true;
 	public static int settlementDefaultRadius = 48;
@@ -357,6 +360,12 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		pathCacheTicks = config.get(serverOptions, "path_cache_ticks", pathCacheTicks, "Path reuse\nDefault=" + pathCacheTicks + "\n" + "Ticks (20 per second) during which an Ancient Warfare npc asking again for a path to the same target (moved less than a block)\n" + "gets its previous answer instead of a new search. Many AIs ask every tick. 0 = always search.", 0, 200).getInt();
 
 		pathBudgetPerTick = config.get(serverOptions, "path_budget_per_tick", pathBudgetPerTick, "Path searches per tick\nDefault=" + pathBudgetPerTick + "\n" + "When Ancient Warfare npcs have already searched this many paths in a tick, a request similar to a recent one (target within 4\n" + "blocks, answer at most 5 x path_cache_ticks old) reuses that answer. A request without a recent answer is always searched.\n" + "0 = no limit.", 0, 10000).getInt();
+
+		pathQueue = config.get(serverOptions, "path_queue", pathQueue, "Queued path searches\nDefault=" + pathQueue + "\n" + "If true, an npc that already walks a path and asks for a new one when path_budget_per_tick is spent keeps walking for now, and its\n" + "request is searched in one of the next ticks. An npc without a path is never made to wait.").getBoolean();
+
+		pathSharedCache = config.get(serverOptions, "path_shared_cache", pathSharedCache, "Shared paths\nDefault=" + pathSharedCache + "\n" + "If true, the paths that reached their target are kept for a minute: an npc of the same size going to the same target, starting\n" + "within 8 blocks of one of them, searches only a short way to it and follows the rest. When a block changes on a kept path, only\n" + "its part after the change is kept.").getBoolean();
+
+		targetScanInterval = config.get(serverOptions, "target_scan_interval", targetScanInterval, "Target scan interval\nDefault=" + targetScanInterval + "\n" + "Ticks (20 per second) between two searches for an enemy by an Ancient Warfare npc without a target. Each npc starts at a random\n" + "tick, so the searches of a garrison are spread over time. Ancient Warfare searched every few ticks. 0 = as Ancient Warfare.", 0, 100).getInt();
 
 		spawnersTriggerInCreative = config.get(serverOptions, "spawners_trigger_in_creative", spawnersTriggerInCreative, "Structure spawners in creative\nDefault=" + spawnersTriggerInCreative + "\n" + "If true, players in creative mode also make structure spawners create their npcs (and so found cities), useful\n" + "for testing. If false (Ancient Warfare behaviour), only players in survival or adventure mode do. Players in\n" + "spectator mode never do.").getBoolean();
 

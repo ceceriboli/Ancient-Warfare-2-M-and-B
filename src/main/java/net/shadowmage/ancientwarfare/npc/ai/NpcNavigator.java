@@ -11,12 +11,9 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.ChunkCache;
-import net.minecraft.world.World;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 
 import javax.annotation.Nullable;
-import java.util.Map;
-import java.util.WeakHashMap;
 
 public class NpcNavigator extends PathNavigateGround {
 	private final EntityLiving entity;
@@ -48,43 +45,92 @@ public class NpcNavigator extends PathNavigateGround {
 	@Nullable
 	@Override
 	public Path getPathToPos(BlockPos pos) {
-		if (!canNavigate()) {
-			return null;
-		}
-		if (reusable(-1, pos)) {
-			return lastPath;
-		}
-		return remember(-1, pos, pathToXYZ(pos));
+		return !canNavigate() ? null : request(-1, pos, null);
 	}
 
 	@Nullable
 	@Override
 	public Path getPathToEntityLiving(Entity target) {
-		if (!canNavigate()) {
-			return null;
-		}
-		BlockPos pos = new BlockPos(target);
-		if (reusable(target.getEntityId(), pos)) {
-			return lastPath;
-		}
-		return remember(target.getEntityId(), pos, pathToEntity(target));
+		return !canNavigate() ? null : request(target.getEntityId(), new BlockPos(target), target);
 	}
 
 	/*
-	 * Path requests are expensive (one A* search each) and many AIs ask again every tick for the same target. The answer to the same request
-	 * (same target, moved less than a block) is reused for path_cache_ticks; when more than path_budget_per_tick paths were computed in this
-	 * tick, a recent answer to a similar request (target within 4 blocks, at most 5 times path_cache_ticks old) is reused too. A request
-	 * without any recent answer is always computed.
+	 * Path searches are what costs (one A* search each, at most 200 steps in Minecraft 1.12) and many AIs ask again every tick for the same
+	 * target. In order, a request gets:
+	 * - its previous answer, if it asks for the same target (moved less than a block) within path_cache_ticks; with the budget of the tick
+	 *   spent, also for a target within 4 blocks and an answer at most 5 x path_cache_ticks old;
+	 * - a path from the shared cache of PathService (a short connecting search and the rest of a path another npc found to the same target);
+	 * - with the budget of the tick spent (path_budget_per_tick) and a path still being walked: the path it walks now, and the request is
+	 *   searched in a later tick by PathService, which then gives it the new path;
+	 * - otherwise a search now. An npc without a path is never made to wait.
 	 */
-	private static final Map<World, long[]> BUDGETS = new WeakHashMap<>();
 	private int lastTargetId = Integer.MIN_VALUE;
 	private BlockPos lastTargetPos;
 	private long lastPathTick = Long.MIN_VALUE;
 	private Path lastPath;
+	private int requestedTargetId = Integer.MIN_VALUE;
+	private BlockPos requestedPos;
+
+	@Nullable
+	private Path request(int targetId, BlockPos pos, @Nullable Entity target) {
+		if (world.isRemote) {
+			return search(pos, target);
+		}
+		requestedTargetId = targetId;
+		requestedPos = pos;
+		if (reusable(targetId, pos)) {
+			return lastPath;
+		}
+		boolean overBudget = PathService.overBudget(world);
+		Path shared = PathService.fromCache(world, this, mountOrEntity(), nodeProcessor.getCanSwim(), nodeProcessor.getCanOpenDoors(), pos, !overBudget);
+		if (shared != null) {
+			return remember(targetId, pos, shared);
+		}
+		if (overBudget && AWDiplomacyStatics.pathQueue && !noPath()) {
+			PathService.defer(world, this, targetId, pos, target);
+			return currentPath;
+		}
+		Path path = searchCounted(pos, target);
+		PathService.offer(world, mountOrEntity(), nodeProcessor.getCanSwim(), nodeProcessor.getCanOpenDoors(), pos, path);
+		return remember(targetId, pos, path);
+	}
+
+	/**
+	 * A queued request is searched now, if this npc still wants that target and got no answer since; the new path replaces the one it walks.
+	 *
+	 * @return true if a search was made
+	 */
+	boolean completeDeferred(int targetId, BlockPos pos, @Nullable Entity target, long since) {
+		if (entity.isDead || !canNavigate() || targetId != requestedTargetId || (targetId < 0 && !pos.equals(requestedPos))
+				|| (target == null && targetId >= 0) || (lastTargetId == targetId && lastPathTick >= since)) {
+			return false;
+		}
+		BlockPos current = target == null ? pos : new BlockPos(target);
+		Path path = searchCounted(current, target);
+		PathService.offer(world, mountOrEntity(), nodeProcessor.getCanSwim(), nodeProcessor.getCanOpenDoors(), current, path);
+		remember(targetId, current, path);
+		if (path != null) {
+			setPath(path, speed);
+		}
+		return true;
+	}
+
+	@Nullable
+	Path searchCounted(BlockPos pos, @Nullable Entity target) {
+		if (!world.isRemote) {
+			PathService.countSearch(world);
+		}
+		return search(pos, target);
+	}
+
+	@Nullable
+	private Path search(BlockPos pos, @Nullable Entity target) {
+		return target == null ? pathToXYZ(pos) : pathToEntity(target);
+	}
 
 	private boolean reusable(int targetId, BlockPos pos) {
 		int cacheTicks = AWDiplomacyStatics.pathCacheTicks;
-		if (world.isRemote || cacheTicks <= 0 || lastTargetPos == null || targetId != lastTargetId || (lastPath != null && lastPath.isFinished())) {
+		if (cacheTicks <= 0 || lastTargetPos == null || targetId != lastTargetId || (lastPath != null && lastPath.isFinished())) {
 			return false;
 		}
 		long age = world.getTotalWorldTime() - lastPathTick;
@@ -92,38 +138,16 @@ public class NpcNavigator extends PathNavigateGround {
 		if (age >= 0 && age < cacheTicks && distanceSq <= 1) {
 			return true;
 		}
-		return age >= 0 && age < cacheTicks * 5L && distanceSq <= 16 && overBudget();
+		return age >= 0 && age < cacheTicks * 5L && distanceSq <= 16 && PathService.overBudget(world);
 	}
 
 	@Nullable
 	private Path remember(int targetId, BlockPos pos, @Nullable Path path) {
-		if (!world.isRemote) {
-			lastTargetId = targetId;
-			lastTargetPos = pos;
-			lastPathTick = world.getTotalWorldTime();
-			lastPath = path;
-			countPath();
-		}
+		lastTargetId = targetId;
+		lastTargetPos = pos;
+		lastPathTick = world.getTotalWorldTime();
+		lastPath = path;
 		return path;
-	}
-
-	private boolean overBudget() {
-		int budget = AWDiplomacyStatics.pathBudgetPerTick;
-		if (budget <= 0) {
-			return false;
-		}
-		long[] used = BUDGETS.get(world);
-		return used != null && used[0] == world.getTotalWorldTime() && used[1] >= budget;
-	}
-
-	private void countPath() {
-		long[] used = BUDGETS.computeIfAbsent(world, w -> new long[2]);
-		long now = world.getTotalWorldTime();
-		if (used[0] != now) {
-			used[0] = now;
-			used[1] = 0;
-		}
-		used[1]++;
 	}
 
 	@Override

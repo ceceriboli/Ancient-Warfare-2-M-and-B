@@ -4,6 +4,8 @@ import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.world.WorldEvent;
+import net.shadowmage.ancientwarfare.npc.ai.PathService;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.faction.Diplomacy;
 import net.shadowmage.ancientwarfare.npc.war.Armies;
@@ -46,6 +48,12 @@ public class SettlementEventHandler {
 			Settlements.tick((WorldServer) evt.world);
 			Diplomacy.tick((WorldServer) evt.world);
 			Armies.tick((WorldServer) evt.world);
+			PathService.tick((WorldServer) evt.world);
 		}
+	}
+
+	@SubscribeEvent
+	public void onWorldUnload(WorldEvent.Unload evt) {
+		PathService.onWorldUnload(evt.getWorld());
 	}
 }
