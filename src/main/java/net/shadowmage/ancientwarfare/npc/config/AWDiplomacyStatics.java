@@ -52,7 +52,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int armyOwnedNpcRange = 32;
 	public static boolean serviceEnabled = true;
 	public static int serviceCheckInterval = 2400;
-	public static double campaignChance = 0.3;
+	public static double campaignChance = 0.1;
 	public static double campaignOffenseShare = 0.5;
 	public static int serviceCallRange = 1500;
 	public static int serviceMusterTicks = 2400;
@@ -264,7 +264,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		serviceCheckInterval = config.get(serverOptions, "service_check_interval", serviceCheckInterval, "Campaign check interval\nDefault=" + serviceCheckInterval + "\n" + "Ticks (20 per second) between two checks for a new campaign (an attack of the faction of an online member, or on a\n" + "city of its faction, anywhere within service_call_range).", 20, 720000).getInt();
 
-		campaignChance = config.get(serverOptions, "campaign_chance", campaignChance, "Campaign chance\nDefault=" + campaignChance + "\n" + "Chance (0.0 to 1.0), at each check, that a campaign starts for an online member without a call. Limited by\n" + "max_active_sieges and by the cooldown of the cities.", 0.0D, 1.0D).getDouble();
+		campaignChance = config.get(serverOptions, "campaign_chance", campaignChance, "Campaign chance\nDefault=" + campaignChance + "\n" + "Chance (0.0 to 1.0), at each check, that a campaign starts for an online member without a call. Limited by\n" + "max_active_sieges and by the cooldown of the cities. An attack of the member's faction starts only if the faction has manpower to spare\n" + "above siege_levy_floor (at least raid_min_attackers); otherwise a defense is tried instead.", 0.0D, 1.0D).getDouble();
 
 		campaignOffenseShare = config.get(serverOptions, "campaign_offense_share", campaignOffenseShare, "Offensive campaigns\nDefault=" + campaignOffenseShare + "\n" + "Chance (0.0 to 1.0) that a campaign is an attack of the member's faction on an enemy city (at war), otherwise it\n" + "is an attack of an enemy on a city of the member's faction.", 0.0D, 1.0D).getDouble();
 

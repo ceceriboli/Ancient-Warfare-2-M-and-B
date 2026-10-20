@@ -146,6 +146,10 @@ public class Service {
 				candidates.add(city);
 			}
 		}
+		if (offensive && !ignoreCooldown && WarLevies.isEnabled() && WarLevies.getAvailable(world, faction, dimension) < AWDiplomacyStatics.raidMinAttackers) {
+			// the faction has no men to spare for an attack (siege_levy_floor): no offensive campaign
+			return null;
+		}
 		if (offensive) {
 			// the army marches on one of the nearest enemy cities
 			candidates.sort(Comparator.comparingDouble(city -> player.getDistanceSq(Sieges.getTarget(world, city))));
