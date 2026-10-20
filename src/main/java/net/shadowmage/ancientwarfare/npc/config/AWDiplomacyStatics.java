@@ -34,6 +34,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static String[] recruitTier3Equipment = {"mainhand=minecraft:iron_sword", "offhand=minecraft:shield", "head=minecraft:iron_helmet", "chest=minecraft:iron_chestplate", "legs=minecraft:iron_leggings", "feet=minecraft:iron_boots"};
 	public static String[] kingdomCultures = new String[0];
 	public static int kingdomRadius = 64;
+	public static int kingdomCityMinDistance = 128;
 	public static int kingdomStartManpower = 20;
 	public static int kingdomGarrison = 6;
 	public static int kingdomGraceDays = 10;
@@ -103,6 +104,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static double allianceBreakChancePerDay = 0.1;
 	public static int allianceMinDays = 5;
 	public static int spawnerMinPlayerRange = 128;
+	public static int pathCacheTicks = 10;
+	public static int pathBudgetPerTick = 40;
 	public static boolean spawnersTriggerInCreative = false;
 	public static boolean settlementsEnabled = true;
 	public static int settlementDefaultRadius = 48;
@@ -208,6 +211,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		recruitTier2Equipment = config.get(serverOptions, "recruit_tier_2_equipment", recruitTier2Equipment, "Tier 2 equipment\n" + "Equipment given when a soldier is trained to tier 2 (what it wore in those slots is dropped).").getStringList();
 		recruitTier3Equipment = config.get(serverOptions, "recruit_tier_3_equipment", recruitTier3Equipment, "Tier 3 equipment\n" + "Equipment given when a soldier is trained to tier 3.").getStringList();
 		kingdomRadius = config.get(serverOptions, "kingdom_radius", kingdomRadius, "Kingdom city radius\nDefault=" + kingdomRadius + "\n" + "Half the side of the square city founded around a town hall, in blocks. It must not overlap another city.", 8, 256).getInt();
+		kingdomCityMinDistance = config.get(serverOptions, "kingdom_city_min_distance", kingdomCityMinDistance, "Distance between kingdom cities\nDefault=" + kingdomCityMinDistance + "\n" + "Another town hall placed by the owner of a kingdom founds a new city of the kingdom (with its governor, no new kingdom) if it is at\n" + "least this many blocks (horizontally) from the center of every city of the kingdom and the new city does not overlap another city.\n" + "Closer, it is only an Ancient Warfare town hall.", 0, 4096).getInt();
 		kingdomStartManpower = config.get(serverOptions, "kingdom_start_manpower", kingdomStartManpower, "Kingdom starting manpower\nDefault=" + kingdomStartManpower + "\n" + "Manpower of a new kingdom city, plus manpower_per_unit for each soldier of the player inside it.", 0, 10000).getInt();
 		kingdomGarrison = config.get(serverOptions, "kingdom_garrison", kingdomGarrison, "Kingdom garrison\nDefault=" + kingdomGarrison + "\n" + "Recruits of the kingdom (occupation_unit_weights) come to a kingdom city every reinforcement_interval_ticks until its garrison has this many units. 0 = none.", 0, 200).getInt();
 		kingdomAttackChance = config.get(serverOptions, "kingdom_attack_chance", kingdomAttackChance, "Attacks on a kingdom\nDefault=" + kingdomAttackChance + "\n" + "Chance, every service_check_interval ticks while a member is online, that an enemy at war attacks a city of a player kingdom (a defensive campaign: its members are called). The cities of a kingdom are never attacked otherwise (siege_chance does not apply to them). One roll per kingdom, also with several members online; each city still rests siege_cooldown_days after an attack.", 0.0D, 1.0D).getDouble();
@@ -349,6 +353,10 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		allianceMinDays = config.get(serverOptions, "alliance_min_days", allianceMinDays, "Minimum alliance length\nDefault=" + allianceMinDays + "\n" + "Minecraft days an alliance lasts at least.", 0, 10000).getInt();
 
 		spawnerMinPlayerRange = config.get(serverOptions, "spawner_min_player_range", spawnerMinPlayerRange, "Structure spawner range\nDefault=" + spawnerMinPlayerRange + "\n" + "Ancient Warfare structure spawners create their npcs (leaders included, so also cities) when a player is within\n" + "their own range, set in each structure template (often 16 blocks, a cube around the spawner). A player within this\n" + "distance (a sphere) also triggers every spawner. 0 = only the range of each template. At most 128: npcs that can\n" + "despawn vanish at once when no player is within 128 blocks.", 0, 128).getInt();
+
+		pathCacheTicks = config.get(serverOptions, "path_cache_ticks", pathCacheTicks, "Path reuse\nDefault=" + pathCacheTicks + "\n" + "Ticks (20 per second) during which an Ancient Warfare npc asking again for a path to the same target (moved less than a block)\n" + "gets its previous answer instead of a new search. Many AIs ask every tick. 0 = always search.", 0, 200).getInt();
+
+		pathBudgetPerTick = config.get(serverOptions, "path_budget_per_tick", pathBudgetPerTick, "Path searches per tick\nDefault=" + pathBudgetPerTick + "\n" + "When Ancient Warfare npcs have already searched this many paths in a tick, a request similar to a recent one (target within 4\n" + "blocks, answer at most 5 x path_cache_ticks old) reuses that answer. A request without a recent answer is always searched.\n" + "0 = no limit.", 0, 10000).getInt();
 
 		spawnersTriggerInCreative = config.get(serverOptions, "spawners_trigger_in_creative", spawnersTriggerInCreative, "Structure spawners in creative\nDefault=" + spawnersTriggerInCreative + "\n" + "If true, players in creative mode also make structure spawners create their npcs (and so found cities), useful\n" + "for testing. If false (Ancient Warfare behaviour), only players in survival or adventure mode do. Players in\n" + "spectator mode never do.").getBoolean();
 
