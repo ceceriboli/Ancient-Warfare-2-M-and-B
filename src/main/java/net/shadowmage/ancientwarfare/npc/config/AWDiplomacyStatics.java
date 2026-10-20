@@ -115,6 +115,9 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean siegeLeviesEnabled = true;
 	public static double siegeLevyFloor = 0.5D;
 	public static double siegeLevyLossRefund = 0.2D;
+	public static int batonSelectRange = 24;
+	public static int batonMaxUnits = 64;
+	public static int batonRetreatTicks = 100;
 	public static boolean spawnersTriggerInCreative = false;
 	public static boolean settlementsEnabled = true;
 	public static int settlementDefaultRadius = 48;
@@ -378,6 +381,12 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		siegeLevyFloor = config.get(serverOptions, "siege_levy_floor", siegeLevyFloor, "Manpower kept at home\nDefault=" + siegeLevyFloor + "\n" + "Share of its maximum manpower a faction always keeps: a full siege never takes it below this, and under this a faction lays no full\n" + "sieges (only raids).", 0.0D, 1.0D).getDouble();
 
 		siegeLevyLossRefund = config.get(serverOptions, "siege_levy_loss_refund", siegeLevyLossRefund, "Survivors of a lost siege\nDefault=" + siegeLevyLossRefund + "\n" + "After a lost full siege the faction gets back a random share, from 0 to this, of the manpower it paid.", 0.0D, 1.0D).getDouble();
+
+		batonSelectRange = config.get(serverOptions, "baton_select_range", batonSelectRange, "Command baton selection range\nDefault=" + batonSelectRange + "\n" + "Sneak + right click with the command baton adds to its group all your fighting npcs within this many blocks (on one of them: all those of the same type).", 4, 128).getInt();
+
+		batonMaxUnits = config.get(serverOptions, "baton_max_units", batonMaxUnits, "Command baton group size\nDefault=" + batonMaxUnits + "\n" + "At most this many npcs are added to the group of a command baton at once (the nearest).", 1, 1000).getInt();
+
+		batonRetreatTicks = config.get(serverOptions, "baton_retreat_ticks", batonRetreatTicks, "Retreat order\nDefault=" + batonRetreatTicks + "\n" + "Ticks (20 per second) during which npcs ordered to retreat with the command baton take no new enemy while they come back to you.", 0, 2400).getInt();
 
 		pathQueue = config.get(serverOptions, "path_queue", pathQueue, "Queued path searches\nDefault=" + pathQueue + "\n" + "If true, an npc that already walks a path and asks for a new one when path_budget_per_tick is spent keeps walking for now, and its\n" + "request is searched in one of the next ticks. An npc without a path is never made to wait.").getBoolean();
 

@@ -73,7 +73,10 @@ public abstract class NpcAIAttack<T extends NpcBase> extends NpcAI<T> {
 	public final void updateTask() {
 		npc.getLookHelper().setLookPositionWithEntity(target, 30.f, 30.f);
 		double distanceToEntitySq = npc.getDistanceSq(target.posX, target.getEntityBoundingBox().minY, target.posZ);
-		if (shouldCloseOnTarget(distanceToEntitySq)) {
+		if (shouldCloseOnTarget(distanceToEntitySq) && holdsPosition()) {
+			// ordered to hold its position: it waits for the enemy to come close instead of going after it
+			npc.getNavigator().clearPath();
+		} else if (shouldCloseOnTarget(distanceToEntitySq)) {
 			npc.addAITask(TASK_MOVE);
 			moveToEntity(target, distanceToEntitySq);
 			checkReachable();
@@ -136,6 +139,13 @@ public abstract class NpcAIAttack<T extends NpcBase> extends NpcAI<T> {
 		IAttributeInstance iattributeinstance = npc.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE);
 		//noinspection ConstantConditions
 		return iattributeinstance == null ? 35.0D : iattributeinstance.getAttributeValue();
+	}
+
+	/**
+	 * @return true if the npc must not move towards a target out of its reach (hold position, see GroupOrders)
+	 */
+	protected boolean holdsPosition() {
+		return false;
 	}
 
 	protected abstract boolean shouldCloseOnTarget(double distanceToEntity);

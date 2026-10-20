@@ -31,6 +31,11 @@ public class NpcAIAttackMeleeLongRange extends NpcAIAttack<NpcBase> {
 	}
 
 	@Override
+	protected boolean holdsPosition() {
+		return npc.getDoNotPursue();
+	}
+
+	@Override
 	protected void doAttack(double distanceToEntity) {
 		npc.removeAITask(TASK_MOVE);
 		if (getAttackDelay() <= 0) {

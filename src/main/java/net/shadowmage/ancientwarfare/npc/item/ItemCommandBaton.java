@@ -36,6 +36,8 @@ import net.shadowmage.ancientwarfare.core.input.InputHandler;
 import net.shadowmage.ancientwarfare.core.util.NBTBuilder;
 import net.shadowmage.ancientwarfare.core.util.RayTraceUtils;
 import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
+import net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned;
+import net.shadowmage.ancientwarfare.npc.npc_command.GroupOrders;
 import net.shadowmage.ancientwarfare.npc.npc_command.NpcCommand;
 import net.shadowmage.ancientwarfare.npc.npc_command.NpcCommand.CommandType;
 
@@ -78,6 +80,7 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 
 		text = "Use scroll wheel to change mode when sneaking";
 		tooltip.add(text);
+		tooltip.add(I18n.format("guistrings.npc.baton.select_many"));
 	}
 
 	/*
@@ -139,7 +142,11 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 			return new ActionResult<>(EnumActionResult.SUCCESS, stack);
 		}
 		if (player.isSneaking()) {
-			//TODO openGUI
+			// many soldiers at once: on one of yours, all those of the same type nearby; elsewhere all of them (or none if they are already in)
+			RayTraceResult pos = RayTraceUtils.getPlayerTarget(player, range, 0);
+			NpcBase like = pos != null && pos.typeOfHit == Type.ENTITY && pos.entityHit instanceof NpcBase
+					&& ((NpcBase) pos.entityHit).hasCommandPermissions(player.getUniqueID(), player.getName()) ? (NpcBase) pos.entityHit : null;
+			CommandSet.loadFromStack(stack).selectMany(player, like, stack);
 		} else {
 			RayTraceResult pos = RayTraceUtils.getPlayerTarget(player, range, 0);
 			if (pos != null && pos.typeOfHit == Type.ENTITY && pos.entityHit instanceof NpcBase) {
@@ -211,6 +218,15 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 					NpcCommand.handleCommandClient(c, hit);
 				}
 				break;
+				case FOLLOW:
+					NpcCommand.handleCommandClient(CommandType.FOLLOW, new RayTraceResult(player));
+					break;
+				case HOLD:
+					NpcCommand.handleCommandClient(CommandType.HOLD, new RayTraceResult(player));
+					break;
+				case RETREAT:
+					NpcCommand.handleCommandClient(CommandType.RETREAT, new RayTraceResult(player));
+					break;
 			}
 		}
 		return false;
@@ -291,6 +307,24 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 			return tag;
 		}
 
+		void selectMany(EntityPlayer player, @Nullable NpcBase like, ItemStack stack) {
+			validateEntities(player.world);
+			List<NpcPlayerOwned> soldiers = GroupOrders.findSoldiers(player, like);
+			int added = 0;
+			for (NpcPlayerOwned npc : soldiers) {
+				if (ids.add(npc.getPersistentID())) {
+					added++;
+				}
+			}
+			if (added == 0 && like == null) {
+				ids.clear();
+				player.sendStatusMessage(new TextComponentTranslation("guistrings.npc.baton.group_cleared"), true);
+			} else {
+				player.sendStatusMessage(new TextComponentTranslation("guistrings.npc.baton.group", ids.size(), added), true);
+			}
+			writeToStack(stack);
+		}
+
 		void onNpcClicked(NpcBase npc, ItemStack stack) {
 			if (ids.contains(npc.getPersistentID())) {
 				ids.remove(npc.getPersistentID());
@@ -359,7 +393,10 @@ public class ItemCommandBaton extends ItemBaseNPC implements IItemKeyInterface, 
 		SET_HOME("setHome", "guistrings.npc.baton.set_home"),
 		CLEAR_HOME("clearHome", "guistrings.npc.baton.clear_home"),
 		SET_UPKEEP("setUpkeep", "guistrings.npc.baton.set_upkeep"),
-		CLEAR_UPKEEP("clearUpkeep", "guistrings.npc.baton.clear_upkeep");
+		CLEAR_UPKEEP("clearUpkeep", "guistrings.npc.baton.clear_upkeep"),
+		FOLLOW("follow", "guistrings.npc.baton.follow"),
+		HOLD("hold", "guistrings.npc.baton.hold"),
+		RETREAT("retreat", "guistrings.npc.baton.retreat");
 
 		private String name;
 		final String key;

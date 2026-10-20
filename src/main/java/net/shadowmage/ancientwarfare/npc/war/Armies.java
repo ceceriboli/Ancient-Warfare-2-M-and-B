@@ -230,6 +230,19 @@ public class Armies {
 	}
 
 	/**
+	 * An order of the command baton takes the npc out of the assault it joined.
+	 *
+	 * @return true if it was in one
+	 */
+	public static boolean leaveAssault(NpcBase npc) {
+		if (!npc.getEntityData().hasKey(TAG_CHARGE)) {
+			return false;
+		}
+		restoreOwnNpc(npc);
+		return true;
+	}
+
+	/**
 	 * Gives back to one of the player's own npcs its follow and its home after a charge.
 	 */
 	private static void restoreOwnNpc(NpcBase npc) {
