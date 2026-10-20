@@ -110,6 +110,8 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static boolean pathSharedCache = true;
 	public static int targetScanInterval = 10;
 	public static int structureAutoLeaderMinUnits = 5;
+	public static boolean replaceMissingLeader = true;
+	public static int missingLeaderManpowerCost = 10;
 	public static boolean spawnersTriggerInCreative = false;
 	public static boolean settlementsEnabled = true;
 	public static int settlementDefaultRadius = 48;
@@ -363,6 +365,10 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		pathBudgetPerTick = config.get(serverOptions, "path_budget_per_tick", pathBudgetPerTick, "Path searches per tick\nDefault=" + pathBudgetPerTick + "\n" + "When Ancient Warfare npcs have already searched this many paths in a tick, a request similar to a recent one (target within 4\n" + "blocks, answer at most 5 x path_cache_ticks old) reuses that answer. A request without a recent answer is always searched.\n" + "0 = no limit.", 0, 10000).getInt();
 
 		structureAutoLeaderMinUnits = config.get(serverOptions, "structure_auto_leader_min_units", structureAutoLeaderMinUnits, "Leaders for structures without one\nDefault=" + structureAutoLeaderMinUnits + "\n" + "A generated Ancient Warfare structure with no leader whose spawners create at least this many fighting units of one faction (the\n" + "one with the most) becomes a city of that faction like the others: a leader of the faction is placed at once at its highest spawner\n" + "of that faction. Smaller structures (a tent, a watchtower, a farm of civilians) stay as they are. 0 = never.", 0, 1000).getInt();
+
+		replaceMissingLeader = config.get(serverOptions, "replace_missing_leader", replaceMissingLeader, "Replace a vanished leader\nDefault=" + replaceMissingLeader + "\n" + "If true, a city whose leader vanished without being killed (missing for 3 checks while its last position is loaded) raises a new leader\n" + "there, paying missing_leader_manpower_cost manpower, instead of falling. A killed leader still makes the city fall or be conquered.").getBoolean();
+
+		missingLeaderManpowerCost = config.get(serverOptions, "missing_leader_manpower_cost", missingLeaderManpowerCost, "Cost of a new leader\nDefault=" + missingLeaderManpowerCost + "\n" + "Manpower a city pays to replace a vanished leader. With less manpower the city falls as before.", 0, 10000).getInt();
 
 		pathQueue = config.get(serverOptions, "path_queue", pathQueue, "Queued path searches\nDefault=" + pathQueue + "\n" + "If true, an npc that already walks a path and asks for a new one when path_budget_per_tick is spent keeps walking for now, and its\n" + "request is searched in one of the next ticks. An npc without a path is never made to wait.").getBoolean();
 

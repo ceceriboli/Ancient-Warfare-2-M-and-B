@@ -1134,11 +1134,39 @@ public class Settlements {
 				data.markDirty();
 			}
 		} else if (++settlement.missingLeaderChecks >= MISSING_LEADER_CHECKS) {
-			// the leader was removed without dying (e.g. Ancient Warfare structure conquest)
+			// the leader was removed without dying (e.g. Ancient Warfare structure conquest, a chunk that was not saved)
+			if (replaceMissingLeader(world, data, settlement, leaderId)) {
+				return;
+			}
 			AncientWarfareNPC.LOG.info("Leader {} of city {} missing for {} checks around {}, the city falls", leaderId, settlement.getId(),
 					MISSING_LEADER_CHECKS, settlement.getLastLeaderPos());
 			collapse(world, data, settlement);
 		}
+	}
+
+	/**
+	 * A leader that vanished without being killed is not a lost war: with missing_leader_manpower_cost manpower the city raises a new leader
+	 * where the old one was last seen (an old leader that comes back later becomes a captain, see retag).
+	 *
+	 * @return true if a new leader rules the city
+	 */
+	private static boolean replaceMissingLeader(WorldServer world, SettlementData data, Settlement settlement, UUID missing) {
+		int cost = AWDiplomacyStatics.missingLeaderManpowerCost;
+		if (!AWDiplomacyStatics.replaceMissingLeader || settlement.getManpower() < cost) {
+			return false;
+		}
+		NpcFactionLeader leader = spawnGovernor(world, settlement, settlement.getFaction());
+		if (leader == null) {
+			return false;
+		}
+		settlement.setManpower(settlement.getManpower() - cost);
+		settlement.setLeader(leader.getUniqueID(), leader.getPosition());
+		settlement.missingLeaderChecks = 0;
+		tag(leader, settlement, ROLE_LEADER);
+		data.markDirty();
+		AncientWarfareNPC.LOG.info("Leader {} of city {} ({}) missing for {} checks: a new leader {} rules it at {}, for {} manpower ({} left)", missing,
+				settlement.getId(), settlement.getName(), MISSING_LEADER_CHECKS, leader.getUniqueID(), leader.getPosition(), cost, settlement.getManpower());
+		return true;
 	}
 
 	/**
