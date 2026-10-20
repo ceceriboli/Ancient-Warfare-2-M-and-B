@@ -16,6 +16,7 @@ import net.shadowmage.ancientwarfare.npc.war.Settlement;
 import net.shadowmage.ancientwarfare.npc.war.Settlements;
 import net.shadowmage.ancientwarfare.npc.war.Siege;
 import net.shadowmage.ancientwarfare.npc.war.Sieges;
+import net.shadowmage.ancientwarfare.npc.war.WarLevies;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -27,6 +28,7 @@ import java.util.Locale;
  */
 public class CommandSiege extends CommandBase {
 	private static final String START = "start";
+	private static final String FORCE = "force";
 	private static final String STOP = "stop";
 	private static final String LIST = "list";
 
@@ -66,6 +68,13 @@ public class CommandSiege extends CommandBase {
 				String error = Sieges.canStart(world, settlement, faction);
 				if (error != null) {
 					throw new CommandException(error, faction);
+				}
+				// a full siege follows the levies of the faction (WarLevies) like the automatic ones, unless forced for tests
+				boolean force = args.length > 4 && FORCE.equalsIgnoreCase(args[4]);
+				if (kind == Siege.Kind.SIEGE && !force && !WarLevies.canLaySiege(world, faction, settlement.getDimension())) {
+					int dimension = settlement.getDimension();
+					throw new CommandException("command.aw.siege.error.levies", FactionMembership.factionName(faction), WarLevies.getTotal(world, faction, dimension),
+							WarLevies.getMax(world, faction, dimension), WarLevies.getFloor(world, faction, dimension), AWDiplomacyStatics.fullSiegeMinAttackers);
 				}
 				Siege siege = Sieges.start(world, data, settlement, faction, kind);
 				sender.sendMessage(new TextComponentTranslation("command.aw." + kind.getName() + ".started", Settlements.displayName(settlement),
