@@ -165,6 +165,7 @@ public class CommandSettlement extends CommandBase {
 				garrison++;
 			}
 		}
+		garrison += Settlements.countOwnerSoldiers(world, settlement);
 		// only when reinforcements are actually coming
 		if (settlement.getGarrisonCap() > 0 && garrison + settlement.getPendingRespawns().size() < settlement.getGarrisonCap()) {
 			sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.garrison_cap", settlement.getGarrisonCap()));

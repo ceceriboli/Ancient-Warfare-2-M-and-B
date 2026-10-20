@@ -1332,15 +1332,7 @@ public class Settlements {
 				garrison++;
 			}
 		}
-		KingdomData.Kingdom owned = Kingdoms.get(world, settlement.getFaction());
-		if (owned != null) {
-			// every fighting soldier of the kingdom owner inside the city counts (reinforcements, recruits, crafted soldiers)
-			for (NpcPlayerOwned npc : world.getEntitiesWithinAABB(NpcPlayerOwned.class, settlement.getAABB())) {
-				if (npc.isEntityAlive() && !npc.isPassive() && owned.ownerId.equals(npc.getOwner().getUUID())) {
-					garrison++;
-				}
-			}
-		}
+		garrison += countOwnerSoldiers(world, settlement);
 		if (garrison >= settlement.getGarrisonCap()) {
 			// the real garrison is larger (e.g. cities merged into this one): it is the garrison reinforcements bring back
 			if (garrison > settlement.getGarrisonCap()) {
@@ -1371,6 +1363,24 @@ public class Settlements {
 	}
 
 	/**
+	 * @return the fighting soldiers of the kingdom owner loaded inside a city of a kingdom (reinforcements, recruits, crafted soldiers), 0 for
+	 * other cities
+	 */
+	public static int countOwnerSoldiers(World world, Settlement settlement) {
+		KingdomData.Kingdom kingdom = Kingdoms.get(world, settlement.getFaction());
+		if (kingdom == null) {
+			return 0;
+		}
+		int count = 0;
+		for (NpcPlayerOwned npc : world.getEntitiesWithinAABB(NpcPlayerOwned.class, settlement.getAABB())) {
+			if (npc.isEntityAlive() && !npc.isPassive() && kingdom.ownerId.equals(npc.getOwner().getUUID())) {
+				count++;
+			}
+		}
+		return count;
+	}
+
+	/**
 	 * A city of a player kingdom is reinforced with soldiers of the owner (like recruits and crafted soldiers: they can be made to follow and
 	 * ordered with the command baton, and never fight the owner's other soldiers). They wait for the owner to be online, are counted in
 	 * Settlement.ownGarrison until they die, and do not count for the growth of the capital's manpower (growKingdomManpower).
@@ -1393,6 +1403,8 @@ public class Settlements {
 		if (world.spawnEntity(soldier)) {
 			settlement.setOwnGarrison(settlement.getOwnGarrison() + 1);
 			getData(world).markDirty();
+			AncientWarfareNPC.LOG.info("Kingdom city {} ({}) reinforced with a soldier of {} at {}, cap {}", settlement.getId(), settlement.getName(), owner.getName(),
+					soldier.getPosition(), settlement.getGarrisonCap());
 			world.spawnParticle(EnumParticleTypes.CLOUD, soldier.posX, soldier.posY + 1D, soldier.posZ, 10, 0.3D, 0.5D, 0.3D, 0.02D);
 		}
 	}
