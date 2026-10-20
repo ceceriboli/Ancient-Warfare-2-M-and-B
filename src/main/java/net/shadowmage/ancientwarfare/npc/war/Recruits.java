@@ -213,10 +213,19 @@ public class Recruits {
 		return getTier(soldier) + 1 >= 3 ? AWDiplomacyStatics.upgradeCostTier3 : AWDiplomacyStatics.upgradeCostTier2;
 	}
 
-	/**
-	 * Gives the soldier the equipment of the tier (recruit_tier_N_equipment, "slot=item" entries); what it wore in those slots is dropped.
-	 */
 	static void equip(NpcCombat soldier, int tier) {
+		equip(soldier, tier, KingdomLook.getRole(soldier));
+	}
+
+	/**
+	 * Gives the soldier the equipment of the tier: the one of the soldiers (or archers) of the culture of the owner's kingdom (KingdomLook),
+	 * otherwise recruit_tier_N_equipment ("slot=item" entries); what it wore in those slots is dropped.
+	 */
+	static void equip(NpcCombat soldier, int tier, String role) {
+		String culture = KingdomLook.getCulture(soldier);
+		if (culture != null && KingdomLook.equip(soldier, culture, role, tier)) {
+			return;
+		}
 		String[] entries = tier >= 3 ? AWDiplomacyStatics.recruitTier3Equipment : tier == 2 ? AWDiplomacyStatics.recruitTier2Equipment : AWDiplomacyStatics.recruitTier1Equipment;
 		for (String entry : entries) {
 			String[] parts = entry.trim().split("=", 2);

@@ -335,6 +335,7 @@ public class Kingdoms {
 
 	public static void setCulture(World world, KingdomData.Kingdom kingdom, String culture) {
 		kingdom.culture = culture;
+		net.shadowmage.ancientwarfare.npc.war.KingdomLook.onCultureChanged(world, kingdom);
 		kingdom.color = FactionRegistry.getFaction(culture).getColor();
 		getData(world).markDirty();
 		register(kingdom.id, kingdom.name, kingdom.culture, kingdom.color);

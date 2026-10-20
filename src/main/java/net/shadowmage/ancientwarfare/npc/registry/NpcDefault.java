@@ -72,6 +72,10 @@ public abstract class NpcDefault {
 		navigator.setBreakDoors(true);
 	}
 
+	public Map<Integer, Item> getEquipment() {
+		return equipment == null ? java.util.Collections.emptyMap() : java.util.Collections.unmodifiableMap(equipment);
+	}
+
 	public void applyEquipment(NpcBase npc) {
 		equipment.forEach((slot, item) -> npc.setItemStackToSlot(slot, new ItemStack(item)));
 	}

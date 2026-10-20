@@ -24,6 +24,7 @@ public class SettlementEventHandler {
 	public void onEntityJoinWorld(EntityJoinWorldEvent evt) {
 		Settlements.onEntityJoinWorld(evt.getEntity());
 		Armies.onEntityJoinWorld(evt.getEntity());
+		net.shadowmage.ancientwarfare.npc.war.KingdomLook.onEntityJoinWorld(evt.getEntity());
 	}
 
 	@SubscribeEvent

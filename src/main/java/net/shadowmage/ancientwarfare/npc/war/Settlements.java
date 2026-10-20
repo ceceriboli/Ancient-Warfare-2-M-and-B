@@ -1377,7 +1377,8 @@ public class Settlements {
 		BlockPos pos = findRecruitPos(world, settlement);
 		soldier.setLocationAndAngles(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, world.rand.nextFloat() * 360F, 0F);
 		soldier.setHomeAreaAtCurrentPosition();
-		Recruits.equip(soldier, 1);
+		// soldiers and archers of the kingdom's culture, 3 to 2
+		Recruits.equip(soldier, 1, world.rand.nextInt(5) < 3 ? KingdomLook.ROLE_SOLDIER : KingdomLook.ROLE_ARCHER);
 		soldier.setHealth(soldier.getMaxHealth());
 		soldier.getEntityData().setInteger(TAG_KINGDOM_GARRISON, settlement.getId());
 		if (world.spawnEntity(soldier)) {
