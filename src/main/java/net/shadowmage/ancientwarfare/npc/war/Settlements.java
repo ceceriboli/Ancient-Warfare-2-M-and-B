@@ -311,19 +311,23 @@ public class Settlements {
 	}
 
 	/**
-	 * The soldiers of the owner of a kingdom inside its capital are its manpower: when there are more of them than ever before, the maximum
-	 * manpower of the capital grows to kingdom_start_manpower + manpower_per_unit for each, and the manpower grows by the same amount. It
-	 * never shrinks when soldiers die.
+	 * The soldiers of the owner of a kingdom inside one of its cities (the capital, a city founded with another Town Hall, a conquered one) are
+	 * its manpower: when there are more of them than ever before, the maximum manpower of the city grows to kingdom_start_manpower +
+	 * manpower_per_unit for each, and the manpower grows by the same amount. It never shrinks when soldiers die.
 	 */
 	private static void growKingdomManpower(WorldServer world, SettlementData data) {
 		for (Settlement capital : data.getAll()) {
-			if (capital.getOwnerId() == null || !capital.isActive() || capital.getDimension() != world.provider.getDimension() || !Kingdoms.isKingdom(capital.getFaction())) {
+			if (!capital.isActive() || capital.getDimension() != world.provider.getDimension() || !Kingdoms.isKingdom(capital.getFaction())) {
+				continue;
+			}
+			KingdomData.Kingdom kingdom = Kingdoms.get(world, capital.getFaction());
+			if (kingdom == null) {
 				continue;
 			}
 			int soldiers = 0;
 			for (NpcPlayerOwned npc : world.getEntitiesWithinAABB(NpcPlayerOwned.class, capital.getAABB())) {
 				// the soldiers sent as free reinforcements do not make the manpower grow (they would make it grow forever)
-				if (npc.isEntityAlive() && !npc.isPassive() && capital.getOwnerId().equals(npc.getOwner().getUUID()) && !npc.getEntityData().hasKey(TAG_KINGDOM_GARRISON)) {
+				if (npc.isEntityAlive() && !npc.isPassive() && kingdom.ownerId.equals(npc.getOwner().getUUID()) && !npc.getEntityData().hasKey(TAG_KINGDOM_GARRISON)) {
 					soldiers++;
 				}
 			}
@@ -333,7 +337,7 @@ public class Settlements {
 				capital.setMaxManpower(base);
 				capital.setManpower(capital.getManpower() + delta);
 				data.markDirty();
-				AncientWarfareNPC.LOG.info("The capital {} of {} grows to {} manpower: {} soldiers of its owner", capital.getId(), capital.getFaction(), capital.getMaxManpower(), soldiers);
+				AncientWarfareNPC.LOG.info("The city {} of {} grows to {} manpower: {} soldiers of its owner", capital.getId(), capital.getFaction(), capital.getMaxManpower(), soldiers);
 			}
 		}
 	}
