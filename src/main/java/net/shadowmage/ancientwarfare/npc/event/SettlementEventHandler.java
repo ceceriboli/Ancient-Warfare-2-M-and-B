@@ -41,11 +41,6 @@ public class SettlementEventHandler {
 		if (!evt.getEntityLiving().world.isRemote && evt.getEntityLiving() instanceof NpcFaction) {
 			Sieges.onNpcHurt((NpcFaction) evt.getEntityLiving(), evt.getSource().getTrueSource());
 		}
-		if (!evt.getEntityLiving().world.isRemote && evt.getEntityLiving() instanceof net.minecraft.entity.player.EntityPlayer) {
-			// temporary, with the [medic] lines of NpcAIMedicBase: when the player was hurt
-			net.shadowmage.ancientwarfare.npc.AncientWarfareNPC.LOG.info("[medic] {} hurt by {} for {}, health {}", evt.getEntityLiving().getName(), evt.getSource().getDamageType(),
-					evt.getAmount(), evt.getEntityLiving().getHealth());
-		}
 	}
 
 	@SubscribeEvent
