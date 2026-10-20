@@ -143,6 +143,7 @@ public class AncientWarfareNPC {
 		PacketBase.registerPacketType(NetworkHandler.PACKET_FACTION_DIALOGUE, PacketFactionDialogue.class, PacketFactionDialogue::new);
 		PacketBase.registerPacketType(NetworkHandler.PACKET_FACTION_DIALOGUE_ACTION, PacketFactionDialogueAction.class, PacketFactionDialogueAction::new);
 		PacketBase.registerPacketType(NetworkHandler.PACKET_KINGDOMS, net.shadowmage.ancientwarfare.npc.network.PacketKingdoms.class, net.shadowmage.ancientwarfare.npc.network.PacketKingdoms::new);
+		PacketBase.registerPacketType(NetworkHandler.PACKET_CITIES, net.shadowmage.ancientwarfare.npc.network.PacketCities.class, net.shadowmage.ancientwarfare.npc.network.PacketCities::new);
 
 		CompatLoader.registerCompat(new EpicSiegeCompat());
 		CompatLoader.registerCompat(new TwilightForestCompat());

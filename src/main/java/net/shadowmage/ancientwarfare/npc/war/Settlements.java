@@ -246,6 +246,7 @@ public class Settlements {
 			return;
 		}
 		processPendingLeaders(world, now);
+		CityMap.tick(world, now);
 		SettlementData data = getData(world);
 		if (AWDiplomacyStatics.settlementFoundRange > 0 && now % STRUCTURE_SCAN_INTERVAL == 0) {
 			foundCitiesFromStructures(world, data, now);

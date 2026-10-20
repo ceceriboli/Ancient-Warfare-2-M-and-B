@@ -216,6 +216,10 @@ public class EventHandler {
 		}
 
 		World world = evt.getEntityPlayer().world;
+		// a city of the player's own faction (or kingdom, or conquered by it) is not protected against him, whoever holds the structure's flag
+		if (net.shadowmage.ancientwarfare.npc.war.CityMap.isOwnCity(world, evt.getEntityPlayer(), evt.getPos())) {
+			return;
+		}
 		AWGameData.INSTANCE.getPerWorldData(world, StructureMap.class).getStructureAt(world, evt.getPos())
 				.flatMap(structureEntry -> WorldTools.getTile(world, structureEntry.getProtectionFlagPos(), TileProtectionFlag.class)).ifPresent(tile -> {
 			if (tile.shouldProtectAgainst(evt.getEntityPlayer()) && shouldBlockSlowDownDigging(world, evt.getPos())) {
