@@ -14,7 +14,8 @@ import javax.annotation.Nullable;
  * Every npc that has been in water for a moment heads for the nearest place on land where it can stand (within SWIM_OUT_RANGE blocks, up to
  * two blocks above its feet), swimming up and pushing against the bank as a player does: in water, an entity pushing against a block with
  * free space above it is lifted out (vanilla). The vanilla swimming task only keeps an npc afloat. Not while fighting (it has a target), riding
- * or sleeping, and not for the attackers of a siege, which have their own version in NpcAIFactionAssault. When swimming does not get it out
+ * or sleeping; the attackers of a siege also go when they have a target, they are always in a fight (they have their own way out in
+ * NpcAIFactionAssault, which only runs when this task does not). When swimming does not get it out
  * within SWIM_OUT_TICKS it is put on the land it was heading for (the swimming alone did not work in every place: banks, boats, deep water).
  */
 public class NpcAISwimOut extends NpcAI<NpcBase> {
@@ -53,8 +54,8 @@ public class NpcAISwimOut extends NpcAI<NpcBase> {
 			}
 			return npc.isInWater() || !npc.onGround;
 		}
-		if (!npc.isInWater() || npc.isRiding() || npc.isPlayerSleeping() || npc.isSleeping() || npc.getAttackTarget() != null
-				|| npc.getEntityData().hasKey(Settlements.TAG_SIEGE)) {
+		boolean siegeAttacker = npc.getEntityData().hasKey(Settlements.TAG_SIEGE);
+		if (!npc.isInWater() || npc.isRiding() || npc.isPlayerSleeping() || npc.isSleeping() || !siegeAttacker && npc.getAttackTarget() != null) {
 			inWaterSince = -1;
 			return false;
 		}
