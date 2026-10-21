@@ -7,7 +7,9 @@ import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.items.SlotItemHandler;
+import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
+import net.shadowmage.ancientwarfare.npc.entity.NpcCombat;
 import net.shadowmage.ancientwarfare.npc.entity.NpcLevelingStats;
 import net.shadowmage.ancientwarfare.npc.inventory.NpcEquipmentHandler;
 import net.shadowmage.ancientwarfare.npc.skin.NpcSkinSettings;
@@ -24,6 +26,7 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 	public int xp;
 	public int xpToNextLevel;
 	public int tier;
+	public int tier2Level;
 	public int healthBonus;
 
 	public ContainerNpcInventory(EntityPlayer player, int x, int y, int z) {
@@ -57,7 +60,13 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 		tag.setInteger("level", entity.getLevelingStats().getBaseLevel());
 		tag.setInteger("xp", entity.getLevelingStats().getBaseExperience());
 		tag.setInteger("xpToNextLevel", entity.getLevelingStats().getBaseExperienceToNextLevel());
-		tag.setInteger("tier", entity.getEntityData().getInteger(Recruits.TAG_TIER));
+		// combat soldiers of a player are tier 1 until trained, like the training counts them (crafted ones and reinforcements have no tag)
+		int tier = entity.getEntityData().getInteger(Recruits.TAG_TIER);
+		if (tier <= 0 && entity instanceof NpcCombat && entity.getOwner().getUUID() != null) {
+			tier = 1;
+		}
+		tag.setInteger("tier", tier);
+		tag.setInteger("tier2Level", AWDiplomacyStatics.upgradeLevelTier2);
 		tag.setInteger("healthBonus", entity.getEntityData().getInteger(NpcLevelingStats.TAG_HEALTH_BONUS));
 		sendDataToClient(tag);
 	}
@@ -69,6 +78,7 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 			xp = tag.getInteger("xp");
 			xpToNextLevel = tag.getInteger("xpToNextLevel");
 			tier = tag.getInteger("tier");
+			tier2Level = tag.getInteger("tier2Level");
 			healthBonus = tag.getInteger("healthBonus");
 		}
 		if (tag.hasKey("customName")) {

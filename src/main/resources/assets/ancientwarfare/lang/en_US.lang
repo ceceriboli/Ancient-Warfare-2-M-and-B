@@ -685,6 +685,7 @@ guistrings.npc.level_short=Lv %s
 guistrings.npc.level_info=Level %1$s\nXP %2$s / %3$s to level %4$s\nGained by fighting (attacks and kills) or working.
 guistrings.npc.level_max=Level %s: the highest.
 guistrings.npc.tier_short=Tier %s
+guistrings.npc.tier_info_untrained=Not trained yet. From level %s it can be trained to tier 2 at a Governor of your kingdom.
 guistrings.npc.tier_info=Trained to tier %s at a Governor.
 guistrings.npc.tier_info_health=Trained to tier %s at a Governor: %s more maximum health.
 guistrings.npc.death_list=Deaths

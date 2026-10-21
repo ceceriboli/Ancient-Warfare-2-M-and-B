@@ -181,8 +181,12 @@ public class GuiNpcInventory extends GuiContainerBase<ContainerNpcInventory> {
 		tierLabel.setText(container.tier > 0 ? I18n.format("guistrings.npc.tier_short", container.tier) : "");
 		tierLabel.setTooltip(null);
 		if (container.tier > 0) {
-			tierLabel.addTooltip(container.healthBonus > 0 ? I18n.format("guistrings.npc.tier_info_health", container.tier, container.healthBonus)
-					: I18n.format("guistrings.npc.tier_info", container.tier));
+			if (container.tier == 1) {
+				tierLabel.addTooltip(I18n.format("guistrings.npc.tier_info_untrained", container.tier2Level));
+			} else {
+				tierLabel.addTooltip(container.healthBonus > 0 ? I18n.format("guistrings.npc.tier_info_health", container.tier, container.healthBonus)
+						: I18n.format("guistrings.npc.tier_info", container.tier));
+			}
 		}
 	}
 
