@@ -144,6 +144,8 @@ public abstract class NpcBase extends EntityCreature implements IEntityAdditiona
 		levelingStats = new NpcLevelingStats(this);
 		navigator = new NpcNavigator(this);
 		setPathPriority(PathNodeType.DOOR_WOOD_CLOSED, 0);
+		// gets any npc out of the water (the vanilla swimming task only keeps it afloat)
+		tasks.addTask(0, new net.shadowmage.ancientwarfare.npc.ai.NpcAISwimOut(this));
 	}
 
 	public void stopAIControlFlag(int flag) {

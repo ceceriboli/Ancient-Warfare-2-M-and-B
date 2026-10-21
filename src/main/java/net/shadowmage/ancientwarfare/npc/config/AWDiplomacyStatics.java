@@ -149,6 +149,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int siegeWaveStallTicks = 6000;
 	public static String attackerBreach = "siege";
 	public static boolean attackerClearFoliage = true;
+	public static boolean npcLeaveWater = true;
 	public static String attackerBuild = "siege";
 	public static double breachMaxHardness = 5.0;
 	public static int breachTicksPerHardness = 40;
@@ -452,6 +453,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		siegeWaveStallTicks = config.get(serverOptions, "siege_wave_stall_ticks", siegeWaveStallTicks, "Stalled wave\nDefault=" + siegeWaveStallTicks + "\n" + "Ticks (20 per second) a wave can go on without any attacker or defender killed. Then the wave withdraws and the\n" + "next one comes, or, after the last wave, the raid or siege is lifted. Time only runs while the city is loaded. 0 = never.", 0, 720000).getInt();
 
+		npcLeaveWater = config.get(serverOptions, "npc_leave_water", npcLeaveWater, "NPCs leave the water\nDefault=" + npcLeaveWater + "\n" + "An npc that has been in water for a moment, and is not fighting, riding or sleeping, swims to the nearest land (within 8 blocks) and climbs out.").getBoolean();
 		attackerClearFoliage = config.get(serverOptions, "attacker_clear_foliage", attackerClearFoliage, "Attackers clear leaves\nDefault=" + attackerClearFoliage + "\n" + "Attackers stuck in tree leaves (raids and sieges, melee and archers) clear the leaves around them and towards their target. Only leaves; needs the mobGriefing gamerule.").getBoolean();
 		attackerBreach = config.get(serverOptions, "attacker_breach", attackerBreach, "Attackers break blocks\nDefault=" + attackerBreach + "\n" + "Melee attackers that cannot get closer to the city leader for a few seconds break the block in front of them\n" + "(walls, iron doors, gates), within breach_max_hardness and breach_block_blacklist, if the mobGriefing gamerule allows it.\n" + "none = never, siege = only in full sieges, all = in raids and full sieges.", new String[] {"none", "siege", "all"}).getString();
 
