@@ -38,7 +38,7 @@ public class Recruits {
 	private static final String RECRUIT_PREFIX = "recruit:";
 	private static final String TRAIN_ONE_PREFIX = "train_one:";
 	private static final String TRAIN_ALL = "train_all";
-	static final String TAG_TIER = "awTier";
+	public static final String TAG_TIER = "awTier";
 	private static final int MAX_TIER = 3;
 	private static final double TRAIN_RANGE = 16D;
 	private static final int PAGE_SIZE = 6;

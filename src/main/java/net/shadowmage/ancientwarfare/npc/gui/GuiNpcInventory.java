@@ -1,6 +1,7 @@
 package net.shadowmage.ancientwarfare.npc.gui;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.shadowmage.ancientwarfare.core.container.ContainerBase;
@@ -23,6 +24,8 @@ public class GuiNpcInventory extends GuiContainerBase<ContainerNpcInventory> {
 	private Checkbox doNotPursueCheckbox;
 	private static int buttonX = 8 + 18 + 18 + 18 + 18 + 4;
 	private Button skinButton;
+	private Label levelLabel;
+	private Label tierLabel;
 
 	public GuiNpcInventory(ContainerBase container) {
 		super(container);
@@ -157,6 +160,30 @@ public class GuiNpcInventory extends GuiContainerBase<ContainerNpcInventory> {
 		slot = new ItemSlot(28 + 18 * 2, 8 + 18 * 3, new ItemStack(AWNPCItems.ROUTING_ORDER), this);
 		slot.setRenderSlotBackground(false).setRenderItemQuantity(false).setHighlightOnMouseOver(false).addTooltip("guistrings.npc.manual_order_slot");
 		addGuiElement(slot);
+
+		// under the order slots: filled when the level arrives from the server
+		levelLabel = new Label(8 + 18 * 2, 86, "");
+		addGuiElement(levelLabel);
+		tierLabel = new Label(8 + 18 * 2, 98, "");
+		addGuiElement(tierLabel);
+	}
+
+	private void updateLevelLabels() {
+		ContainerNpcInventory container = getContainer();
+		if (container.level < 0) {
+			return;
+		}
+		levelLabel.setText(I18n.format("guistrings.npc.level_short", container.level));
+		levelLabel.setTooltip(null);
+		levelLabel.addTooltip(container.xpToNextLevel > 0
+				? I18n.format("guistrings.npc.level_info", container.level, container.xp, container.xpToNextLevel, container.level + 1)
+				: I18n.format("guistrings.npc.level_max", container.level));
+		tierLabel.setText(container.tier > 0 ? I18n.format("guistrings.npc.tier_short", container.tier) : "");
+		tierLabel.setTooltip(null);
+		if (container.tier > 0) {
+			tierLabel.addTooltip(container.healthBonus > 0 ? I18n.format("guistrings.npc.tier_info_health", container.tier, container.healthBonus)
+					: I18n.format("guistrings.npc.tier_info", container.tier));
+		}
 	}
 
 	@Override
@@ -166,6 +193,7 @@ public class GuiNpcInventory extends GuiContainerBase<ContainerNpcInventory> {
 			doNotPursueCheckbox.setChecked(getContainer().doNotPursue);
 		}
 		skinButton.setText(getContainer().skinSettings.getDescription());
+		updateLevelLabels();
 	}
 
 	@Override

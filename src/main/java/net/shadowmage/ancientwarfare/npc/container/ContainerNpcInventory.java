@@ -8,8 +8,10 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.items.SlotItemHandler;
 import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
+import net.shadowmage.ancientwarfare.npc.entity.NpcLevelingStats;
 import net.shadowmage.ancientwarfare.npc.inventory.NpcEquipmentHandler;
 import net.shadowmage.ancientwarfare.npc.skin.NpcSkinSettings;
+import net.shadowmage.ancientwarfare.npc.war.Recruits;
 
 public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements ISkinSettingsContainer {
 	public boolean doNotPursue; //if the npc should not pursue targets away from its position/route
@@ -17,6 +19,12 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 	public final int guiHeight;
 	private String name;
 	public NpcSkinSettings skinSettings;
+	// sent by the server when the gui opens: the base level, its xp, the xp to the next level (0 at the highest), the training tier (0 = none)
+	public int level = -1;
+	public int xp;
+	public int xpToNextLevel;
+	public int tier;
+	public int healthBonus;
 
 	public ContainerNpcInventory(EntityPlayer player, int x, int y, int z) {
 		super(player, x);
@@ -46,11 +54,23 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 	public void sendInitData() {
 		NBTTagCompound tag = new NBTTagCompound();
 		tag.setBoolean("donotpursue", doNotPursue);
+		tag.setInteger("level", entity.getLevelingStats().getBaseLevel());
+		tag.setInteger("xp", entity.getLevelingStats().getBaseExperience());
+		tag.setInteger("xpToNextLevel", entity.getLevelingStats().getBaseExperienceToNextLevel());
+		tag.setInteger("tier", entity.getEntityData().getInteger(Recruits.TAG_TIER));
+		tag.setInteger("healthBonus", entity.getEntityData().getInteger(NpcLevelingStats.TAG_HEALTH_BONUS));
 		sendDataToClient(tag);
 	}
 
 	@Override
 	public void handlePacketData(NBTTagCompound tag) {
+		if (tag.hasKey("level") && player.world.isRemote) {
+			level = tag.getInteger("level");
+			xp = tag.getInteger("xp");
+			xpToNextLevel = tag.getInteger("xpToNextLevel");
+			tier = tag.getInteger("tier");
+			healthBonus = tag.getInteger("healthBonus");
+		}
 		if (tag.hasKey("customName")) {
 			this.name = tag.getString("customName");
 		}

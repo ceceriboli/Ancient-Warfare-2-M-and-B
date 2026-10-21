@@ -48,6 +48,16 @@ public class NpcLevelingStats {
 		return level;
 	}
 
+	/**
+	 * @return the xp the base level still needs to grow by one, 0 at the highest level
+	 */
+	public int getBaseExperienceToNextLevel() {
+		if (level >= (npc instanceof NpcCombat ? AWNPCStatics.maxNpcCombatLevel : AWNPCStatics.maxNpcWorkerLevel)) {
+			return 0;
+		}
+		return getXPToLevel(level);
+	}
+
 	public void addExperience(int xpGained) {
 		if (npc.world.isRemote) {
 			return;
