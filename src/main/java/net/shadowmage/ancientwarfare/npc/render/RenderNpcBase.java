@@ -106,6 +106,19 @@ public class RenderNpcBase<T extends NpcBase> extends RenderBiped<T> {
 			}
 		}
 		renderLeaderLabel(npc, player, x, y, z);
+		renderTraderLabel(npc, player, x, y, z);
+	}
+
+	/**
+	 * A faction trader shows its role above its head, like a ruler (its market is opened by talking to it)
+	 */
+	private void renderTraderLabel(NpcBase npc, EntityPlayer player, double x, double y, double z) {
+		if (!(npc instanceof net.shadowmage.ancientwarfare.npc.entity.faction.NpcFactionTrader) || !AWDiplomacyStatics.renderLeaderLabel
+				|| npc.getDistanceSq(player) > AWDiplomacyStatics.leaderLabelRange * AWDiplomacyStatics.leaderLabelRange) {
+			return;
+		}
+		boolean nameplateRendered = npc.isHostileTowards(player) ? AWNPCStatics.renderHostileNames.getBoolean() : AWNPCStatics.renderFriendlyNames.getBoolean();
+		renderColoredLabel(npc, I18n.format("gui.aw.market.trader_title"), x, nameplateRendered ? y + 0.3D : y, z, 0x20ffaa00, 0xffffaa00);
 	}
 
 	private void renderLeaderLabel(NpcBase npc, EntityPlayer player, double x, double y, double z) {

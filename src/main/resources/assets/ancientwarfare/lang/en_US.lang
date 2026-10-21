@@ -1748,6 +1748,7 @@ command.aw.settlement.info.bounds=Bounds: %s %s %s to %s %s %s
 command.aw.settlement.info.manpower=Manpower: %s/%s, units waiting to respawn: %s
 command.aw.settlement.info.growth=Each day: +%1$s manpower (up to the maximum), +%2$s taxes. Treasury: %3$s of at most %4$s (%5$s)
 gui.aw.market.title=Market of %s
+gui.aw.market.trader_title=Trader
 gui.aw.market.hostile=The traders of %s will not deal with an enemy.
 gui.aw.market.besieged=The market of %s is closed while the city is under attack.
 gui.aw.market.confirm=Confirm
