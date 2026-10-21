@@ -50,6 +50,7 @@ public class SettlementEventHandler {
 			Diplomacy.tick((WorldServer) evt.world);
 			Armies.tick((WorldServer) evt.world);
 			PathService.tick((WorldServer) evt.world);
+			net.shadowmage.ancientwarfare.npc.war.KingdomLook.tick((WorldServer) evt.world);
 		}
 	}
 

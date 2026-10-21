@@ -3,7 +3,6 @@ package net.shadowmage.ancientwarfare.npc.war;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TextComponentString;
@@ -36,7 +35,7 @@ public class Recruits {
 	private static final String RECRUIT_PREFIX = "recruit:";
 	private static final String TRAIN_ONE_PREFIX = "train_one:";
 	private static final String TRAIN_ALL = "train_all";
-	private static final String TAG_TIER = "awTier";
+	static final String TAG_TIER = "awTier";
 	private static final int MAX_TIER = 3;
 	private static final double TRAIN_RANGE = 16D;
 	private static final int PAGE_SIZE = 6;
@@ -214,18 +213,48 @@ public class Recruits {
 	}
 
 	static void equip(NpcCombat soldier, int tier) {
-		equip(soldier, tier, KingdomLook.getRole(soldier));
+		equip(soldier, tier, KingdomLook.getRole(soldier), false);
+	}
+
+	static void equip(NpcCombat soldier, int tier, String role) {
+		equip(soldier, tier, role, false);
+	}
+
+	/**
+	 * The culture of the owner's kingdom changed: the soldier takes the gear of its tier in the new culture, and the gear of the old one is
+	 * not dropped.
+	 */
+	static void reequip(NpcCombat soldier) {
+		equip(soldier, getTier(soldier), KingdomLook.getRole(soldier), true);
 	}
 
 	/**
 	 * Gives the soldier the equipment of the tier: the one of the soldiers (or archers) of the culture of the owner's kingdom (KingdomLook),
-	 * otherwise recruit_tier_N_equipment ("slot=item" entries); what it wore in those slots is dropped.
+	 * otherwise recruit_tier_N_equipment ("slot=item" entries); what it wore in those slots is dropped (KingdomLook.replace).
 	 */
-	static void equip(NpcCombat soldier, int tier, String role) {
+	private static void equip(NpcCombat soldier, int tier, String role, boolean discardKingdomGear) {
 		String culture = KingdomLook.getCulture(soldier);
-		if (culture != null && KingdomLook.equip(soldier, culture, role, tier)) {
-			return;
+		if (culture == null || !KingdomLook.equip(soldier, culture, role, tier, discardKingdomGear)) {
+			equipFromConfig(soldier, tier, discardKingdomGear);
 		}
+		if (culture != null) {
+			KingdomLook.setGearCulture(soldier, culture);
+		}
+	}
+
+	static boolean isRecruitGear(Item item) {
+		for (String[] entries : new String[][] {AWDiplomacyStatics.recruitTier1Equipment, AWDiplomacyStatics.recruitTier2Equipment, AWDiplomacyStatics.recruitTier3Equipment}) {
+			for (String entry : entries) {
+				String[] parts = entry.trim().split("=", 2);
+				if (parts.length == 2 && item == Item.getByNameOrId(parts[1].trim())) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private static void equipFromConfig(NpcCombat soldier, int tier, boolean discardKingdomGear) {
 		String[] entries = tier >= 3 ? AWDiplomacyStatics.recruitTier3Equipment : tier == 2 ? AWDiplomacyStatics.recruitTier2Equipment : AWDiplomacyStatics.recruitTier1Equipment;
 		for (String entry : entries) {
 			String[] parts = entry.trim().split("=", 2);
@@ -245,11 +274,7 @@ public class Recruits {
 				AncientWarfareNPC.LOG.warn("Unknown item in recruit equipment: {}", entry);
 				continue;
 			}
-			ItemStack old = soldier.getItemStackFromSlot(slot);
-			if (!old.isEmpty() && !soldier.world.isRemote) {
-				soldier.entityDropItem(old.copy(), 0.5F);
-			}
-			soldier.setItemStackToSlot(slot, new ItemStack(item));
+			KingdomLook.replace(soldier, slot, item, discardKingdomGear);
 		}
 	}
 
