@@ -157,6 +157,10 @@ public class CommandSettlement extends CommandBase {
 		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.bounds", min.getX(), min.getY(), min.getZ(), max.getX(), max.getY(), max.getZ()));
 		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.manpower", settlement.getManpower(), settlement.getMaxManpower(),
 				settlement.getPendingRespawns().size()));
+		// what the city gains each Minecraft day (nothing while it is attacked) and its taxes not yet collected
+		sender.sendMessage(new TextComponentTranslation("command.aw.settlement.info.growth", Settlements.getDailyManpowerRegen(settlement),
+				Settlements.getDailyTax(settlement), settlement.getTreasury(), Settlements.getDailyTax(settlement) * net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics.cityTaxMaxDays,
+				net.shadowmage.ancientwarfare.npc.war.Coins.getName()));
 		WorldServer world = server.getWorld(settlement.getDimension());
 		int garrison = 0;
 		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, settlement.getAABB())) {
