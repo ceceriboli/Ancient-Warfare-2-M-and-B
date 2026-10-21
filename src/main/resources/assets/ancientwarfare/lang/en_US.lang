@@ -687,6 +687,7 @@ guistrings.npc.level_max=Level %s: the highest.
 guistrings.npc.tier_short=Tier %s
 guistrings.npc.tier_info_untrained=Not trained yet. From level %s it can be trained to tier 2 at a Governor of your kingdom.
 guistrings.npc.tier_info=Trained to tier %s at a Governor.
+guistrings.npc.tier_info_next=Trained to tier %1$s at a Governor. From level %2$s it can be trained to tier 3 (%3$s more maximum health).
 guistrings.npc.tier_info_health=Trained to tier %s at a Governor: %s more maximum health.
 guistrings.npc.health_short=Health %1$s / %2$s
 guistrings.npc.health_info=Heals 1 health every 10 seconds.

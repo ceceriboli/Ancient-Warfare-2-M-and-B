@@ -27,6 +27,8 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 	public int xpToNextLevel;
 	public int tier;
 	public int tier2Level;
+	public int tier3Level;
+	public int tier3Health;
 	public int healthBonus;
 	public float health;
 	public float maxHealth;
@@ -73,6 +75,8 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 		}
 		tag.setInteger("tier", tier);
 		tag.setInteger("tier2Level", AWDiplomacyStatics.upgradeLevelTier2);
+		tag.setInteger("tier3Level", AWDiplomacyStatics.upgradeLevelTier3);
+		tag.setInteger("tier3Health", AWDiplomacyStatics.upgradeHealthTier3);
 		tag.setInteger("healthBonus", entity.getEntityData().getInteger(NpcLevelingStats.TAG_HEALTH_BONUS));
 		tag.setFloat("health", entity.getHealth());
 		tag.setFloat("maxHealth", entity.getMaxHealth());
@@ -91,6 +95,8 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 			xpToNextLevel = tag.getInteger("xpToNextLevel");
 			tier = tag.getInteger("tier");
 			tier2Level = tag.getInteger("tier2Level");
+			tier3Level = tag.getInteger("tier3Level");
+			tier3Health = tag.getInteger("tier3Health");
 			healthBonus = tag.getInteger("healthBonus");
 			health = tag.getFloat("health");
 			maxHealth = tag.getFloat("maxHealth");
