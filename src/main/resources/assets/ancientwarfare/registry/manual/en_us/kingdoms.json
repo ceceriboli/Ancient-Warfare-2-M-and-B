@@ -59,6 +59,15 @@
         },
         {
             "content_type": "heading",
+            "text": "Markets",
+            "level": 2
+        },
+        {
+            "content_type": "text",
+            "text": "Every city of a faction has a market, opened by right clicking one of its traders inside the city (traders elsewhere keep their old list). The market holds goods and coins: its coins are the city's treasury. On the left of the window are your goods with the price the city pays, on the right the city's goods with the price you pay; click to add one to the deal (shift: ten), right click to take it back, then Confirm.\nPrices follow the stock: a good the city has little of is dear, one it has plenty of is cheap, and every unit you buy makes the next one dearer, every unit you sell makes the next one cheaper. You buy above the value and sell below it (about +12% and -11%; weapons and armor +30% and -50%, so selling loot is a poor business). A city pays only with the coins it has and stops buying a good when it is full of it. Every day the stocks move back toward what the city's culture produces, so goods are cheap where they are made and dear elsewhere: buy where they are cheap, sell where they are dear. Standing with the city's faction lowers the margins (up to a quarter at 200 standing). Enemies cannot trade, and nobody trades while the city is attacked.\nItems of a trader's old list that the market does not deal in are sold as specials, at twice their old price, and never bought back. Player kingdoms have no market yet. Goods and prices are in registry/economy/goods.json; operators can use /awmarket info, set and reset."
+        },
+        {
+            "content_type": "heading",
             "text": "Protected Structures",
             "level": 2
         },
