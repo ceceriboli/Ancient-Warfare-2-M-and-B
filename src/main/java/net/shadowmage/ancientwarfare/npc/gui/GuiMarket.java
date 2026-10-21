@@ -35,7 +35,8 @@ public class GuiMarket extends GuiScreen {
 	private static final int PADDING = 6;
 	private static final int ROW_HEIGHT = 18;
 	private static final int HEADER_HEIGHT = 24;
-	private static final int FOOTER_HEIGHT = 58;
+	private static final int FOOTER_HEIGHT = 64;
+	private static final int TOOLTIP_WIDTH = 220;
 	private static final int PANEL_COLOR = 0xE0101010;
 	private static final int BORDER_COLOR = 0xFFB08A3E;
 	private static final int ROW_COLOR = 0x40FFFFFF;
@@ -194,7 +195,7 @@ public class GuiMarket extends GuiScreen {
 		} else if (hoveredMarket != null) {
 			hovered = hoveredMarket;
 		}
-		int footerY = top + panelHeight - FOOTER_HEIGHT + 4;
+		int footerY = top + panelHeight - FOOTER_HEIGHT + 2;
 		int balance = getBalance();
 		String deal = balance > 0 ? I18n.format("gui.aw.market.balance_pay", Markets.formatMoney(balance))
 				: balance < 0 ? I18n.format("gui.aw.market.balance_receive", Markets.formatMoney(-balance)) : I18n.format("gui.aw.market.balance_none");
@@ -208,9 +209,13 @@ public class GuiMarket extends GuiScreen {
 		super.drawScreen(mouseX, mouseY, partialTicks);
 		if (hovered != null) {
 			List<String> lines = new ArrayList<>(getItemToolTip(hovered.stack));
-			lines.add(TextFormatting.GRAY + I18n.format(hovered == hoveredPlayer ? "gui.aw.market.tip_sell" : "gui.aw.market.tip_buy"));
+			for (String line : fontRenderer.listFormattedStringToWidth(I18n.format(hovered == hoveredPlayer ? "gui.aw.market.tip_sell" : "gui.aw.market.tip_buy"), TOOLTIP_WIDTH)) {
+				lines.add(TextFormatting.GRAY + line);
+			}
 			if (hovered.special) {
-				lines.add(TextFormatting.GOLD + I18n.format("gui.aw.market.tip_special"));
+				for (String line : fontRenderer.listFormattedStringToWidth(I18n.format("gui.aw.market.tip_special"), TOOLTIP_WIDTH)) {
+					lines.add(TextFormatting.GOLD + line);
+				}
 			}
 			drawHoveringText(lines, mouseX, mouseY);
 		}
