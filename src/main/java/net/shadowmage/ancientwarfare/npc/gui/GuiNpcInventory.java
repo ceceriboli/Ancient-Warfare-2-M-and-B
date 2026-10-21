@@ -168,9 +168,10 @@ public class GuiNpcInventory extends GuiContainerBase<ContainerNpcInventory> {
 		addGuiElement(levelLabel);
 		tierLabel = new Label(8 + 18 * 2, 98, "");
 		addGuiElement(tierLabel);
-		healthLabel = new Label(8, 8 + 5 * 18 + 8 + 4, "");
+		// below the boots slot (it ends at y 116), above the player inventory (y 148)
+		healthLabel = new Label(8, 8 + 6 * 18 + 4, "");
 		addGuiElement(healthLabel);
-		foodLabel = new Label(8, 8 + 5 * 18 + 8 + 16, "");
+		foodLabel = new Label(8, 8 + 6 * 18 + 16, "");
 		addGuiElement(foodLabel);
 	}
 
