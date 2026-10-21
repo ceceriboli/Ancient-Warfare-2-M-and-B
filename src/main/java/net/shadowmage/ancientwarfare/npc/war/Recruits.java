@@ -1,5 +1,7 @@
 package net.shadowmage.ancientwarfare.npc.war;
 
+import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.ai.attributes.IAttributeInstance;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.Item;
@@ -11,6 +13,7 @@ import net.minecraft.world.World;
 import net.shadowmage.ancientwarfare.npc.AncientWarfareNPC;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.NpcCombat;
+import net.shadowmage.ancientwarfare.npc.entity.NpcLevelingStats;
 import net.shadowmage.ancientwarfare.npc.entity.faction.NpcFaction;
 import net.shadowmage.ancientwarfare.npc.faction.FactionDialogue;
 import net.shadowmage.ancientwarfare.npc.faction.Kingdoms;
@@ -159,7 +162,7 @@ public class Recruits {
 	private static void sendTrainPage(EntityPlayerMP player, NpcFaction governor, @Nullable ITextComponent answer) {
 		List<NpcCombat> trainable = getTrainable(player, governor);
 		ITextComponent text = new TextComponentTranslation(trainable.isEmpty() ? "gui.aw.recruits.none_to_train" : "gui.aw.recruits.train_intro",
-				getRequiredLevel(2), AWDiplomacyStatics.upgradeCostTier2, getRequiredLevel(3), AWDiplomacyStatics.upgradeCostTier3, Coins.getName(), Coins.count(player));
+				getRequiredLevel(2), AWDiplomacyStatics.upgradeCostTier2, getRequiredLevel(3), AWDiplomacyStatics.upgradeCostTier3, Coins.getName(), Coins.count(player), AWDiplomacyStatics.upgradeHealthTier3);
 		List<FactionDialogue.PageButton> buttons = new ArrayList<>();
 		int total = 0;
 		for (NpcCombat soldier : trainable) {
@@ -196,6 +199,14 @@ public class Recruits {
 		}
 		equip(soldier, next);
 		soldier.getEntityData().setInteger(TAG_TIER, next);
+		if (next >= MAX_TIER && AWDiplomacyStatics.upgradeHealthTier3 > 0) {
+			// on the base value (saved with the npc), not as a modifier: NpcBase saves the max health with its modifiers as the base value
+			int bonus = AWDiplomacyStatics.upgradeHealthTier3;
+			soldier.getEntityData().setInteger(NpcLevelingStats.TAG_HEALTH_BONUS, bonus);
+			IAttributeInstance maxHealth = soldier.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH);
+			maxHealth.setBaseValue(maxHealth.getBaseValue() + bonus);
+			soldier.heal(bonus);
+		}
 		AncientWarfareNPC.LOG.info("{} trained a soldier to tier {} for {} coins", player.getName(), next, cost);
 		return new TextComponentTranslation("gui.aw.recruits.trained", soldier.getDisplayName(), next);
 	}

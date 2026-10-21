@@ -29,6 +29,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int upgradeLevelTier3 = 6;
 	public static int upgradeCostTier2 = 5;
 	public static int upgradeCostTier3 = 12;
+	public static int upgradeHealthTier3 = 10;
 	public static String[] recruitTier1Equipment = {"mainhand=minecraft:wooden_sword", "head=minecraft:leather_helmet"};
 	public static String[] recruitTier2Equipment = {"mainhand=minecraft:iron_sword", "head=minecraft:chainmail_helmet", "chest=minecraft:chainmail_chestplate", "legs=minecraft:chainmail_leggings", "feet=minecraft:chainmail_boots"};
 	public static String[] recruitTier3Equipment = {"mainhand=minecraft:iron_sword", "offhand=minecraft:shield", "head=minecraft:iron_helmet", "chest=minecraft:iron_chestplate", "legs=minecraft:iron_leggings", "feet=minecraft:iron_boots"};
@@ -219,6 +220,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		upgradeLevelTier3 = config.get(serverOptions, "upgrade_level_tier_3", upgradeLevelTier3, "Level for tier 3\nDefault=" + upgradeLevelTier3 + "\n" + "Level a soldier needs to be trained to tier 3.", 0, 100).getInt();
 		upgradeCostTier2 = config.get(serverOptions, "upgrade_cost_tier_2", upgradeCostTier2, "Cost of tier 2\nDefault=" + upgradeCostTier2 + "\n" + "Coins to train a soldier to tier 2.", 0, 10000).getInt();
 		upgradeCostTier3 = config.get(serverOptions, "upgrade_cost_tier_3", upgradeCostTier3, "Cost of tier 3\nDefault=" + upgradeCostTier3 + "\n" + "Coins to train a soldier to tier 3.", 0, 10000).getInt();
+		upgradeHealthTier3 = config.get(serverOptions, "upgrade_health_tier_3", upgradeHealthTier3, "Health of tier 3\nDefault=" + upgradeHealthTier3 + "\n" + "Extra maximum health (2 = one heart) of a soldier trained to tier 3, on top of its level. Combat soldiers have 30 plus 1 for each level.", 0, 1000).getInt();
 		recruitTier1Equipment = config.get(serverOptions, "recruit_tier_1_equipment", recruitTier1Equipment, "Recruit equipment\n" + "Equipment of a new recruit, as slot=item (slots: mainhand, offhand, head, chest, legs, feet).").getStringList();
 		recruitTier2Equipment = config.get(serverOptions, "recruit_tier_2_equipment", recruitTier2Equipment, "Tier 2 equipment\n" + "Equipment given when a soldier is trained to tier 2 (what it wore in those slots is dropped).").getStringList();
 		recruitTier3Equipment = config.get(serverOptions, "recruit_tier_3_equipment", recruitTier3Equipment, "Tier 3 equipment\n" + "Equipment given when a soldier is trained to tier 3.").getStringList();

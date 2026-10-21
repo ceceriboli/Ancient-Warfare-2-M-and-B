@@ -12,6 +12,9 @@ import java.util.HashMap;
 
 public class NpcLevelingStats {
 
+	// extra max health given by the kingdoms (trained soldiers of tier 3), kept when the level changes the max health
+	public static final String TAG_HEALTH_BONUS = "awHealthBonus";
+
 	private final HashMap<String, ExperienceEntry> experienceMap = new HashMap<>();
 	private int xp;//'generic' xp, always incremented for all xp-types
 	private int level;
@@ -78,6 +81,7 @@ public class NpcLevelingStats {
 				} else {
 					health = NpcDefaultsRegistry.getOwnedNpcDefault((NpcPlayerOwned) npc).getBaseHealth() + newLevel;
 				}
+				health += npc.getEntityData().getInteger(TAG_HEALTH_BONUS);
 				npc.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(health);
 			}
 			npc.updateDamageFromLevel();
