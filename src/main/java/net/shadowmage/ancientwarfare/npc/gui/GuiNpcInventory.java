@@ -57,6 +57,7 @@ public class GuiNpcInventory extends GuiContainerBase<ContainerNpcInventory> {
 				Minecraft.getMinecraft().displayGuiScreen(new GuiSkinSelection(GuiNpcInventory.this, getContainer()));
 			}
 		};
+		skinButton.addTooltip(I18n.format("guistrings.npc.skin_button.tooltip"));
 		addGuiElement(skinButton);
 
 		if (getContainer().entity instanceof NpcBase) {
