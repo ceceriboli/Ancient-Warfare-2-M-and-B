@@ -100,9 +100,6 @@ public class RenderNpcBase<T extends NpcBase> extends RenderBiped<T> {
 					name = TextFormatting.DARK_GRAY.toString() + name;
 				}
 				renderColoredLabel(npc, name, x, y, z, 0x20ffffff, 0xffffffff);
-			} else if (canBeCommandedBy && npc.hasCustomName()) {
-				// the name given to one of the player's own npcs shows like the name of a player: white on a dark plate, also through blocks
-				renderColoredLabel(npc, npc.getCustomNameTag(), x, y, z, 0x20ffffff, 0xffffffff, false);
 			}
 			if (canBeCommandedBy && AWNPCStatics.renderAI.getBoolean()) {
 				renderNpcAITasks(npc, x, y, z);
@@ -191,13 +188,9 @@ public class RenderNpcBase<T extends NpcBase> extends RenderBiped<T> {
 	}
 
 	private void renderColoredLabel(NpcBase entity, String string, double x, double y, double z, int color1, int color2) {
-		renderColoredLabel(entity, string, x, y, z, color1, color2, true);
-	}
-
-	private void renderColoredLabel(NpcBase entity, String string, double x, double y, double z, int color1, int color2, boolean needsLineOfSight) {
 		double d3 = entity.getDistanceSq(this.renderManager.renderViewEntity);
 
-		if (d3 <= (double) (64 * 64) && (!needsLineOfSight || entity.canEntityBeSeen(renderManager.renderViewEntity))) {
+		if (d3 <= (double) (64 * 64) && entity.canEntityBeSeen(renderManager.renderViewEntity)) {
 			FontRenderer fontrenderer = this.getFontRendererFromRenderManager();
 			float f = 0.8F;
 			float f1 = 0.016666668F * f;
