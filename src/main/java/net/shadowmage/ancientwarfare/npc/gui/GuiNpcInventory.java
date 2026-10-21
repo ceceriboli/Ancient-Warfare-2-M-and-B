@@ -26,6 +26,8 @@ public class GuiNpcInventory extends GuiContainerBase<ContainerNpcInventory> {
 	private Button skinButton;
 	private Label levelLabel;
 	private Label tierLabel;
+	private Label healthLabel;
+	private Label foodLabel;
 
 	public GuiNpcInventory(ContainerBase container) {
 		super(container);
@@ -166,6 +168,20 @@ public class GuiNpcInventory extends GuiContainerBase<ContainerNpcInventory> {
 		addGuiElement(levelLabel);
 		tierLabel = new Label(8 + 18 * 2, 98, "");
 		addGuiElement(tierLabel);
+		healthLabel = new Label(8, 8 + 5 * 18 + 8 + 4, "");
+		addGuiElement(healthLabel);
+		foodLabel = new Label(8, 8 + 5 * 18 + 8 + 16, "");
+		addGuiElement(foodLabel);
+	}
+
+	private static String formatNumber(float value) {
+		return value == (int) value ? String.valueOf((int) value) : String.format("%.1f", value);
+	}
+
+	// the food is a time in ticks: minutes and seconds
+	private static String formatTime(int ticks) {
+		int seconds = ticks / 20;
+		return String.format("%d:%02d", seconds / 60, seconds % 60);
 	}
 
 	private void updateLevelLabels() {
@@ -178,6 +194,19 @@ public class GuiNpcInventory extends GuiContainerBase<ContainerNpcInventory> {
 		levelLabel.addTooltip(container.xpToNextLevel > 0
 				? I18n.format("guistrings.npc.level_info", container.level, container.xp, container.xpToNextLevel, container.level + 1)
 				: I18n.format("guistrings.npc.level_max", container.level));
+		healthLabel.setText(I18n.format("guistrings.npc.health_short", formatNumber(container.health), formatNumber(container.maxHealth)));
+		healthLabel.setTooltip(null);
+		healthLabel.addTooltip(I18n.format(container.needsFood ? "guistrings.npc.health_info_food" : "guistrings.npc.health_info"));
+		foodLabel.setTooltip(null);
+		if (!container.needsFood) {
+			foodLabel.setText(I18n.format("guistrings.npc.food_not_needed"));
+		} else if (container.food <= 0) {
+			foodLabel.setText(I18n.format("guistrings.npc.food_empty"));
+			foodLabel.addTooltip(I18n.format("guistrings.npc.food_info", formatTime(container.foodMax)));
+		} else {
+			foodLabel.setText(I18n.format("guistrings.npc.food_short", formatTime(container.food)));
+			foodLabel.addTooltip(I18n.format("guistrings.npc.food_info", formatTime(container.foodMax)));
+		}
 		tierLabel.setText(container.tier > 0 ? I18n.format("guistrings.npc.tier_short", container.tier) : "");
 		tierLabel.setTooltip(null);
 		if (container.tier > 0) {

@@ -28,6 +28,11 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 	public int tier;
 	public int tier2Level;
 	public int healthBonus;
+	public float health;
+	public float maxHealth;
+	public boolean needsFood;
+	public int food;
+	public int foodMax;
 
 	public ContainerNpcInventory(EntityPlayer player, int x, int y, int z) {
 		super(player, x);
@@ -41,7 +46,8 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 		addSlotToContainer(new SlotItemHandler(inventory, 6, 8 + 18 * 2, 8 + 18 * 3));//work/combat/route orders slot
 		addSlotToContainer(new SlotItemHandler(inventory, 7, 8 + 18 * 2, 8 + 18 * 2));//upkeep orders slot
 
-		guiHeight = addPlayerSlots(8 + 5 * 18 + 8 + 18) + 8;
+		// two lines under the equipment (health, food) before the player inventory
+		guiHeight = addPlayerSlots(8 + 5 * 18 + 8 + 18 + 24) + 8;
 
 		name = entity.getCustomNameTag();
 		doNotPursue = entity.getDoNotPursue();
@@ -68,6 +74,12 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 		tag.setInteger("tier", tier);
 		tag.setInteger("tier2Level", AWDiplomacyStatics.upgradeLevelTier2);
 		tag.setInteger("healthBonus", entity.getEntityData().getInteger(NpcLevelingStats.TAG_HEALTH_BONUS));
+		tag.setFloat("health", entity.getHealth());
+		tag.setFloat("maxHealth", entity.getMaxHealth());
+		// the food is kept on the server only (a time in ticks, spent while the npc is awake); the most it holds is its upkeep amount
+		tag.setBoolean("needsFood", entity.requiresUpkeep());
+		tag.setInteger("food", entity.getFoodRemaining());
+		tag.setInteger("foodMax", entity instanceof net.shadowmage.ancientwarfare.npc.entity.IKeepFood ? ((net.shadowmage.ancientwarfare.npc.entity.IKeepFood) entity).getUpkeepAmount() : 0);
 		sendDataToClient(tag);
 	}
 
@@ -80,6 +92,11 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 			tier = tag.getInteger("tier");
 			tier2Level = tag.getInteger("tier2Level");
 			healthBonus = tag.getInteger("healthBonus");
+			health = tag.getFloat("health");
+			maxHealth = tag.getFloat("maxHealth");
+			needsFood = tag.getBoolean("needsFood");
+			food = tag.getInteger("food");
+			foodMax = tag.getInteger("foodMax");
 		}
 		if (tag.hasKey("customName")) {
 			this.name = tag.getString("customName");
