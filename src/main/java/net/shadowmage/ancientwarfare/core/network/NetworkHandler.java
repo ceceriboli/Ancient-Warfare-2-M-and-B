@@ -76,6 +76,8 @@ public final class NetworkHandler implements IGuiHandler {
 	public static final int PACKET_FACTION_DIALOGUE_ACTION = 39;
 	public static final int PACKET_KINGDOMS = 40;
 	public static final int PACKET_CITIES = 41;
+	public static final int PACKET_MARKET = 42;
+	public static final int PACKET_MARKET_ACTION = 43;
 
 	public static final int GUI_CRAFTING = 0;
 	public static final int GUI_SCANNER = 1;

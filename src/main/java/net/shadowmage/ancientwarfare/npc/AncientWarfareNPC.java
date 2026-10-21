@@ -144,6 +144,8 @@ public class AncientWarfareNPC {
 		PacketBase.registerPacketType(NetworkHandler.PACKET_FACTION_DIALOGUE_ACTION, PacketFactionDialogueAction.class, PacketFactionDialogueAction::new);
 		PacketBase.registerPacketType(NetworkHandler.PACKET_KINGDOMS, net.shadowmage.ancientwarfare.npc.network.PacketKingdoms.class, net.shadowmage.ancientwarfare.npc.network.PacketKingdoms::new);
 		PacketBase.registerPacketType(NetworkHandler.PACKET_CITIES, net.shadowmage.ancientwarfare.npc.network.PacketCities.class, net.shadowmage.ancientwarfare.npc.network.PacketCities::new);
+		PacketBase.registerPacketType(NetworkHandler.PACKET_MARKET, net.shadowmage.ancientwarfare.npc.network.PacketMarket.class, net.shadowmage.ancientwarfare.npc.network.PacketMarket::new);
+		PacketBase.registerPacketType(NetworkHandler.PACKET_MARKET_ACTION, net.shadowmage.ancientwarfare.npc.network.PacketMarketAction.class, net.shadowmage.ancientwarfare.npc.network.PacketMarketAction::new);
 
 		CompatLoader.registerCompat(new EpicSiegeCompat());
 		CompatLoader.registerCompat(new TwilightForestCompat());
@@ -155,6 +157,7 @@ public class AncientWarfareNPC {
 		RegistryLoader.registerParser(new NpcDefaultsRegistry.OwnedNpcDefaultsParser());
 		RegistryLoader.registerParser(new FactionTradeListRegistry.Parser());
 		RegistryLoader.registerParser(new NPCDialogue.Parser());
+		RegistryLoader.registerParser(new net.shadowmage.ancientwarfare.npc.war.Goods.Parser());
 	}
 
 	@EventHandler
@@ -192,6 +195,7 @@ public class AncientWarfareNPC {
 		evt.registerServerCommand(new CommandDiplomacy());
 		evt.registerServerCommand(new CommandArmy());
 		evt.registerServerCommand(new CommandService());
+		evt.registerServerCommand(new net.shadowmage.ancientwarfare.npc.command.CommandMarket());
 		evt.registerServerCommand(new net.shadowmage.ancientwarfare.npc.command.CommandKingdom());
 	}
 

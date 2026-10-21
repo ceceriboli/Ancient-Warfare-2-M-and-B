@@ -1,0 +1,158 @@
+{
+    "kinds": {
+        "food": {"buy_margin": 0.12, "sell_margin": 0.11},
+        "material": {"buy_margin": 0.12, "sell_margin": 0.11},
+        "goods": {"buy_margin": 0.15, "sell_margin": 0.15},
+        "equipment": {"buy_margin": 0.30, "sell_margin": 0.50},
+        "luxury": {"buy_margin": 0.20, "sell_margin": 0.25}
+    },
+    "goods": {
+        "grain": {
+            "kind": "food", "demand": 40,
+            "items": {
+                "minecraft:wheat": 5, "minecraft:bread": 15, "minecraft:hay_block": 45, "minecraft:wheat_seeds": 1,
+                "minecraft:beetroot": 3, "minecraft:beetroot_seeds": 1, "minecraft:pumpkin_seeds": 1, "minecraft:melon_seeds": 1,
+                "minecraft:sugar": 5, "minecraft:reeds": 4
+            }
+        },
+        "produce": {
+            "kind": "food", "demand": 40,
+            "items": {
+                "minecraft:carrot": 5, "minecraft:potato": 5, "minecraft:baked_potato": 7, "minecraft:apple": 6, "minecraft:pumpkin": 6,
+                "minecraft:melon": 1, "minecraft:melon_block": 9, "minecraft:cactus": 3, "minecraft:dye:3": 8, "minecraft:brown_mushroom": 4,
+                "minecraft:red_mushroom": 4, "minecraft:mushroom_stew": 12, "minecraft:beetroot_soup": 20, "minecraft:pumpkin_pie": 20
+            }
+        },
+        "meat": {
+            "kind": "food", "demand": 30,
+            "items": {
+                "minecraft:beef": 25, "minecraft:cooked_beef": 30, "minecraft:porkchop": 22, "minecraft:cooked_porkchop": 28,
+                "minecraft:chicken": 15, "minecraft:cooked_chicken": 20, "minecraft:mutton": 18, "minecraft:cooked_mutton": 24,
+                "minecraft:rabbit": 15, "minecraft:cooked_rabbit": 20, "minecraft:rabbit_stew": 40, "minecraft:egg": 3
+            }
+        },
+        "fish": {
+            "kind": "food", "demand": 15,
+            "items": {
+                "minecraft:fish": 10, "minecraft:fish:1": 15, "minecraft:fish:2": 6, "minecraft:fish:3": 8, "minecraft:cooked_fish": 14,
+                "minecraft:cooked_fish:1": 20
+            }
+        },
+        "wood": {
+            "kind": "material", "demand": 40,
+            "items": {
+                "minecraft:log": 16, "minecraft:log2": 16, "minecraft:planks": 4, "minecraft:stick": 2, "minecraft:sapling": 3,
+                "minecraft:chest": 32, "minecraft:crafting_table": 16, "minecraft:fence": 7, "minecraft:fence_gate": 16,
+                "minecraft:wooden_door": 8, "minecraft:bowl": 3, "minecraft:boat": 20, "minecraft:ladder": 3
+            }
+        },
+        "fuel": {
+            "kind": "material", "demand": 20,
+            "items": {"minecraft:coal": 12, "minecraft:coal:1": 10, "minecraft:coal_block": 108, "minecraft:torch": 4}
+        },
+        "stone": {
+            "kind": "material", "demand": 30,
+            "items": {
+                "minecraft:cobblestone": 1, "minecraft:stone": 2, "minecraft:stonebrick": 2, "minecraft:mossy_cobblestone": 4,
+                "minecraft:sand": 1, "minecraft:sandstone": 4, "minecraft:gravel": 1, "minecraft:flint": 3, "minecraft:clay_ball": 4,
+                "minecraft:clay": 16, "minecraft:brick": 6, "minecraft:hardened_clay": 5, "minecraft:stained_hardened_clay": 6,
+                "minecraft:glass": 3, "minecraft:obsidian": 60
+            }
+        },
+        "ore": {
+            "kind": "material", "demand": 15,
+            "items": {
+                "minecraft:iron_ingot": 80, "minecraft:iron_ore": 60, "minecraft:iron_nugget": 9, "minecraft:iron_block": 720,
+                "minecraft:gold_ingot": 160, "minecraft:gold_ore": 120, "minecraft:gold_nugget": 18, "minecraft:gold_block": 1440,
+                "minecraft:redstone": 20, "minecraft:dye:4": 30, "minecraft:diamond": 600, "minecraft:emerald": 400
+            }
+        },
+        "tools": {
+            "kind": "goods", "demand": 10,
+            "items": {
+                "minecraft:iron_pickaxe": 250, "minecraft:iron_axe": 250, "minecraft:iron_shovel": 85, "minecraft:iron_hoe": 165,
+                "minecraft:wooden_pickaxe": 16, "minecraft:wooden_axe": 16, "minecraft:wooden_shovel": 8, "minecraft:wooden_hoe": 12,
+                "minecraft:stone_pickaxe": 8, "minecraft:stone_axe": 8, "minecraft:stone_shovel": 4, "minecraft:stone_hoe": 6,
+                "minecraft:golden_pickaxe": 490, "minecraft:golden_axe": 490, "minecraft:golden_shovel": 165, "minecraft:golden_hoe": 325,
+                "minecraft:diamond_pickaxe": 1810, "minecraft:diamond_axe": 1810, "minecraft:diamond_shovel": 605, "minecraft:diamond_hoe": 1205,
+                "minecraft:shears": 160, "minecraft:bucket": 240, "minecraft:flint_and_steel": 85, "minecraft:compass": 360,
+                "minecraft:clock": 660, "minecraft:fishing_rod": 15, "minecraft:lead": 30, "minecraft:name_tag": 100, "minecraft:saddle": 400,
+                "ancientwarfare:iron_hammer": 250, "ancientwarfare:wooden_quill": 6, "ancientwarfare:stone_quill": 8,
+                "ancientwarfare:iron_quill": 90, "ancientwarfare:gold_quill": 170, "ancientwarfare:diamond_quill": 610
+            }
+        },
+        "weapons": {
+            "kind": "equipment", "demand": 8,
+            "items": {
+                "minecraft:iron_sword": 165, "minecraft:wooden_sword": 9, "minecraft:stone_sword": 4, "minecraft:golden_sword": 325,
+                "minecraft:diamond_sword": 1205, "minecraft:bow": 30, "minecraft:arrow": 2, "minecraft:shield": 104,
+                "ancientwarfarenpc:wooden_spear": 10, "ancientwarfarenpc:stone_spear": 6, "ancientwarfarenpc:iron_spear": 170,
+                "ancientwarfarenpc:golden_spear": 330, "ancientwarfarenpc:diamond_spear": 1210,
+                "ancientwarfarenpc:wooden_halberd": 14, "ancientwarfarenpc:stone_halberd": 9, "ancientwarfarenpc:iron_halberd": 250,
+                "ancientwarfarenpc:golden_halberd": 490, "ancientwarfarenpc:diamond_halberd": 1810,
+                "ancientwarfarenpc:wooden_lance": 14, "ancientwarfarenpc:stone_lance": 9, "ancientwarfarenpc:iron_lance": 250,
+                "ancientwarfarenpc:golden_lance": 490, "ancientwarfarenpc:diamond_lance": 1810,
+                "ancientwarfarenpc:wooden_shield": 30, "ancientwarfarenpc:iron_shield": 250
+            }
+        },
+        "armor": {
+            "kind": "equipment", "demand": 8,
+            "items": {
+                "minecraft:iron_chestplate": 640, "minecraft:iron_helmet": 400, "minecraft:iron_leggings": 560, "minecraft:iron_boots": 320,
+                "minecraft:leather_helmet": 125, "minecraft:leather_chestplate": 200, "minecraft:leather_leggings": 175, "minecraft:leather_boots": 100,
+                "minecraft:chainmail_helmet": 300, "minecraft:chainmail_chestplate": 480, "minecraft:chainmail_leggings": 420, "minecraft:chainmail_boots": 240,
+                "minecraft:golden_helmet": 800, "minecraft:golden_chestplate": 1280, "minecraft:golden_leggings": 1120, "minecraft:golden_boots": 640,
+                "minecraft:diamond_helmet": 3000, "minecraft:diamond_chestplate": 4800, "minecraft:diamond_leggings": 4200, "minecraft:diamond_boots": 2400,
+                "minecraft:iron_horse_armor": 500, "minecraft:golden_horse_armor": 900, "minecraft:diamond_horse_armor": 2500
+            }
+        },
+        "hides": {
+            "kind": "material", "demand": 15,
+            "items": {
+                "minecraft:leather": 25, "minecraft:rabbit_hide": 6, "minecraft:rabbit_foot": 60, "minecraft:feather": 2, "minecraft:string": 8,
+                "minecraft:bone": 4, "minecraft:dye:15": 2, "minecraft:slime_ball": 40
+            }
+        },
+        "cloth": {
+            "kind": "goods", "demand": 15,
+            "items": {
+                "minecraft:wool": 24, "minecraft:carpet": 16, "minecraft:bed": 84, "minecraft:banner": 150, "minecraft:painting": 40,
+                "minecraft:paper": 3, "minecraft:book": 34, "minecraft:dye": 8
+            }
+        },
+        "potions": {
+            "kind": "luxury", "demand": 4,
+            "items": {
+                "minecraft:potion": 60, "minecraft:glass_bottle": 3, "minecraft:nether_wart": 15, "minecraft:blaze_rod": 120,
+                "minecraft:blaze_powder": 60, "minecraft:ghast_tear": 500, "minecraft:magma_cream": 80, "minecraft:speckled_melon": 150,
+                "minecraft:fermented_spider_eye": 20, "minecraft:glowstone_dust": 20, "minecraft:experience_bottle": 100,
+                "minecraft:ender_pearl": 150, "minecraft:golden_apple": 1300, "minecraft:golden_carrot": 150
+            }
+        }
+    },
+    "cultures": {
+        "empire": {"grain": 1.6, "produce": 1.3, "tools": 1.4, "armor": 1.3, "weapons": 1.2, "cloth": 1.3, "fish": 0.7, "potions": 0.6},
+        "norska": {"fish": 1.6, "meat": 1.4, "wood": 1.6, "hides": 1.6, "weapons": 1.3, "grain": 0.5, "produce": 0.6, "cloth": 0.8},
+        "nogg": {"grain": 1.5, "produce": 1.5, "wood": 1.5, "ore": 1.4, "fuel": 1.4, "tools": 1.2, "armor": 0.8},
+        "sarkonid": {"produce": 1.4, "cloth": 1.6, "potions": 1.2, "stone": 1.4, "wood": 0.5, "fuel": 0.6},
+        "buffloka": {"meat": 1.8, "hides": 1.8, "produce": 1.2, "ore": 0.5, "tools": 0.6},
+        "xoltec": {"ore": 1.8, "stone": 1.6, "produce": 1.2, "wood": 0.6, "cloth": 0.7},
+        "orc": {"meat": 1.3, "ore": 1.2, "weapons": 1.3, "grain": 0.5, "cloth": 0.5, "potions": 0.5},
+        "dwarf": {"ore": 2.0, "stone": 1.8, "tools": 1.6, "weapons": 1.5, "armor": 1.5, "produce": 0.5, "wood": 0.7},
+        "elf": {"wood": 1.6, "produce": 1.5, "potions": 1.5, "ore": 0.6},
+        "good": {"wood": 1.4, "produce": 1.3, "potions": 1.4},
+        "wizardly": {"potions": 1.8, "cloth": 1.2, "meat": 0.7},
+        "coven": {"potions": 1.8, "grain": 0.7},
+        "witchbane": {"grain": 1.3, "weapons": 1.2, "armor": 1.2, "potions": 0.6},
+        "pirate": {"fish": 1.8, "weapons": 1.2, "potions": 1.2, "grain": 0.5, "wood": 0.8},
+        "reiksgard": {"grain": 1.4, "armor": 1.3, "weapons": 1.3},
+        "zimba": {"meat": 1.5, "hides": 1.5, "produce": 1.3, "ore": 0.6},
+        "kong": {"produce": 1.6, "wood": 1.4, "ore": 0.5, "armor": 0.5},
+        "lizardmen": {"fish": 1.5, "produce": 1.3, "ore": 0.6},
+        "hobbit": {"grain": 1.7, "produce": 1.7, "meat": 1.3, "weapons": 0.5, "armor": 0.5},
+        "gnome": {"tools": 1.6, "ore": 1.3, "stone": 1.3},
+        "barbarian": {"meat": 1.4, "hides": 1.4, "weapons": 1.2, "cloth": 0.6},
+        "amazon": {"meat": 1.3, "produce": 1.3, "weapons": 1.2},
+        "vampire": {"potions": 1.4, "meat": 0.6, "produce": 0.6}
+    }
+}

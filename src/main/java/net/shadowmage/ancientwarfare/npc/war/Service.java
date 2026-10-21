@@ -394,6 +394,8 @@ public class Service {
 		int loss = Math.min(settlement.getManpower(), (int) Math.ceil(siege.getTotalWaves() * siege.getAttackersPerWave() * AWDiplomacyStatics.servicePlunderRatio));
 		settlement.setManpower(settlement.getManpower() - loss);
 		settlement.setTreasury(0); // the raiders carry off the taxes too
+		settlement.setTreasuryCopper(0);
+		Markets.onPlundered(settlement);
 		data.markDirty();
 		AncientWarfareNPC.LOG.info("{} {}: nobody came to defend city {}, it loses {} manpower", siege.getKind().getName(), siege.getId(), settlement.getId(), loss);
 		MinecraftServer server = world.getMinecraftServer();

@@ -76,6 +76,11 @@ public class NpcFactionTrader extends NpcFaction {
 	protected boolean processInteract(EntityPlayer player, EnumHand hand) {
 		boolean baton = !player.getHeldItem(hand).isEmpty() && player.getHeldItem(hand).getItem() instanceof ItemCommandBaton;
 		if (!baton && isEntityAlive()) {
+			if (!player.world.isRemote && !player.isSneaking() && player instanceof net.minecraft.entity.player.EntityPlayerMP
+					&& net.shadowmage.ancientwarfare.npc.war.Markets.tryOpen((net.minecraft.entity.player.EntityPlayerMP) player, this)) {
+				// a trader in a city opens the city's market
+				return true;
+			}
 			if (!player.world.isRemote && trader == null && !player.isSneaking()) {
 				startTrade(player);
 				NetworkHandler.INSTANCE.openGui(player, NetworkHandler.GUI_NPC_FACTION_TRADE_VIEW, getEntityId(), 0, 0);

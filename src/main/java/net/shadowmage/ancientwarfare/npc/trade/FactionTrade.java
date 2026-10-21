@@ -101,6 +101,22 @@ public class FactionTrade extends Trade {
 		super.doTrade(player, storage);
 	}
 
+	/**
+	 * Takes one of the available trades without the exchange of items (the market sells it as a special for coins)
+	 *
+	 * @return false if none is available
+	 */
+	public boolean takeOne(long totalWorldTime) {
+		if (currentAvailable <= 0) {
+			return false;
+		}
+		if (refillFrequency != 0) {
+			currentAvailable--;
+			refillTime = totalWorldTime + refillFrequency;
+		}
+		return true;
+	}
+
 	public long getRefillTime() {
 		return refillTime;
 	}

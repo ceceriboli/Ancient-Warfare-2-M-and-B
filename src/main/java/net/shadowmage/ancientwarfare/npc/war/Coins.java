@@ -31,7 +31,7 @@ public class Coins {
 	/**
 	 * @return the value of one coin in copper coins; 0 for coins that are not money (ancient)
 	 */
-	private static int value(ItemCoin.CoinMetal metal) {
+	static int value(ItemCoin.CoinMetal metal) {
 		switch (metal) {
 			case GOLD:
 				return 64;
@@ -49,6 +49,53 @@ public class Coins {
 	 */
 	public static void give(EntityPlayer player, int amount) {
 		giveMetal(player, getMetal(), amount);
+	}
+
+	/**
+	 * Gives a sum in copper coins as gold, silver and copper coins (the fewest coins)
+	 */
+	public static void giveCopper(EntityPlayer player, int copper) {
+		int left = copper;
+		for (ItemCoin.CoinMetal metal : BY_VALUE) {
+			int coins = left / value(metal);
+			left -= coins * value(metal);
+			giveMetal(player, metal, coins);
+		}
+		player.inventoryContainer.detectAndSendChanges();
+	}
+
+	/**
+	 * Takes a sum in copper coins from the player's coins of any metal and gives the change back
+	 *
+	 * @return false (and takes nothing) if the player has not enough money
+	 */
+	public static boolean takeCopper(EntityPlayer player, int copper) {
+		int total = countCopper(player);
+		if (copper <= 0 || total < copper) {
+			return copper <= 0;
+		}
+		for (int slot = 0; slot < player.inventory.getSizeInventory(); slot++) {
+			ItemStack stack = player.inventory.getStackInSlot(slot);
+			if (stack.getItem() == AWNPCItems.COIN && value(ItemCoin.getMetal(stack)) > 0) {
+				player.inventory.setInventorySlotContents(slot, ItemStack.EMPTY);
+			}
+		}
+		giveCopper(player, total - copper);
+		return true;
+	}
+
+	/**
+	 * @return true for a copper, silver or gold coin (money; ancient coins are not)
+	 */
+	public static boolean isMoney(ItemStack stack) {
+		return stack.getItem() == AWNPCItems.COIN && value(ItemCoin.getMetal(stack)) > 0;
+	}
+
+	/**
+	 * @return the value of a coin stack in copper coins, 0 for anything else
+	 */
+	public static int copperValue(ItemStack stack) {
+		return stack.getItem() == AWNPCItems.COIN ? value(ItemCoin.getMetal(stack)) * stack.getCount() : 0;
 	}
 
 	/**
@@ -81,7 +128,10 @@ public class Coins {
 		return countCopper(player) / Math.max(1, value(getMetal()));
 	}
 
-	private static int countCopper(EntityPlayer player) {
+	/**
+	 * @return the value of the player's copper, silver and gold coins in copper coins
+	 */
+	public static int countCopper(EntityPlayer player) {
 		int total = 0;
 		for (int slot = 0; slot < player.inventory.getSizeInventory(); slot++) {
 			ItemStack stack = player.inventory.getStackInSlot(slot);

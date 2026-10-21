@@ -1116,7 +1116,12 @@ public class Settlements {
 		if (!Sieges.isBesieged(settlement)) {
 			// taxes: coins for the owner of the city, up to city_tax_max_days days of them
 			int daily = getDailyTax(settlement);
-			settlement.setTreasury((int) Math.min((long) daily * AWDiplomacyStatics.cityTaxMaxDays, settlement.getTreasury() + days * daily));
+			long cap = (long) daily * AWDiplomacyStatics.cityTaxMaxDays;
+			if (settlement.getTreasury() < cap) {
+				// (trade in the market can bring the treasury above the cap: taxes then wait)
+				settlement.setTreasury((int) Math.min(cap, settlement.getTreasury() + days * daily));
+			}
+			Markets.onDays(settlement, days);
 		}
 		if (AWDiplomacyStatics.conqueredManpowerGrowthPerDay > 0 && settlement.getMaxManpower() < settlement.getManpowerCap() && !Sieges.isBesieged(settlement)) {
 			// a conquered city slowly grows back to the size it had before the conquest
@@ -1271,6 +1276,8 @@ public class Settlements {
 		settlement.setFaction(winner);
 		settlement.setOwnerId(null); // a conquered kingdom capital is a city of the winners now
 		settlement.setTreasury(0); // the winners take what was in it
+		settlement.setTreasuryCopper(0);
+		Markets.onPlundered(settlement);
 		checkFactionGone(world, oldFaction);
 		settlement.getPendingRespawns().clear();
 		settlement.missingLeaderChecks = 0;

@@ -72,6 +72,11 @@ public class Settlement {
 	private int tributeBonus;
 	// coins collected as taxes and not yet taken by the owner of the city
 	private int treasury;
+	// copper coins of the treasury below one coin of the money metal (trade in the market is counted in copper)
+	private int treasuryCopper;
+	// the market of the city (null until it is first used), see Markets
+	@Nullable
+	private Market market;
 
 	// not saved: consecutive checks where the leader could not be found although its area was loaded
 	int missingLeaderChecks = 0;
@@ -219,6 +224,23 @@ public class Settlement {
 		return maxManpower;
 	}
 
+	int getTreasuryCopper() {
+		return treasuryCopper;
+	}
+
+	void setTreasuryCopper(int treasuryCopper) {
+		this.treasuryCopper = treasuryCopper;
+	}
+
+	@Nullable
+	Market getMarket() {
+		return market;
+	}
+
+	void setMarket(@Nullable Market market) {
+		this.market = market;
+	}
+
 	public int getTreasury() {
 		return treasury;
 	}
@@ -357,6 +379,10 @@ public class Settlement {
 		}
 		tag.setInteger("tribute", tributeBonus);
 		tag.setInteger("treasury", treasury);
+		tag.setInteger("treasuryCopper", treasuryCopper);
+		if (market != null) {
+			tag.setTag("market", market.writeToNBT());
+		}
 		NBTTagList respawnList = new NBTTagList();
 		for (PendingRespawn respawn : pendingRespawns) {
 			NBTTagCompound respawnTag = new NBTTagCompound();
@@ -406,6 +432,10 @@ public class Settlement {
 		settlement.ownerId = tag.hasUniqueId("owner") ? tag.getUniqueId("owner") : null;
 		settlement.tributeBonus = tag.getInteger("tribute");
 		settlement.treasury = tag.getInteger("treasury");
+		settlement.treasuryCopper = tag.getInteger("treasuryCopper");
+		if (tag.hasKey("market")) {
+			settlement.market = Market.readFromNBT(tag.getCompoundTag("market"));
+		}
 		NBTTagList respawnList = tag.getTagList("pendingRespawns", Constants.NBT.TAG_COMPOUND);
 		for (int i = 0; i < respawnList.tagCount(); i++) {
 			NBTTagCompound respawnTag = respawnList.getCompoundTagAt(i);
