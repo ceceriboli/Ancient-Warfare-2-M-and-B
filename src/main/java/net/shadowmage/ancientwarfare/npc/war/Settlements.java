@@ -1086,6 +1086,13 @@ public class Settlements {
 		return Math.max(1, (int) Math.round(settlement.getBaseMaxManpower() * AWDiplomacyStatics.cityTaxPerManpower));
 	}
 
+	/**
+	 * Manpower a city regains each day: manpower_regen_ratio of its maximum (its size: 2 per garrison unit), at least manpower_regen_per_day
+	 */
+	public static int getDailyManpowerRegen(Settlement settlement) {
+		return Math.max(AWDiplomacyStatics.manpowerRegenPerDay, (int) Math.round(settlement.getBaseMaxManpower() * AWDiplomacyStatics.manpowerRegenRatio));
+	}
+
 	private static void regenerateManpower(World world, SettlementData data, Settlement settlement) {
 		// Minecraft days of the world time (they follow /time and sleeping, like the days of the diplomacy)
 		long day = getDay(world);
@@ -1109,8 +1116,8 @@ public class Settlements {
 			long growth = days * AWDiplomacyStatics.conqueredManpowerGrowthPerDay;
 			settlement.setMaxManpower((int) Math.min(settlement.getManpowerCap(), settlement.getMaxManpower() + growth));
 		}
-		if (AWDiplomacyStatics.manpowerRegenPerDay > 0 && settlement.getManpower() < settlement.getMaxManpower() && !Sieges.isBesieged(settlement)) {
-			long regen = (day - settlement.getLastRegenDay()) * AWDiplomacyStatics.manpowerRegenPerDay;
+		if (getDailyManpowerRegen(settlement) > 0 && settlement.getManpower() < settlement.getMaxManpower() && !Sieges.isBesieged(settlement)) {
+			long regen = (day - settlement.getLastRegenDay()) * getDailyManpowerRegen(settlement);
 			settlement.setManpower((int) Math.min(settlement.getMaxManpower(), settlement.getManpower() + regen));
 		}
 		settlement.setLastRegenDay(day);

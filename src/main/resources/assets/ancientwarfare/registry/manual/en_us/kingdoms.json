@@ -28,7 +28,7 @@
         },
         {
             "content_type": "text",
-            "text": "A faction leader, the Leader NPC with the golden label “Leader of the …”, rules a city: the area of its structure or town. The city has a name, a garrison (the soldiers of the structure) and manpower, a reserve of soldiers. When a garrison soldier dies a replacement arrives after 30 seconds and costs 1 manpower; a city regains 1 manpower every Minecraft day. A purple bar at the top of the screen shows the manpower of the city you are in.\nA city has one ruler, the highest of its leaders; the others are its captains. The ruler and the garrison never despawn. Cities of the same faction that overlap are merged into one."
+            "text": "A faction leader, the Leader NPC with the golden label “Leader of the …”, rules a city: the area of its structure or town. The city has a name, a garrison (the soldiers of the structure) and manpower, a reserve of soldiers. When a garrison soldier dies a replacement arrives after 30 seconds and costs 1 manpower; a city regains 5% of its maximum manpower every Minecraft day (at least 1), so larger cities recover faster, and pays taxes in proportion to its maximum manpower. A purple bar at the top of the screen shows the manpower of the city you are in.\nA city has one ruler, the highest of its leaders; the others are its captains. The ruler and the garrison never despawn. Cities of the same faction that overlap are merged into one."
         },
         {
             "content_type": "heading",

@@ -129,6 +129,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static double manpowerPerUnit = 2.0;
 	public static int manpowerMin = 10;
 	public static int manpowerRegenPerDay = 1;
+	public static double manpowerRegenRatio = 0.05D;
 	public static int respawnDelayTicks = 600;
 	public static boolean announceSettlementChanges = true;
 	public static String fallenGarrison = "flee";
@@ -415,6 +416,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		manpowerMin = config.get(serverOptions, "manpower_min", manpowerMin, "Minimum manpower\nDefault=" + manpowerMin + "\n" + "Minimum starting manpower of a city.", 0, 10000).getInt();
 
+		manpowerRegenRatio = config.get(serverOptions, "manpower_regen_ratio", manpowerRegenRatio, "Manpower regeneration by size\nDefault=" + manpowerRegenRatio + "\n" + "Share of its maximum manpower (its size: 2 per garrison unit) a city regains every Minecraft day, up to the maximum. Never less than manpower_regen_per_day.", 0.0D, 1.0D).getDouble();
 		manpowerRegenPerDay = config.get(serverOptions, "manpower_regen_per_day", manpowerRegenPerDay, "Manpower regeneration\nDefault=" + manpowerRegenPerDay + "\n" + "Manpower a city regains every Minecraft day, up to its starting manpower, while it is not under siege.", 0, 10000).getInt();
 
 		respawnDelayTicks = config.get(serverOptions, "respawn_delay_ticks", respawnDelayTicks, "Respawn delay\nDefault=" + respawnDelayTicks + "\n" + "Ticks (20 per second) before a killed garrison unit respawns in its city.", 20, 72000).getInt();
