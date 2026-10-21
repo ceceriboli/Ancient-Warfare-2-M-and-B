@@ -16,6 +16,8 @@ import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.items.ItemStackHandler;
 import net.shadowmage.ancientwarfare.core.config.AWCoreStatics;
 import net.shadowmage.ancientwarfare.core.util.WorldTools;
 import net.shadowmage.ancientwarfare.npc.AncientWarfareNPC;
@@ -41,10 +43,19 @@ public abstract class NpcPlayerOwned extends NpcBase implements IKeepFood, INpc 
 	private static final String COMMAND_TAG = "command";
 	private static final String TOWN_HALL_TAG = "townHall";
 	private static final String UPKEEP_POS_TAG = "upkeepPos";
+	private static final String FOOD_STORE_TAG = "foodStore";
 	public boolean isAlarmed = false;
 
 	private Command playerIssuedCommand = Command.NONE;
 	private int foodValueRemaining = 0;
+	// a small store of food in the npc's window: it eats from it when its food runs out, instead of going to its upkeep point
+	public static final int FOOD_SLOTS = 4;
+	private final ItemStackHandler foodStore = new ItemStackHandler(FOOD_SLOTS) {
+		@Override
+		public boolean isItemValid(int slot, @Nonnull ItemStack stack) {
+			return AncientWarfareNPC.statics.getFoodValue(stack) > 0;
+		}
+	};
 
 	NpcAIPlayerOwnedRideHorse horseAI;
 
@@ -277,6 +288,13 @@ public abstract class NpcPlayerOwned extends NpcBase implements IKeepFood, INpc 
 	@Override
 	protected void dropEquipment(boolean wasRecentlyHit, int lootingModifier) {
 		if (!npcKeepEquipment) {
+			for (int slot = 0; slot < foodStore.getSlots(); slot++) {
+				ItemStack food = foodStore.getStackInSlot(slot);
+				if (!food.isEmpty()) {
+					this.entityDropItem(food, 0.0F);
+					foodStore.setStackInSlot(slot, ItemStack.EMPTY);
+				}
+			}
 			for (EntityEquipmentSlot slot : EntityEquipmentSlot.values()) {
 				ItemStack itemstack = this.getItemStackFromSlot(slot);
 				if (!itemstack.isEmpty()) {
@@ -294,6 +312,22 @@ public abstract class NpcPlayerOwned extends NpcBase implements IKeepFood, INpc 
 			}
 			ordersStack = ItemStack.EMPTY;
 			upkeepStack = ItemStack.EMPTY;
+		}
+	}
+
+	public IItemHandlerModifiable getFoodStore() {
+		return foodStore;
+	}
+
+	private void eatFromFoodStore() {
+		for (int slot = 0; slot < foodStore.getSlots(); slot++) {
+			ItemStack stack = foodStore.getStackInSlot(slot);
+			int value = AncientWarfareNPC.statics.getFoodValue(stack);
+			if (value > 0) {
+				foodStore.extractItem(slot, 1, false);
+				foodValueRemaining += value;
+				return;
+			}
 		}
 	}
 
@@ -341,6 +375,9 @@ public abstract class NpcPlayerOwned extends NpcBase implements IKeepFood, INpc 
 		if (foodValueRemaining > 0 && !isSleeping()) {
 			foodValueRemaining--;
 		}
+		if (!world.isRemote && foodValueRemaining <= 0 && requiresUpkeep()) {
+			eatFromFoodStore();
+		}
 	}
 
 	@Nullable
@@ -352,9 +389,26 @@ public abstract class NpcPlayerOwned extends NpcBase implements IKeepFood, INpc 
 	}
 
 	@Override
+	public void writeAdditionalItemData(NBTTagCompound tag) {
+		super.writeAdditionalItemData(tag);
+		tag.setTag(FOOD_STORE_TAG, foodStore.serializeNBT());
+	}
+
+	@Override
+	public void readAdditionalItemData(NBTTagCompound tag) {
+		super.readAdditionalItemData(tag);
+		if (tag.hasKey(FOOD_STORE_TAG)) {
+			foodStore.deserializeNBT(tag.getCompoundTag(FOOD_STORE_TAG));
+		}
+	}
+
+	@Override
 	public void readEntityFromNBT(NBTTagCompound tag) {
 		super.readEntityFromNBT(tag);
 		foodValueRemaining = tag.getInteger("foodValue");
+		if (tag.hasKey(FOOD_STORE_TAG)) {
+			foodStore.deserializeNBT(tag.getCompoundTag(FOOD_STORE_TAG));
+		}
 		if (tag.hasKey(COMMAND_TAG)) {
 			playerIssuedCommand = new Command(tag.getCompoundTag(COMMAND_TAG));
 		}
@@ -371,6 +425,7 @@ public abstract class NpcPlayerOwned extends NpcBase implements IKeepFood, INpc 
 	public void writeEntityToNBT(NBTTagCompound tag) {
 		super.writeEntityToNBT(tag);
 		tag.setInteger("foodValue", foodValueRemaining);
+		tag.setTag(FOOD_STORE_TAG, foodStore.serializeNBT());
 		if (playerIssuedCommand != Command.NONE) {
 			tag.setTag(COMMAND_TAG, playerIssuedCommand.writeToNBT(new NBTTagCompound()));
 		}

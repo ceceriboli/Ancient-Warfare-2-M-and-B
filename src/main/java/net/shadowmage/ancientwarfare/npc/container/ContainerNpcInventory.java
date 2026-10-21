@@ -6,6 +6,8 @@ import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.items.IItemHandler;
+import net.shadowmage.ancientwarfare.npc.AncientWarfareNPC;
 import net.minecraftforge.items.SlotItemHandler;
 import net.shadowmage.ancientwarfare.npc.config.AWDiplomacyStatics;
 import net.shadowmage.ancientwarfare.npc.entity.NpcBase;
@@ -19,6 +21,9 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 	public boolean doNotPursue; //if the npc should not pursue targets away from its position/route
 	public boolean isArcher = entity.getNpcSubType().equals("archer");
 	public final int guiHeight;
+	public static final int FOOD_SLOT_X = 98;
+	public static final int FOOD_SLOT_Y = 122;
+	private static final int FIRST_FOOD_SLOT = 8 + 36;
 	private String name;
 	public NpcSkinSettings skinSettings;
 	// sent by the server when the gui opens: the base level, its xp, the xp to the next level (0 at the highest), the training tier (0 = none)
@@ -50,6 +55,13 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 
 		// two lines under the equipment (health, food) before the player inventory
 		guiHeight = addPlayerSlots(8 + 5 * 18 + 8 + 18 + 24) + 8;
+		// the food store of a player's npc, after the player slots (the shift click code counts the slots before them)
+		if (entity instanceof net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned) {
+			IItemHandler foodStore = ((net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned) entity).getFoodStore();
+			for (int i = 0; i < net.shadowmage.ancientwarfare.npc.entity.NpcPlayerOwned.FOOD_SLOTS; i++) {
+				addSlotToContainer(new SlotItemHandler(foodStore, i, FOOD_SLOT_X + i * 18, FOOD_SLOT_Y));
+			}
+		}
 
 		name = entity.getCustomNameTag();
 		doNotPursue = entity.getDoNotPursue();
@@ -175,7 +187,14 @@ public class ContainerNpcInventory extends ContainerNpcBase<NpcBase> implements 
 			itemstack = slotStack.copy();
 			EntityEquipmentSlot entityequipmentslot = EntityLiving.getSlotForItemStack(itemstack);
 
-			if (slotClickedIndex < 8) {
+			if (slotClickedIndex >= FIRST_FOOD_SLOT) {
+				if (!mergeItemStack(slotStack, 8, 44, true)) {
+					return ItemStack.EMPTY;
+				}
+			} else if (slotClickedIndex >= 8 && inventorySlots.size() > FIRST_FOOD_SLOT && AncientWarfareNPC.statics.getFoodValue(slotStack) > 0
+					&& mergeItemStack(slotStack, FIRST_FOOD_SLOT, inventorySlots.size(), false)) {
+				// food goes to the npc's food store
+			} else if (slotClickedIndex < 8) {
 				if (!mergeItemStack(slotStack, 8, 44, true)) {
 					return ItemStack.EMPTY;
 				}
