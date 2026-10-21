@@ -51,6 +51,18 @@ public class Coins {
 		giveMetal(player, getMetal(), amount);
 	}
 
+	/**
+	 * Drops coins of the money metal where the entity stands (the treasury of a city when its ruler dies)
+	 */
+	public static void drop(net.minecraft.entity.Entity entity, int amount) {
+		int left = amount;
+		while (left > 0) {
+			ItemStack stack = ItemCoin.getCoinStack(getMetal(), Math.min(left, 64));
+			left -= stack.getCount();
+			entity.entityDropItem(stack, 0.5F);
+		}
+	}
+
 	private static void giveMetal(EntityPlayer player, ItemCoin.CoinMetal metal, int amount) {
 		int left = amount;
 		while (left > 0) {

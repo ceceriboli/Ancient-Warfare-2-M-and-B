@@ -220,6 +220,13 @@ public class Settlements {
 			BlockPos post = npc.hasHome() && settlement.contains(npc.world.provider.getDimension(), npc.getHomePosition()) ? npc.getHomePosition()
 					: settlement.getLastLeaderPos();
 			settlement.setLeader(settlement.getLeaderId(), post);
+			if (settlement.getTreasury() > 0) {
+				// the ruler carried the city's treasury: it falls where he died, for whoever gets there
+				AncientWarfareNPC.LOG.info("Ruler of city {} died carrying {} coins of its treasury", settlement.getId(), settlement.getTreasury());
+				Coins.drop(npc, settlement.getTreasury());
+				settlement.setTreasury(0);
+				data.markDirty();
+			}
 			onLeaderKilled(npc.world, data, settlement, source);
 		} else if (isDefender(npc, settlement) && settlement.getManpower() > 0) {
 			NBTTagCompound entityTag = snapshotForRespawn(npc);
