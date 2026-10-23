@@ -779,23 +779,37 @@ public class Settlements {
 				}
 			}
 		}
-		TileAdvancedSpawner highest = null;
-		String faction = null;
+		// several factions in one structure (a town with a monster lair in it): the city is of the faction with the most fighting units
+		Map<String, Integer> units = new HashMap<>();
+		Map<String, TileAdvancedSpawner> highestLeader = new HashMap<>();
 		for (TileAdvancedSpawner spawner : spawners) {
+			for (String spawned : getSpawnedFactions(spawner.getSettings())) {
+				units.merge(spawned, countGarrisonSpawns(world, spawner.getSettings(), spawned), Integer::sum);
+			}
 			String leaderFaction = getLeaderFaction(spawner.getSettings());
-			if (leaderFaction != null && (highest == null || spawner.getPos().getY() > highest.getPos().getY())) {
-				highest = spawner;
-				faction = leaderFaction;
+			if (leaderFaction != null) {
+				TileAdvancedSpawner top = highestLeader.get(leaderFaction);
+				if (top == null || spawner.getPos().getY() > top.getPos().getY()) {
+					highestLeader.put(leaderFaction, spawner);
+				}
 			}
 		}
+		String faction = null;
+		for (Map.Entry<String, Integer> count : units.entrySet()) {
+			int best = faction == null ? -1 : units.get(faction);
+			if (count.getValue() > best || count.getValue() == best && highestLeader.containsKey(count.getKey()) && !highestLeader.containsKey(faction)) {
+				faction = count.getKey();
+			}
+		}
+		TileAdvancedSpawner highest = faction == null ? null : highestLeader.get(faction);
 		if (highest == null) {
 			return findLeaderlessGarrison(world, spawners);
 		}
-		int garrison = 0;
-		for (TileAdvancedSpawner spawner : spawners) {
-			garrison += countGarrisonSpawns(world, spawner.getSettings(), faction);
+		if (highestLeader.size() > 1) {
+			AncientWarfareNPC.LOG.info("Structure at {} has leaders of {} factions: the city is of {} ({} fighting units of {})", min, highestLeader.size(), faction,
+					units.get(faction), units);
 		}
-		return new LeaderSpawn(faction, highest.getPos(), Math.max(0, Math.min(MAX_ESTIMATED_GARRISON, garrison) - 1), false);
+		return new LeaderSpawn(faction, highest.getPos(), Math.max(0, Math.min(MAX_ESTIMATED_GARRISON, units.get(faction)) - 1), false);
 	}
 
 	/**
