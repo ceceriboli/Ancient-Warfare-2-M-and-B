@@ -227,7 +227,13 @@ public class CommandStructure extends RootCommand {
 			net.minecraft.world.World world = entity.world;
 			Optional<StructureTemplate> found = StructureTemplateManager.getTemplate(subArgs[0]);
 			if (!found.isPresent()) {
-				sender.sendMessage(new TextComponentTranslation("command.aw.structure.not_found", subArgs[0]));
+				Optional<net.shadowmage.ancientwarfare.structure.town.TownTemplate> town = net.shadowmage.ancientwarfare.structure.town.TownTemplateManager.INSTANCE
+						.getTemplate(subArgs[0]);
+				if (town.isPresent()) {
+					placeTown(sender, entity, town.get());
+				} else {
+					sender.sendMessage(new TextComponentTranslation("command.aw.structure.not_found", subArgs[0]));
+				}
 				return;
 			}
 			StructureTemplate template = found.get();
@@ -271,6 +277,22 @@ public class CommandStructure extends RootCommand {
 			sender.sendMessage(new TextComponentTranslation("command.aw.structure.place.no_spot", template.name));
 		}
 
+		/**
+		 * A town: its area is searched from a point in front of the player, far enough for the player to stand outside it
+		 */
+		private static void placeTown(ICommandSender sender, net.minecraft.entity.Entity entity, net.shadowmage.ancientwarfare.structure.town.TownTemplate town) {
+			EnumFacing look = entity.getHorizontalFacing();
+			int distance = town.getMaxSize() * 16 / 2 + 24;
+			int x = entity.getPosition().getX() + look.getFrontOffsetX() * distance;
+			int z = entity.getPosition().getZ() + look.getFrontOffsetZ() * distance;
+			if (net.shadowmage.ancientwarfare.structure.town.WorldTownGenerator.INSTANCE.generateTemplateAt(entity.world, x, z, town)) {
+				AncientWarfareStructure.LOG.info("Placed town {} around {}, {} by command of {}", town.getTownTypeName(), x, z, sender.getName());
+				sender.sendMessage(new TextComponentTranslation("command.aw.structure.place.town", town.getTownTypeName(), x, z));
+			} else {
+				sender.sendMessage(new TextComponentTranslation("command.aw.structure.place.no_town_spot", town.getTownTypeName(), town.getMinSize()));
+			}
+		}
+
 		private static boolean overlapsStructure(net.minecraft.world.World world, StructureMap map,
 				net.shadowmage.ancientwarfare.structure.template.build.StructureBB bb) {
 			int size = Math.max(bb.getXSize(), bb.getZSize()) / 16 + 3;
@@ -295,7 +317,11 @@ public class CommandStructure extends RootCommand {
 		@Override
 		public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
 			if (args.length == 1) {
-				return CommandBase.getListOfStringsMatchingLastWord(args, StructureTemplateManager.getTemplates());
+				java.util.List<String> names = new java.util.ArrayList<>(StructureTemplateManager.getTemplates());
+				for (net.shadowmage.ancientwarfare.structure.town.TownTemplate town : net.shadowmage.ancientwarfare.structure.town.TownTemplateManager.INSTANCE.getTemplates()) {
+					names.add(town.getTownTypeName());
+				}
+				return CommandBase.getListOfStringsMatchingLastWord(args, names);
 			}
 			return args.length == 2 ? CommandBase.getListOfStringsMatchingLastWord(args, "north", "east", "south", "west") : Collections.emptyList();
 		}

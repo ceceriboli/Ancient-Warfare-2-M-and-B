@@ -33,7 +33,14 @@ public class TownPlacementValidator {
 	 * @return maximal bounding area for a town, or null if no acceptable area was found starting in the specified chunk
 	 */
 	static Optional<TownBoundingArea> findGenerationPosition(World world, int x, int z) {
-		if (isTownClose(world, x, z)) {
+		return findGenerationPosition(world, x, z, false);
+	}
+
+	/**
+	 * @param ignoreOtherTowns true for a town placed by command: other towns may be closer than town_min_distance
+	 */
+	static Optional<TownBoundingArea> findGenerationPosition(World world, int x, int z, boolean ignoreOtherTowns) {
+		if (!ignoreOtherTowns && isTownClose(world, x, z)) {
 			return Optional.empty();
 		}
 

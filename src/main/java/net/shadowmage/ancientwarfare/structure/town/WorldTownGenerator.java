@@ -71,6 +71,31 @@ public class WorldTownGenerator implements IWorldGenerator {
 		);
 	}
 
+	/**
+	 * Generates a given town template with its area searched from the given block, as at world generation (the area is fitted to the ground
+	 * and grows over flat enough land), whatever the biome and the distance to other towns (/awstructure place).
+	 *
+	 * @return false if the land there gives no area as large as the template's minimum size
+	 */
+	public boolean generateTemplateAt(World world, int blockX, int blockZ, TownTemplate template) {
+		java.util.Optional<TownBoundingArea> found = TownPlacementValidator.findGenerationPosition(world, blockX, blockZ, true);
+		if (!found.isPresent()) {
+			return false;
+		}
+		TownBoundingArea area = found.get();
+		if (Math.min(area.getChunkWidth(), area.getChunkLength()) < template.getMinSize()) {
+			return false;
+		}
+		if (area.getChunkWidth() - 1 > template.getMaxSize()) {
+			area.chunkMaxX = area.chunkMinX + template.getMaxSize();
+		}
+		if (area.getChunkLength() - 1 > template.getMaxSize()) {
+			area.chunkMaxZ = area.chunkMinZ + template.getMaxSize();
+		}
+		generate(world, area, template);
+		return true;
+	}
+
 	public void generate(World world, TownBoundingArea area, TownTemplate template) {
 		/*
 		 * add the town to the generated structure map, as a -really- large structure entry
