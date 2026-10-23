@@ -1470,7 +1470,10 @@ entity.ancientwarfarenpc.faction.spellcaster.name=Faction Spellcaster
 entity.ancientwarfarenpc.faction.trader.name=Faction Trader
 
 #commands
-command.aw.structure.usage=/awstructure save [templateName] OR /awstructure delete <templateName> [true to remove the aws file] OR /awstructure build <templateName> <x> <y> <z> [north:east:south:west] OR /awstructure reload OR /awstructure name OR /awstructure scannersReexport [true to reload main settings]
+command.aw.structure.usage=/awstructure place <templateName> [north:east:south:west] OR /awstructure save [templateName] OR /awstructure delete <templateName> [true to remove the aws file] OR /awstructure reload OR /awstructure name OR /awstructure scannersReexport [true to reload main settings] (build <templateName> <x> <y> <z> is deprecated)
+command.aw.structure.place.player_only=Only a player can place a structure next to them
+command.aw.structure.place.no_spot=No spot next to you fits %s (ground, slope, water or other structures): try somewhere flatter or more open
+command.aw.structure.build.deprecated=/awstructure build is deprecated: /awstructure place <template> builds it next to you, fitted to the ground
 command.aw.structure.not_found=Template could not be located: %s
 command.aw.structure.file_not_found=File could not be located: %s
 command.aw.structure.template_removed=Template was removed: %s

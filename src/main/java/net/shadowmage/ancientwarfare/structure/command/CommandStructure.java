@@ -46,6 +46,7 @@ public class CommandStructure extends RootCommand {
 	public CommandStructure() {
 		registerSubCommand(new DeleteCommand());
 		registerSubCommand(new BuildCommand());
+		registerSubCommand(new PlaceCommand());
 		registerSubCommand(new SaveCommand());
 		registerSubCommand(new SimpleSubCommand("reload",
 				(server, sender, args) -> {
@@ -173,6 +174,8 @@ public class CommandStructure extends RootCommand {
 					face = faceArg;
 				}
 			}
+			// deprecated: /awstructure place fits the structure to the ground next to the player and records it
+			sender.sendMessage(new TextComponentTranslation("command.aw.structure.build.deprecated"));
 			Optional<StructureTemplate> template = StructureTemplateManager.getTemplate(subArgs[0]);
 			if (template.isPresent()) {
 				StructureBuilder builder = new StructureBuilder(sender.getEntityWorld(), template.get(), face, new BlockPos(x, y, z));
@@ -190,12 +193,111 @@ public class CommandStructure extends RootCommand {
 
 		@Override
 		public String getUsage(ICommandSender sender) {
-			return getName() + " <templateName> <x> <y> <z> [north:east:south:west]";
+			return getName() + " <templateName> <x> <y> <z> [north:east:south:west] (deprecated: use place)";
 		}
 
 		@Override
 		public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
 			return args.length > 4 ? CommandBase.getListOfStringsMatchingLastWord(args, "north", "east", "south", "west") : Collections.emptyList();
+		}
+	}
+
+	/**
+	 * Places a structure of the template database next to the player, fitted to the ground as at world generation (the template's own
+	 * levelling, clearing and placement checks), whatever the biome; it is recorded like a generated structure, so it becomes a city when it
+	 * has a leader or enough fighters. Tries a few spots in front of the player and around before giving up.
+	 */
+	private static class PlaceCommand implements ISubCommand {
+		private static final int[][] SPOTS = {{0, 0}, {-1, 0}, {1, 0}, {0, 1}, {-1, 1}, {1, 1}, {0, 2}, {-2, 1}, {2, 1}};
+
+		@Override
+		public String getName() {
+			return "place";
+		}
+
+		@Override
+		public void execute(MinecraftServer server, ICommandSender sender, String[] subArgs) throws CommandException {
+			if (subArgs.length < 1) {
+				throw new WrongUsageException(getUsage(sender));
+			}
+			if (!(sender instanceof net.minecraft.entity.Entity)) {
+				throw new CommandException("command.aw.structure.place.player_only");
+			}
+			net.minecraft.entity.Entity entity = (net.minecraft.entity.Entity) sender;
+			net.minecraft.world.World world = entity.world;
+			Optional<StructureTemplate> found = StructureTemplateManager.getTemplate(subArgs[0]);
+			if (!found.isPresent()) {
+				sender.sendMessage(new TextComponentTranslation("command.aw.structure.not_found", subArgs[0]));
+				return;
+			}
+			StructureTemplate template = found.get();
+			EnumFacing look = entity.getHorizontalFacing();
+			EnumFacing face = look;
+			if (subArgs.length > 1 && EnumFacing.byName(subArgs[1]) != null && EnumFacing.byName(subArgs[1]).getAxis().isHorizontal()) {
+				face = EnumFacing.byName(subArgs[1]);
+			}
+			int size = Math.max(template.getSize().getX(), template.getSize().getZ());
+			int step = size + 4;
+			EnumFacing side = look.rotateY();
+			StructureMap map = AWGameData.INSTANCE.getPerWorldData(world, StructureMap.class);
+			net.shadowmage.ancientwarfare.structure.gamedata.TownMap towns = AWGameData.INSTANCE.getPerWorldData(world,
+					net.shadowmage.ancientwarfare.structure.gamedata.TownMap.class);
+			for (int[] spot : SPOTS) {
+				int distance = size / 2 + 4 + spot[1] * step;
+				int x = entity.getPosition().getX() + look.getFrontOffsetX() * distance + side.getFrontOffsetX() * spot[0] * step;
+				int z = entity.getPosition().getZ() + look.getFrontOffsetZ() * distance + side.getFrontOffsetZ() * spot[0] * step;
+				int y = net.shadowmage.ancientwarfare.structure.worldgen.WorldStructureGenerator.getTargetY(world, x, z, false) + 1;
+				if (y <= 0) {
+					continue;
+				}
+				BlockPos pos = new BlockPos(x, y, z);
+				net.shadowmage.ancientwarfare.structure.template.build.StructureBB bb = new net.shadowmage.ancientwarfare.structure.template.build.StructureBB(pos, face,
+						template.getSize(), template.getOffset());
+				int adjustedY = template.getValidationSettings().getAdjustedSpawnY(world, x, y, z, face, template, bb);
+				bb.min = bb.min.up(adjustedY - y);
+				bb.max = bb.max.up(adjustedY - y);
+				pos = new BlockPos(x, adjustedY, z);
+				if (overlapsStructure(world, map, bb) || towns.intersectsWithTown(bb)
+						|| !template.getValidationSettings().validatePlacement(world, x, adjustedY, z, face, template, bb)) {
+					continue;
+				}
+				map.setGeneratedAt(world, x, z, new StructureEntry(x, adjustedY, z, face, template), false);
+				net.shadowmage.ancientwarfare.structure.worldgen.WorldGenTickHandler.INSTANCE.addStructureForGeneration(
+						new net.shadowmage.ancientwarfare.structure.template.build.StructureBuilderWorldGen(world, template, face, pos));
+				AncientWarfareStructure.LOG.info("Placed structure {} at {} by command of {}", template.name, pos, sender.getName());
+				sender.sendMessage(new TextComponentTranslation("command.aw.structure.built", template.name, x, adjustedY, z));
+				return;
+			}
+			sender.sendMessage(new TextComponentTranslation("command.aw.structure.place.no_spot", template.name));
+		}
+
+		private static boolean overlapsStructure(net.minecraft.world.World world, StructureMap map,
+				net.shadowmage.ancientwarfare.structure.template.build.StructureBB bb) {
+			int size = Math.max(bb.getXSize(), bb.getZSize()) / 16 + 3;
+			for (StructureEntry entry : map.getEntriesNear(world, bb.getCenterX(), bb.getCenterZ(), size, true, new java.util.ArrayList<>())) {
+				if (bb.intersects(entry.getBB())) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		@Override
+		public int getMaxArgs() {
+			return 2;
+		}
+
+		@Override
+		public String getUsage(ICommandSender sender) {
+			return getName() + " <templateName> [north:east:south:west]";
+		}
+
+		@Override
+		public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
+			if (args.length == 1) {
+				return CommandBase.getListOfStringsMatchingLastWord(args, StructureTemplateManager.getTemplates());
+			}
+			return args.length == 2 ? CommandBase.getListOfStringsMatchingLastWord(args, "north", "east", "south", "west") : Collections.emptyList();
 		}
 	}
 
