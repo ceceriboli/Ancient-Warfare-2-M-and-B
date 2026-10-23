@@ -72,6 +72,10 @@ public class Settlement {
 	private int tributeBonus;
 	// coins collected as taxes and not yet taken by the owner of the city
 	private int treasury;
+	// until this total world time, every new unit of the garrison raises the manpower (a city founded while its structure is still spawning)
+	private long garrisonGrowthUntil;
+	// until this total world time the garrison is counted again every minute from the spawners of the city (a town still being built)
+	private long garrisonRecountUntil;
 	// copper coins of the treasury below one coin of the money metal (trade in the market is counted in copper)
 	private int treasuryCopper;
 	// the market of the city (null until it is first used), see Markets
@@ -222,6 +226,22 @@ public class Settlement {
 	 */
 	public int getBaseMaxManpower() {
 		return maxManpower;
+	}
+
+	long getGarrisonGrowthUntil() {
+		return garrisonGrowthUntil;
+	}
+
+	void setGarrisonGrowthUntil(long garrisonGrowthUntil) {
+		this.garrisonGrowthUntil = garrisonGrowthUntil;
+	}
+
+	long getGarrisonRecountUntil() {
+		return garrisonRecountUntil;
+	}
+
+	void setGarrisonRecountUntil(long garrisonRecountUntil) {
+		this.garrisonRecountUntil = garrisonRecountUntil;
 	}
 
 	int getTreasuryCopper() {
@@ -380,6 +400,8 @@ public class Settlement {
 		tag.setInteger("tribute", tributeBonus);
 		tag.setInteger("treasury", treasury);
 		tag.setInteger("treasuryCopper", treasuryCopper);
+		tag.setLong("garrisonRecountUntil", garrisonRecountUntil);
+		tag.setLong("garrisonGrowthUntil", garrisonGrowthUntil);
 		if (market != null) {
 			tag.setTag("market", market.writeToNBT());
 		}
@@ -433,6 +455,8 @@ public class Settlement {
 		settlement.tributeBonus = tag.getInteger("tribute");
 		settlement.treasury = tag.getInteger("treasury");
 		settlement.treasuryCopper = tag.getInteger("treasuryCopper");
+		settlement.garrisonRecountUntil = tag.getLong("garrisonRecountUntil");
+		settlement.garrisonGrowthUntil = tag.getLong("garrisonGrowthUntil");
 		if (tag.hasKey("market")) {
 			settlement.market = Market.readFromNBT(tag.getCompoundTag("market"));
 		}

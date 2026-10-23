@@ -87,10 +87,13 @@ public class Settlements {
 	private static final int MIN_BOUNDS_BELOW = 24;
 	private static final int MIN_BOUNDS_ABOVE = 40;
 	private static final int STRUCTURE_SCAN_INTERVAL = 100;
+	private static final int GARRISON_GROWTH_TICKS = 6000;
 	private static final int STRUCTURE_RETRY_TICKS = 6000;
 	private static final int MAX_FOUNDED_PER_SCAN = 4;
 	private static final int MAX_STRUCTURE_CHUNKS = 400;
-	private static final int MAX_ESTIMATED_GARRISON = 200;
+	private static final int GARRISON_RECOUNT_TICKS = 6000;
+	private static final int GARRISON_RECOUNT_INTERVAL = 1200;
+	private static final int MAX_RECOUNT_CHUNKS = 1600;
 	private static final int AWAITING_LEADER_CHECKS = 30;
 	private static final String[] RESPAWN_REMOVED_TAGS = {"UUIDMost", "UUIDLeast", "Pos", "Motion", "Health", "HurtTime", "HurtByTimestamp", "DeathTime",
 			"AbsorptionAmount", "ActiveEffects", "Fire", "FallDistance", "Passengers", "Leashed", "Leash"};
@@ -185,6 +188,13 @@ public class Settlements {
 		Settlement settlement = getData(npc.world).getActiveAt(npc.world.provider.getDimension(), npc.getPosition(), Settlement.Type.FACTION_CITY);
 		if (settlement != null && settlement.getFaction().equals(npc.getFaction())) {
 			tag(npc, settlement, ROLE_GARRISON);
+			if (npc.world.getTotalWorldTime() < settlement.getGarrisonGrowthUntil()) {
+				// the city was founded while its structure was still spawning its garrison: the new unit counts as at the founding
+				int added = (int) Math.ceil(AWDiplomacyStatics.manpowerPerUnit);
+				settlement.setMaxManpower(settlement.getBaseMaxManpower() + added);
+				settlement.setManpower(settlement.getManpower() + added);
+				getData(npc.world).markDirty();
+			}
 		}
 	}
 
@@ -267,6 +277,9 @@ public class Settlements {
 				continue;
 			}
 			processRespawns(world, data, settlement, now);
+			if (now < settlement.getGarrisonRecountUntil() && now % GARRISON_RECOUNT_INTERVAL == 0) {
+				recountGarrison(world, data, settlement);
+			}
 			regenerateManpower(world, data, settlement);
 			if (AWDiplomacyStatics.reinforcementIntervalTicks > 0 && (now / 20) % Math.max(1, AWDiplomacyStatics.reinforcementIntervalTicks / 20) == 0) {
 				reinforce(world, settlement);
@@ -588,6 +601,10 @@ public class Settlements {
 		int manpower = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(garrison.size() * AWDiplomacyStatics.manpowerPerUnit));
 		settlement.setManpower(manpower);
 		settlement.setMaxManpower(manpower);
+		// the structure may still be spawning (a town being built): units that appear in the next minutes raise the manpower
+		settlement.setGarrisonGrowthUntil(world.getTotalWorldTime() + GARRISON_GROWTH_TICKS);
+		// the structure may still be spawning, or being built (a town): its garrison is counted again from its spawners for a few minutes
+		settlement.setGarrisonRecountUntil(world.getTotalWorldTime() + GARRISON_RECOUNT_TICKS);
 		data.add(settlement);
 		tag(ruler, settlement, ROLE_LEADER);
 		int captains = 0;
@@ -809,7 +826,7 @@ public class Settlements {
 			AncientWarfareNPC.LOG.info("Structure at {} has leaders of {} factions: the city is of {} ({} fighting units of {})", min, highestLeader.size(), faction,
 					units.get(faction), units);
 		}
-		return new LeaderSpawn(faction, highest.getPos(), Math.max(0, Math.min(MAX_ESTIMATED_GARRISON, units.get(faction)) - 1), false);
+		return new LeaderSpawn(faction, highest.getPos(), Math.max(0, Math.min(AWDiplomacyStatics.maxEstimatedGarrison, units.get(faction)) - 1), false);
 	}
 
 	/**
@@ -848,7 +865,7 @@ public class Settlements {
 		if (faction == null || units.get(faction) < minUnits) {
 			return null;
 		}
-		return new LeaderSpawn(faction, highest.get(faction).getPos(), Math.min(MAX_ESTIMATED_GARRISON, units.get(faction)), true);
+		return new LeaderSpawn(faction, highest.get(faction).getPos(), Math.min(AWDiplomacyStatics.maxEstimatedGarrison, units.get(faction)), true);
 	}
 
 	/**
@@ -920,6 +937,7 @@ public class Settlements {
 		int manpower = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(spawn.garrison * AWDiplomacyStatics.manpowerPerUnit));
 		settlement.setManpower(manpower);
 		settlement.setMaxManpower(manpower);
+		settlement.setGarrisonRecountUntil(world.getTotalWorldTime() + GARRISON_RECOUNT_TICKS);
 		data.add(settlement);
 		if (spawn.needsLeader) {
 			// a structure without leader: a leader of the faction is placed at once at its highest spawner
@@ -936,6 +954,52 @@ public class Settlements {
 		}
 		AncientWarfareNPC.LOG.info("Founded city {} ({}) of faction {} from its structure, leader spawner at {}, about {} garrison units, {} manpower, leader to come",
 				settlement.getId(), name, settlement.getFaction(), spawn.pos, spawn.garrison, manpower);
+	}
+
+	/**
+	 * Counts the garrison of a newly founded city from its whole area, whatever the player has loaded: the chunks of the city are loaded,
+	 * and the garrison is the units its spawners have still to create (remainingSpawnCount; an unlimited spawner counts one batch) plus the
+	 * units of the city alive in its area and those waiting to respawn, up to max_estimated_garrison. The maximum manpower (and the manpower
+	 * with it) rises to manpower_per_unit for each, never falls. Runs every minute for 5 minutes after the founding: a town placed by command
+	 * or at world generation is built over some time, and its spawners appear as it is built.
+	 */
+	public static void recountGarrison(WorldServer world, SettlementData data, Settlement city) {
+		if (!city.isActive() || Kingdoms.isKingdom(city.getFaction())) {
+			return;
+		}
+		BlockPos min = city.getMin();
+		BlockPos max = city.getMax();
+		if (((max.getX() >> 4) - (min.getX() >> 4) + 1) * ((max.getZ() >> 4) - (min.getZ() >> 4) + 1) > MAX_RECOUNT_CHUNKS) {
+			return;
+		}
+		int remaining = 0;
+		for (int cx = min.getX() >> 4; cx <= max.getX() >> 4; cx++) {
+			for (int cz = min.getZ() >> 4; cz <= max.getZ() >> 4; cz++) {
+				Chunk chunk = world.getChunkFromChunkCoords(cx, cz);
+				for (TileEntity tile : new ArrayList<>(chunk.getTileEntityMap().values())) {
+					if (tile instanceof TileAdvancedSpawner && city.contains(world.provider.getDimension(), tile.getPos())) {
+						remaining += countGarrisonSpawns(world, ((TileAdvancedSpawner) tile).getSettings(), city.getFaction());
+					}
+				}
+			}
+		}
+		int living = 0;
+		for (NpcFaction npc : world.getEntitiesWithinAABB(NpcFaction.class, city.getAABB())) {
+			Settlement own = getSettlementOf(npc);
+			if (npc.isEntityAlive() && !npc.isPassive() && own != null && own.getId() == city.getId() && !npc.getUniqueID().equals(city.getLeaderId())) {
+				living++;
+			}
+		}
+		int units = Math.min(AWDiplomacyStatics.maxEstimatedGarrison, remaining + living + city.getPendingRespawns().size());
+		int target = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(units * AWDiplomacyStatics.manpowerPerUnit));
+		if (target > city.getBaseMaxManpower()) {
+			int added = target - city.getBaseMaxManpower();
+			city.setMaxManpower(target);
+			city.setManpower(city.getManpower() + added);
+			data.markDirty();
+			AncientWarfareNPC.LOG.info("City {} ({}) counted again: {} units alive, {} to spawn, {} to respawn: maximum manpower {}", city.getId(), city.getName(), living,
+					remaining, city.getPendingRespawns().size(), target);
+		}
 	}
 
 	/**

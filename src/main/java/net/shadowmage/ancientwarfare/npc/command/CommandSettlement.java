@@ -46,6 +46,7 @@ public class CommandSettlement extends CommandBase {
 	private static final String SET_MANPOWER = "setmanpower";
 	private static final String RENAME = "rename";
 	private static final String FACTION = "faction";
+	private static final String RECOUNT = "recount";
 	private static final int MAX_NAME_LENGTH = 32;
 
 	@Override
@@ -80,6 +81,15 @@ public class CommandSettlement extends CommandBase {
 					throw new CommandException("command.aw.settlement.none_here");
 				}
 				info(server, sender, settlement);
+				break;
+			case RECOUNT:
+				Settlement recounted = args.length > 1 ? get(data, args[1]) : data.getActiveAt(world.provider.getDimension(), sender.getPosition(), Settlement.Type.FACTION_CITY);
+				if (recounted == null) {
+					throw new CommandException("command.aw.settlement.none_here");
+				}
+				int before = recounted.getMaxManpower();
+				Settlements.recountGarrison(server.getWorld(recounted.getDimension()), data, recounted);
+				sender.sendMessage(new TextComponentTranslation("command.aw.settlement.recounted", Settlements.displayName(recounted), before, recounted.getMaxManpower()));
 				break;
 			case FACTION:
 				if (args.length > 1) {
@@ -317,7 +327,7 @@ public class CommandSettlement extends CommandBase {
 	@Override
 	public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
 		if (args.length == 1) {
-			return CommandBase.getListOfStringsMatchingLastWord(args, LIST, INFO, FACTION, SET_MANPOWER, RENAME);
+			return CommandBase.getListOfStringsMatchingLastWord(args, LIST, INFO, FACTION, SET_MANPOWER, RENAME, RECOUNT);
 		}
 		if (args.length == 2 && FACTION.equals(args[0])) {
 			return CommandBase.getListOfStringsMatchingLastWord(args, FactionRegistry.getFactionNames());

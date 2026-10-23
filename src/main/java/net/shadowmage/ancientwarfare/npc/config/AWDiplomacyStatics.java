@@ -151,6 +151,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static String attackerBreach = "siege";
 	public static boolean attackerClearFoliage = true;
 	public static boolean npcLeaveWater = true;
+	public static int maxEstimatedGarrison = 600;
 	public static boolean marketEnabled = true;
 	public static boolean marketReplacesTradeLists = true;
 	public static double specialPriceMultiplier = 2.0D;
@@ -463,6 +464,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 
 		siegeWaveStallTicks = config.get(serverOptions, "siege_wave_stall_ticks", siegeWaveStallTicks, "Stalled wave\nDefault=" + siegeWaveStallTicks + "\n" + "Ticks (20 per second) a wave can go on without any attacker or defender killed. Then the wave withdraws and the\n" + "next one comes, or, after the last wave, the raid or siege is lifted. Time only runs while the city is loaded. 0 = never.", 0, 720000).getInt();
 
+		maxEstimatedGarrison = config.get(serverOptions, "max_estimated_garrison", maxEstimatedGarrison, "Largest garrison counted for a city\nDefault=" + maxEstimatedGarrison + "\n" + "The garrison of a new city is counted from all its spawners (units still to spawn, units alive, units waiting to respawn), up to this many; its maximum manpower is manpower_per_unit for each.").getInt();
 		marketEnabled = config.get(serverOptions, "market_enabled", marketEnabled, "City markets\nDefault=" + marketEnabled + "\n" + "A faction trader standing in a city of a faction opens the city's market: goods with prices that follow the stock, paid from and to the city's treasury. Goods and prices are in registry/economy/goods.json. Player kingdoms have no market.").getBoolean();
 		marketReplacesTradeLists = config.get(serverOptions, "market_replaces_trade_lists", marketReplacesTradeLists, "Market replaces the old trade lists\nDefault=" + marketReplacesTradeLists + "\n" + "If true, the old fixed trade list of a trader in a city is not offered: the items of it that are not market goods are sold in the market as specials. If false, the market window has a button to the old list.").getBoolean();
 		specialPriceMultiplier = config.get(serverOptions, "special_price_multiplier", specialPriceMultiplier, "Price of the specials\nDefault=" + specialPriceMultiplier + "\n" + "The specials (items of a trader's old list that are not market goods) cost their old price times this.", 0.0D, 100.0D).getDouble();
