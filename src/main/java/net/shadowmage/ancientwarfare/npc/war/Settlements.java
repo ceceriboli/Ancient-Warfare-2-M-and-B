@@ -87,7 +87,6 @@ public class Settlements {
 	private static final int MIN_BOUNDS_BELOW = 24;
 	private static final int MIN_BOUNDS_ABOVE = 40;
 	private static final int STRUCTURE_SCAN_INTERVAL = 100;
-	private static final int GARRISON_GROWTH_TICKS = 6000;
 	private static final int STRUCTURE_RETRY_TICKS = 6000;
 	private static final int MAX_FOUNDED_PER_SCAN = 4;
 	private static final int MAX_STRUCTURE_CHUNKS = 400;
@@ -188,13 +187,6 @@ public class Settlements {
 		Settlement settlement = getData(npc.world).getActiveAt(npc.world.provider.getDimension(), npc.getPosition(), Settlement.Type.FACTION_CITY);
 		if (settlement != null && settlement.getFaction().equals(npc.getFaction())) {
 			tag(npc, settlement, ROLE_GARRISON);
-			if (npc.world.getTotalWorldTime() < settlement.getGarrisonGrowthUntil()) {
-				// the city was founded while its structure was still spawning its garrison: the new unit counts as at the founding
-				int added = (int) Math.ceil(AWDiplomacyStatics.manpowerPerUnit);
-				settlement.setMaxManpower(settlement.getBaseMaxManpower() + added);
-				settlement.setManpower(settlement.getManpower() + added);
-				getData(npc.world).markDirty();
-			}
 		}
 	}
 
@@ -601,8 +593,6 @@ public class Settlements {
 		int manpower = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(garrison.size() * AWDiplomacyStatics.manpowerPerUnit));
 		settlement.setManpower(manpower);
 		settlement.setMaxManpower(manpower);
-		// the structure may still be spawning (a town being built): units that appear in the next minutes raise the manpower
-		settlement.setGarrisonGrowthUntil(world.getTotalWorldTime() + GARRISON_GROWTH_TICKS);
 		// the structure may still be spawning, or being built (a town): its garrison is counted again from its spawners for a few minutes
 		settlement.setGarrisonRecountUntil(world.getTotalWorldTime() + GARRISON_RECOUNT_TICKS);
 		data.add(settlement);
@@ -992,7 +982,14 @@ public class Settlements {
 		}
 		int units = Math.min(AWDiplomacyStatics.maxEstimatedGarrison, remaining + living + city.getPendingRespawns().size());
 		int target = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(units * AWDiplomacyStatics.manpowerPerUnit));
-		if (target > city.getBaseMaxManpower()) {
+		int ceiling = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(AWDiplomacyStatics.maxEstimatedGarrison * AWDiplomacyStatics.manpowerPerUnit));
+		if (city.getBaseMaxManpower() > ceiling) {
+			// above what max_estimated_garrison allows (counted twice before 1.1.6): back to it
+			city.setMaxManpower(ceiling);
+			city.setManpower(Math.min(city.getManpower(), ceiling));
+			data.markDirty();
+			AncientWarfareNPC.LOG.info("City {} ({}) brought back to the maximum manpower {} of max_estimated_garrison", city.getId(), city.getName(), ceiling);
+		} else if (target > city.getBaseMaxManpower()) {
 			int added = target - city.getBaseMaxManpower();
 			city.setMaxManpower(target);
 			city.setManpower(city.getManpower() + added);
