@@ -64,10 +64,20 @@ public class TerritoryManager {
 		return Optional.ofNullable(biomesByTerritoryNames.get(territoryName));
 	}
 
-	private static int getTerritoryWeight(String territoryName) {
+	/**
+	 * Chance weight of the territory when a new territory starts in the biome. By default only the templates that can generate in
+	 * that biome count (a faction with one fitting template out of eighty is weighed as one), scaled by 100 so that a small
+	 * multiplier does not round the weight down to 0. With territory_weight_by_biome_fit off, as in the original, all of the
+	 * territory's templates count whatever the biome.
+	 */
+	private static int getTerritoryWeight(String territoryName, String biomeName) {
+		float multiplier = TerritorySettingRegistry.getTerritorySettings(territoryName).getTerritoryWeightMultiplier();
+		if (AWStructureStatics.territoryWeightByBiomeFit) {
+			return Math.round(WorldGenStructureManager.INSTANCE.countTemplatesFittingBiome(territoryName, biomeName) * multiplier * 100);
+		}
 		return (int) ((WorldGenStructureManager.INSTANCE.getTerritoryTemplates(territoryName).map(Set::size).orElse(0)
 				+ (!territoryName.equals(WorldGenStructureManager.GENERIC_TERRITORY_NAME) ? WorldGenStructureManager.INSTANCE.getTerritoryTemplates(WorldGenStructureManager.GENERIC_TERRITORY_NAME).map(Set::size).orElse(0) : 0))
-				* TerritorySettingRegistry.getTerritorySettings(territoryName).getTerritoryWeightMultiplier());
+				* multiplier);
 	}
 
 	@SuppressWarnings("java:S3518")
@@ -80,12 +90,12 @@ public class TerritoryManager {
 		if (!territoryNames.contains(territoryName)) {
 			return 0;
 		}
-		int weight = getTerritoryWeight(territoryName);
+		int weight = getTerritoryWeight(territoryName, biomeName);
 
 		float totalWeight = 0;
 
 		for (String name : territoryNames) {
-			totalWeight += getTerritoryWeight(name);
+			totalWeight += getTerritoryWeight(name, biomeName);
 		}
 
 		return weight / totalWeight;
@@ -135,7 +145,8 @@ public class TerritoryManager {
 
 			List<String> territoryNames = territoryNamesByBiome.get(biome);
 
-			String territoryName = getRandomTerritory(territoryNames);
+			//noinspection ConstantConditions
+			String territoryName = getRandomTerritory(territoryNames, biome.getRegistryName().toString());
 			String territoryId = territoryName + territoryData.getNextTerritoryId(territoryName);
 			maxTerritoryCenterDistanceSq = TerritorySettingRegistry.getMaxTerritoryCenterDistanceSq(territoryName);
 
@@ -239,15 +250,15 @@ public class TerritoryManager {
 					);
 		}
 
-		private String getRandomTerritory(List<String> names) {
+		private String getRandomTerritory(List<String> names, String biomeName) {
 			return CollectionUtils.getWeightedRandomElement(world.rand, names,
-					TerritoryManager::getTerritoryWeight, (totalWeight, selected) -> {
+					name -> getTerritoryWeight(name, biomeName), (totalWeight, selected) -> {
 						WorldGenDetailedLogHelper.log("Out of total of {} territories with weight total of {} territory \"{}\" with weight {} was selected",
-								names::size, () -> totalWeight, () -> selected, () -> selected == null ? "" : TerritoryManager.getTerritoryWeight(selected));
+								names::size, () -> totalWeight, () -> selected, () -> selected == null ? "" : TerritoryManager.getTerritoryWeight(selected, biomeName));
 						WorldGenDetailedLogHelper.log("Following territories and weights were considered: \n{}",
 								() -> {
 									StringJoiner joiner = new StringJoiner(", ");
-									names.forEach(name -> joiner.add(name + ":" + TerritoryManager.getTerritoryWeight(name)));
+									names.forEach(name -> joiner.add(name + ":" + TerritoryManager.getTerritoryWeight(name, biomeName)));
 									return joiner.toString();
 								});
 					})

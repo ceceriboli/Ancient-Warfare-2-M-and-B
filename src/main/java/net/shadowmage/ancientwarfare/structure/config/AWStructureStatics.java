@@ -34,6 +34,7 @@ public class AWStructureStatics extends ModConfiguration {
 	public static int spawnProtectionRange = 400;
 	public static int townClosestDistance = 90 * 16;
 	public static float townGenerationChance = 0.125f;
+	public static boolean territoryWeightByBiomeFit = true;
 	public static Set<String> excludedSpawnerEntities = new HashSet<>();
 	private static HashSet<String> skippableWorldGenBlocks = new HashSet<>();
 	private static HashSet<String> worldGenTargetBlocks = new HashSet<>();
@@ -85,6 +86,7 @@ public class AWStructureStatics extends ModConfiguration {
 		townClosestDistance = config.get(worldGenCategory, "town_min_distance", townClosestDistance, "Default=" + townClosestDistance + "\n" + "Minimum distance between towns.  This should be set to a value quite a bit larger than the largest town" + "that you have configured for generation.  E.G.  Max town size=16, this value should be >= 40 * 16.").getInt(townClosestDistance);
 		townGenerationChance = (float) config.get(worldGenCategory, "town_generation_chance", townGenerationChance, "Default=" + townGenerationChance + "\n" + "Accepts values between 0 and 1.0.  Decimal percent chance to -attempt- town generation for any given chunk.  Higher settings may result in" + "more towns being generated, but may come with a performance hit during new chunk generation.  Lower values WILL result in fewer towns, and" + "-may- improve performance during chunk generation.").getDouble(townGenerationChance);
 
+		territoryWeightByBiomeFit = config.get(worldGenCategory, "territory_weight_by_biome_fit", territoryWeightByBiomeFit, "Default=" + territoryWeightByBiomeFit + "\n" + "When a new territory starts in a biome, the chance of each faction is weighed by the number of its structures and towns that can generate in that biome.\n" + "If false, as in the original, it is weighed by all of its structures whatever the biome, so a faction with one fitting structure out of eighty counts as eighty.").getBoolean(territoryWeightByBiomeFit);
 		gateVerticalWoodenMaxHealth = config.get(worldGenCategory, "gate_vertical_wooden_max_health", gateVerticalWoodenMaxHealth, "Default=" + gateVerticalWoodenMaxHealth + "\n" + "Determines the maximum health of the Vertical Wooden Gate.").getInt(gateVerticalWoodenMaxHealth);
 		gateVerticalIronMaxHealth = config.get(worldGenCategory, "gate_vertical_iron_max_health", gateVerticalIronMaxHealth, "Default=" + gateVerticalIronMaxHealth + "\n" + "Determines the maximum health of the Vertical Iron Gate.").getInt(gateVerticalIronMaxHealth);
 		gateSingleWoodMaxHealth = config.get(worldGenCategory, "gate_single_wood_max_health", gateSingleWoodMaxHealth, "Default=" + gateSingleWoodMaxHealth + "\n" + "Determines the maximum health of the Single Wood Gate.").getInt(gateSingleWoodMaxHealth);

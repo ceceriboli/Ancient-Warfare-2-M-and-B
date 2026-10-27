@@ -16,6 +16,7 @@ import net.shadowmage.ancientwarfare.structure.gamedata.StructureMap;
 import net.shadowmage.ancientwarfare.structure.registry.BiomeGroupRegistry;
 import net.shadowmage.ancientwarfare.structure.registry.TerritorySettingRegistry;
 import net.shadowmage.ancientwarfare.structure.template.build.validation.StructureValidator;
+import net.shadowmage.ancientwarfare.structure.town.TownTemplateManager;
 import net.shadowmage.ancientwarfare.structure.util.CollectionUtils;
 import net.shadowmage.ancientwarfare.structure.worldgen.Territory;
 import net.shadowmage.ancientwarfare.structure.worldgen.TerritoryManager;
@@ -25,6 +26,7 @@ import net.shadowmage.ancientwarfare.structure.worldgen.stats.WorldGenStatistics
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -261,6 +263,24 @@ public class WorldGenStructureManager {
 
 	public Optional<Set<StructureTemplate>> getTerritoryTemplates(String territoryName) {
 		return Optional.ofNullable(templatesByTerritoryName.get(territoryName));
+	}
+
+	/**
+	 * How many templates of the territory can generate in the biome: its structures, its towns and, unless it is the generic
+	 * territory itself, the generic structures, which every territory can place.
+	 */
+	public int countTemplatesFittingBiome(String territoryName, String biomeName) {
+		int count = countOwnTemplatesFittingBiome(territoryName, biomeName);
+		if (!territoryName.equals(GENERIC_TERRITORY_NAME)) {
+			count += countOwnTemplatesFittingBiome(GENERIC_TERRITORY_NAME, biomeName);
+		}
+		return count;
+	}
+
+	private int countOwnTemplatesFittingBiome(String territoryName, String biomeName) {
+		Set<StructureTemplate> inBiome = templatesByBiome.getOrDefault(biomeName, Collections.emptySet());
+		int structures = getTerritoryTemplates(territoryName).map(templates -> (int) templates.stream().filter(inBiome::contains).count()).orElse(0);
+		return structures + TownTemplateManager.INSTANCE.countTemplatesFittingBiome(territoryName, biomeName);
 	}
 
 	// Finds the largest number for how far the structure needs to be from spawn.
