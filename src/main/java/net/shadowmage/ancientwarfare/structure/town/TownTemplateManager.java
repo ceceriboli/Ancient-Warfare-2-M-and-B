@@ -85,10 +85,11 @@ public class TownTemplateManager {
 	}
 
 	/**
-	 * How many town templates of the territory can generate in the biome.
+	 * How many town templates of the territory can generate in the biome and dimension.
 	 */
-	public int countTemplatesFittingBiome(String territoryName, String biomeName) {
-		return (int) templates.values().stream().filter(t -> t.getTerritoryName().equals(territoryName) && isBiomeValid(biomeName, t)).count();
+	public int countTemplatesFittingBiome(String territoryName, String biomeName, int dimension) {
+		return (int) templates.values().stream().filter(t -> t.getTerritoryName().equals(territoryName) && isBiomeValid(biomeName, t)
+				&& isDimensionValid(dimension, t)).count();
 	}
 
 	private boolean isCorrectTerritory(String territoryName, TownTemplate t) {

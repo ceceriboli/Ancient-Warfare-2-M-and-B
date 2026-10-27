@@ -213,15 +213,7 @@ public class WorldGenStructureManager {
 
 	private boolean validateTemplate(World world, int x, int y, int z, EnumFacing face, StructureMap map, int remainingValueCache, int dim, StructureTemplate template) {
 		StructureValidator settings = template.getValidationSettings();
-		boolean dimensionMatch = !settings.isDimensionWhiteList();
-		for (int i = 0; i < settings.getAcceptedDimensions().length; i++) {
-			int dimTest = settings.getAcceptedDimensions()[i];
-			if (dimTest == dim) {
-				dimensionMatch = !dimensionMatch;
-				break;
-			}
-		}
-		if (!dimensionMatch) {
+		if (!isDimensionAllowed(settings, dim)) {
 			WorldGenStatistics.addStructureValidationRejection(template.name, ValidationRejectionReason.WRONG_DIMENSION);
 			WorldGenDetailedLogHelper.log("Structure \"{}\" is defined for different dimension", () -> template.name);
 			return false;
@@ -266,21 +258,32 @@ public class WorldGenStructureManager {
 	}
 
 	/**
-	 * How many templates of the territory can generate in the biome: its structures, its towns and, unless it is the generic
-	 * territory itself, the generic structures, which every territory can place.
+	 * How many templates of the territory can generate in the biome and dimension: its structures, its towns and, unless it is the
+	 * generic territory itself, the generic structures, which every territory can place. 0 when the territory has none of its own
+	 * there, so the generic ones alone do not make it a candidate.
 	 */
-	public int countTemplatesFittingBiome(String territoryName, String biomeName) {
-		int count = countOwnTemplatesFittingBiome(territoryName, biomeName);
-		if (!territoryName.equals(GENERIC_TERRITORY_NAME)) {
-			count += countOwnTemplatesFittingBiome(GENERIC_TERRITORY_NAME, biomeName);
+	public int countTemplatesFittingBiome(String territoryName, String biomeName, int dimension) {
+		int own = countOwnTemplatesFittingBiome(territoryName, biomeName, dimension);
+		if (own == 0 || territoryName.equals(GENERIC_TERRITORY_NAME)) {
+			return own;
 		}
-		return count;
+		return own + countOwnTemplatesFittingBiome(GENERIC_TERRITORY_NAME, biomeName, dimension);
 	}
 
-	private int countOwnTemplatesFittingBiome(String territoryName, String biomeName) {
+	private int countOwnTemplatesFittingBiome(String territoryName, String biomeName, int dimension) {
 		Set<StructureTemplate> inBiome = templatesByBiome.getOrDefault(biomeName, Collections.emptySet());
-		int structures = getTerritoryTemplates(territoryName).map(templates -> (int) templates.stream().filter(inBiome::contains).count()).orElse(0);
-		return structures + TownTemplateManager.INSTANCE.countTemplatesFittingBiome(territoryName, biomeName);
+		int structures = getTerritoryTemplates(territoryName).map(templates -> (int) templates.stream()
+				.filter(t -> inBiome.contains(t) && isDimensionAllowed(t.getValidationSettings(), dimension)).count()).orElse(0);
+		return structures + TownTemplateManager.INSTANCE.countTemplatesFittingBiome(territoryName, biomeName, dimension);
+	}
+
+	private static boolean isDimensionAllowed(StructureValidator settings, int dimension) {
+		for (int accepted : settings.getAcceptedDimensions()) {
+			if (accepted == dimension) {
+				return settings.isDimensionWhiteList();
+			}
+		}
+		return !settings.isDimensionWhiteList();
 	}
 
 	// Finds the largest number for how far the structure needs to be from spawn.

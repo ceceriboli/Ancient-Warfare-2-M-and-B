@@ -163,10 +163,11 @@ public class StatsCommand extends ParentCommand {
 		rows.add("Biomes generates in / expands into: " + TerritoryManager.getTerritoryBiomes(territoryRecord.getName()).map(biomes -> biomes.stream().map(biome -> biome.getRegistryName().toString()).collect(Collectors.joining(","))).orElse(""));
 		rows.add("Number of times generated: " + territoryRecord.getTimesGenerated());
 		rows.add(String.format("Average territory cluster value: %.1f", territoryRecord.getAverageClusterValue()));
+		// statistics are not kept per dimension: the chances shown are the overworld ones
 		rows.addAll(getCollectionStats("Generated in biomes: ", territoryRecord.getBiomeGenerations(),
 				entry -> String.format("%1$4s x %2$s | average cluster value: %3$.1f | chance to start generating in biome: %4$.1f%%", entry.getValue(), entry.getKey(),
 						territoryRecord.getAverageBiomeClusterValue(entry.getKey()),
-						TerritoryManager.getTerritoryChanceInBiome(territoryRecord.getName(), entry.getKey()) * 100)
+						TerritoryManager.getTerritoryChanceInBiome(territoryRecord.getName(), entry.getKey(), 0) * 100)
 		));
 		return rows;
 	}
