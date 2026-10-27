@@ -24,6 +24,7 @@ minDuplicateDistance=1000
 dimensionWhiteList=true
 dimensionList=0
 biomeGroupList=
+biomeWhiteList=true
 biomeList=traverse:autumnal_wooded_hills,biomesoplenty:lavender_fields,traverse:autumnal_woods,biomesoplenty:orchard,nt:autumn_forest,nt:autumn_forest_hills,nt:cold_blue_taiga_hills,nt:cold_blue_taiga,
 leveling=12
 fill=12
