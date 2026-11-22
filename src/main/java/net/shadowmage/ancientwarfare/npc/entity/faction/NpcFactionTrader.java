@@ -8,6 +8,9 @@ import net.minecraft.entity.ai.EntityAIWatchClosest;
 import net.minecraft.entity.ai.EntityAIWatchClosest2;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.datasync.DataParameter;
+import net.minecraft.network.datasync.DataSerializers;
+import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.EnumHand;
 import net.minecraft.world.World;
 import net.shadowmage.ancientwarfare.core.network.NetworkHandler;
@@ -17,9 +20,16 @@ import net.shadowmage.ancientwarfare.npc.ai.NpcAIMoveHome;
 import net.shadowmage.ancientwarfare.npc.ai.NpcAIWander;
 import net.shadowmage.ancientwarfare.npc.item.ItemCommandBaton;
 import net.shadowmage.ancientwarfare.npc.trade.FactionTradeList;
+import net.shadowmage.ancientwarfare.npc.war.Goods;
+import net.shadowmage.ancientwarfare.npc.war.Markets;
+
+import java.util.List;
 
 
 public class NpcFactionTrader extends NpcFaction {
+	// the first good of its trade in a city market ("" for none), sent to the clients for the title above its head
+	private static final DataParameter<String> SPECIALTY = EntityDataManager.createKey(NpcFactionTrader.class, DataSerializers.STRING);
+	private static final int SPECIALTY_CHECK_TICKS = 100;
 
 	private FactionTradeList tradeList = new FactionTradeList();
 	private EntityPlayer trader;
@@ -49,8 +59,29 @@ public class NpcFactionTrader extends NpcFaction {
 		tasks.addTask(103, new EntityAIWatchClosest(this, EntityLiving.class, 8.0F));
 	}
 
+	@Override
+	protected void entityInit() {
+		super.entityInit();
+		dataManager.register(SPECIALTY, "");
+	}
+
 	public FactionTradeList getTradeList() {
 		return tradeList;
+	}
+
+	/**
+	 * @return the id of the first good of its trade (see Markets.getSpecialty), "" for a trader with none
+	 */
+	public String getSpecialty() {
+		return dataManager.get(SPECIALTY);
+	}
+
+	private void updateSpecialty() {
+		List<Goods.Good> specialty = Markets.getSpecialty(this);
+		String id = specialty.isEmpty() ? "" : specialty.get(0).getId();
+		if (!id.equals(dataManager.get(SPECIALTY))) {
+			dataManager.set(SPECIALTY, id);
+		}
 	}
 
 	public void startTrade(EntityPlayer player) {
@@ -69,6 +100,10 @@ public class NpcFactionTrader extends NpcFaction {
 				setDead();
 			}
 			tradeList.tick(world);
+			// the list can change (trade setup, a reloaded goods catalog)
+			if (ticksExisted % SPECIALTY_CHECK_TICKS == 1) {
+				updateSpecialty();
+			}
 		}
 	}
 
