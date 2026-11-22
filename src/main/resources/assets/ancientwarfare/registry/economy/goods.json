@@ -153,6 +153,11 @@
         "gnome": {"tools": 1.6, "ore": 1.3, "stone": 1.3},
         "barbarian": {"meat": 1.4, "hides": 1.4, "weapons": 1.2, "cloth": 0.6},
         "amazon": {"meat": 1.3, "produce": 1.3, "weapons": 1.2},
-        "vampire": {"potions": 1.4, "meat": 0.6, "produce": 0.6}
+        "vampire": {"potions": 1.4, "meat": 0.6, "produce": 0.6},
+        "guild": {"cloth": 1.5, "potions": 1.4, "tools": 1.4, "weapons": 1.2, "armor": 1.2, "wood": 0.7, "stone": 0.7},
+        "sealsker": {"fish": 1.8, "hides": 1.5, "meat": 1.3, "grain": 0.5, "produce": 0.5, "ore": 0.6},
+        "vyncan": {"potions": 1.5, "produce": 1.4, "fish": 1.3, "ore": 0.6},
+        "ent": {"produce": 1.5, "potions": 1.4, "ore": 1.3, "grain": 0.6},
+        "brigand": {"weapons": 1.3, "armor": 1.2, "meat": 1.2, "grain": 0.6, "cloth": 0.7, "tools": 0.7}
     }
 }
