@@ -13,15 +13,18 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The goods of the city markets (registry economy/goods.json): groups of interchangeable items with a value each in copper coins, a kind
  * (it sets the margins: the price you pay above the value, the price you get below it) and a demand (units per 100 manpower of a city).
  * The stock of a good is counted in units of its first item (its reference); an item counts as its value / the reference value.
- * The cultures give a city more (over 1) or less (under 1) of a good than it needs, which makes it cheap or dear there.
+ * The cultures give a city more (over 1) or less (under 1) of a good than it needs, which makes it cheap or dear there, and list the goods
+ * their general merchants sell (culture_sells).
  */
 public final class Goods {
 	private static final Map<String, Good> GOODS = new LinkedHashMap<>();
@@ -29,6 +32,8 @@ public final class Goods {
 	private static final Map<String, ItemEntry> ITEMS = new HashMap<>();
 	private static final Map<String, float[]> MARGINS = new HashMap<>();
 	private static final Map<String, Map<String, Float>> CULTURES = new HashMap<>();
+	// culture -> the goods its cities sell (they buy every good)
+	private static final Map<String, Set<String>> CULTURE_SELLS = new HashMap<>();
 
 	private Goods() {}
 
@@ -154,6 +159,14 @@ public final class Goods {
 		return profile == null ? 1F : profile.getOrDefault(good, 1F);
 	}
 
+	/**
+	 * @return whether the cities of the culture sell the good (culture_sells); a culture without a list sells every good
+	 */
+	static boolean isSoldBy(String culture, Good good) {
+		Set<String> sells = CULTURE_SELLS.get(culture);
+		return sells == null || sells.contains(good.getId());
+	}
+
 	public static class Parser implements IRegistryDataParser {
 		@Override
 		public String getName() {
@@ -166,6 +179,7 @@ public final class Goods {
 			ITEMS.clear();
 			MARGINS.clear();
 			CULTURES.clear();
+			CULTURE_SELLS.clear();
 			for (Map.Entry<String, JsonElement> kind : JsonUtils.getJsonObject(json, "kinds").entrySet()) {
 				JsonObject kindJson = JsonUtils.getJsonObject(kind.getValue(), kind.getKey());
 				MARGINS.put(kind.getKey(), new float[] {JsonUtils.getFloat(kindJson, "buy_margin"), JsonUtils.getFloat(kindJson, "sell_margin")});
@@ -191,6 +205,13 @@ public final class Goods {
 						profile.put(factor.getKey(), factor.getValue().getAsFloat());
 					}
 					CULTURES.put(culture.getKey(), profile);
+				}
+			}
+			if (json.has("culture_sells")) {
+				for (Map.Entry<String, JsonElement> culture : JsonUtils.getJsonObject(json, "culture_sells").entrySet()) {
+					Set<String> sells = new HashSet<>();
+					culture.getValue().getAsJsonArray().forEach(good -> sells.add(good.getAsString()));
+					CULTURE_SELLS.put(culture.getKey(), sells);
 				}
 			}
 		}

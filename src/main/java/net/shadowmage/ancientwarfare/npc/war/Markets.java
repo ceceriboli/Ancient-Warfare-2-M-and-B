@@ -257,11 +257,20 @@ public final class Markets {
 
 	/**
 	 * @return the goods a trader sells in the city: its specialty whatever the city's culture (a grain merchant in a city short of grain still
-	 * sells it, dear), every good for a general merchant
+	 * sells it, dear); for a general merchant the goods the city's culture sells (every good with market_culture_goods off)
 	 */
-	private static Set<Goods.Good> getOffer(NpcFactionTrader trader) {
+	private static Set<Goods.Good> getOffer(NpcFactionTrader trader, Settlement city) {
 		List<Goods.Good> specialty = getSpecialty(trader);
-		return new HashSet<>(specialty.isEmpty() ? Goods.getAll() : specialty);
+		if (!specialty.isEmpty()) {
+			return new HashSet<>(specialty);
+		}
+		Set<Goods.Good> offer = new HashSet<>();
+		for (Goods.Good good : Goods.getAll()) {
+			if (!AWDiplomacyStatics.marketCultureGoods || Goods.isSoldBy(city.getFaction(), good)) {
+				offer.add(good);
+			}
+		}
+		return offer;
 	}
 
 	/**
@@ -306,7 +315,7 @@ public final class Markets {
 		float discount = getDiscount(world, player, city.getFaction());
 		NBTTagCompound tag = new NBTTagCompound();
 		List<Goods.Good> specialty = getSpecialty(trader);
-		Set<Goods.Good> offer = getOffer(trader);
+		Set<Goods.Good> offer = getOffer(trader, city);
 		ITextComponent title = AWDiplomacyStatics.marketTraderSpecialties
 				? new TextComponentTranslation("gui.aw.market.title_trader", Settlements.displayName(city), getSpecialtyName(specialty))
 				: new TextComponentTranslation("gui.aw.market.title", Settlements.displayName(city));
@@ -525,7 +534,7 @@ public final class Markets {
 			}
 		}
 		FactionTradeList list = trader.getTradeList();
-		Set<Goods.Good> offer = getOffer(trader);
+		Set<Goods.Good> offer = getOffer(trader, city);
 		for (int i = 0; i < deal.tagCount(); i++) {
 			NBTTagCompound line = deal.getCompoundTagAt(i);
 			String id = line.getString("id");
