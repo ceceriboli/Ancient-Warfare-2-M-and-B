@@ -24,8 +24,13 @@ import net.shadowmage.ancientwarfare.npc.trade.FactionTrade;
 import net.shadowmage.ancientwarfare.npc.trade.FactionTradeList;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -33,8 +38,9 @@ import java.util.UUID;
  * in the city opens its market window. The price of an item is its value x a factor of the stock of its good against what the city needs
  * (little stock: dear, much stock: cheap), recomputed for every single unit, plus a margin when you buy and minus one when you sell (larger
  * for weapons and armor). The city pays only with the coins of its treasury and buys a good only up to market_max_stock_ratio times what it
- * needs. Every day the stock moves back toward what the city's culture holds. The items of the trader's old trade list that are not market
- * goods are sold as specials, at special_price_multiplier times their old price. Player kingdoms have no market.
+ * needs. Every day the stock moves back toward what the city's culture holds. A trader sells the goods of its own trade (its specialty, from
+ * its old trade list) and buys every good. The items of the trader's old trade list that are not market goods are sold as specials, at
+ * special_price_multiplier times their old price. Player kingdoms have no market.
  */
 public final class Markets {
 	private static final int MAX_ROW_UNITS = 64;
@@ -215,6 +221,56 @@ public final class Markets {
 		return text.toString().trim();
 	}
 
+	// ------------------------------------------------------------------ trader specialties
+
+	/**
+	 * @return the goods a trader sells in a city market, the one with most trades first: the goods its own trade list gives (a weaponsmith's
+	 * list gives weapons). Empty for a general merchant, whose list gives no market goods, and with market_trader_specialties off.
+	 */
+	public static List<Goods.Good> getSpecialty(NpcFactionTrader trader) {
+		if (!AWDiplomacyStatics.marketTraderSpecialties) {
+			return Collections.emptyList();
+		}
+		Map<Goods.Good, Integer> trades = new HashMap<>();
+		FactionTradeList list = trader.getTradeList();
+		for (int i = 0; i < list.size(); i++) {
+			FactionTrade trade = list.get(i);
+			Set<Goods.Good> goods = new HashSet<>();
+			for (int slot = 0; slot < trade.size(); slot++) {
+				Goods.ItemEntry entry = Goods.find(trade.getOutputStack(slot));
+				if (entry != null) {
+					goods.add(entry.getGood());
+				}
+			}
+			goods.forEach(good -> trades.merge(good, 1, Integer::sum));
+		}
+		List<Goods.Good> specialty = new ArrayList<>();
+		for (Goods.Good good : Goods.getAll()) {
+			if (trades.containsKey(good)) {
+				specialty.add(good);
+			}
+		}
+		// most trades first, equals in the order of goods.json (the sort is stable)
+		specialty.sort((a, b) -> trades.get(b) - trades.get(a));
+		return specialty;
+	}
+
+	/**
+	 * @return the goods a trader sells in the city: its specialty whatever the city's culture (a grain merchant in a city short of grain still
+	 * sells it, dear), every good for a general merchant
+	 */
+	private static Set<Goods.Good> getOffer(NpcFactionTrader trader) {
+		List<Goods.Good> specialty = getSpecialty(trader);
+		return new HashSet<>(specialty.isEmpty() ? Goods.getAll() : specialty);
+	}
+
+	/**
+	 * @return the name of a trader's trade: that of its first good, General Merchant without one
+	 */
+	private static ITextComponent getSpecialtyName(List<Goods.Good> specialty) {
+		return new TextComponentTranslation("gui.aw.market.specialty." + (specialty.isEmpty() ? "general" : specialty.get(0).getId()));
+	}
+
 	// ------------------------------------------------------------------ the window
 
 	/**
@@ -249,7 +305,12 @@ public final class Markets {
 		Market market = getMarket(city);
 		float discount = getDiscount(world, player, city.getFaction());
 		NBTTagCompound tag = new NBTTagCompound();
-		tag.setString("title", ITextComponent.Serializer.componentToJson(new TextComponentTranslation("gui.aw.market.title", Settlements.displayName(city))));
+		List<Goods.Good> specialty = getSpecialty(trader);
+		Set<Goods.Good> offer = getOffer(trader);
+		ITextComponent title = AWDiplomacyStatics.marketTraderSpecialties
+				? new TextComponentTranslation("gui.aw.market.title_trader", Settlements.displayName(city), getSpecialtyName(specialty))
+				: new TextComponentTranslation("gui.aw.market.title", Settlements.displayName(city));
+		tag.setString("title", ITextComponent.Serializer.componentToJson(title));
 		tag.setInteger("playerCopper", Coins.countCopper(player));
 		tag.setInteger("cityCopper", getCityCopper(city));
 		tag.setFloat("discount", discount);
@@ -259,6 +320,10 @@ public final class Markets {
 		}
 		NBTTagList marketRows = new NBTTagList();
 		for (Goods.Good good : Goods.getAll()) {
+			if (!offer.contains(good)) {
+				// another trader's trade: the player can sell it here, not buy it
+				continue;
+			}
 			float need = getNeed(city, good);
 			float stock = market.getStock(good.getId());
 			for (Goods.ItemEntry entry : good.getItems()) {
@@ -460,6 +525,7 @@ public final class Markets {
 			}
 		}
 		FactionTradeList list = trader.getTradeList();
+		Set<Goods.Good> offer = getOffer(trader);
 		for (int i = 0; i < deal.tagCount(); i++) {
 			NBTTagCompound line = deal.getCompoundTagAt(i);
 			String id = line.getString("id");
@@ -469,7 +535,7 @@ public final class Markets {
 			}
 			if (id.startsWith(GOOD_ROW)) {
 				Goods.ItemEntry entry = Goods.getEntry(id.substring(GOOD_ROW.length()));
-				if (entry == null || entry.createStack().isEmpty()) {
+				if (entry == null || entry.createStack().isEmpty() || !offer.contains(entry.getGood())) {
 					return error("gui.aw.market.error.changed");
 				}
 				Goods.Good good = entry.getGood();

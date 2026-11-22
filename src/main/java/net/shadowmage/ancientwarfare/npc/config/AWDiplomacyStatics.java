@@ -154,6 +154,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static int maxEstimatedGarrison = 600;
 	public static boolean marketEnabled = true;
 	public static boolean marketReplacesTradeLists = true;
+	public static boolean marketTraderSpecialties = true;
 	public static double specialPriceMultiplier = 2.0D;
 	public static double marketStandingDiscount = 0.25D;
 	public static int marketDiscountStanding = 200;
@@ -467,6 +468,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		maxEstimatedGarrison = config.get(serverOptions, "max_estimated_garrison", maxEstimatedGarrison, "Largest garrison counted for a city\nDefault=" + maxEstimatedGarrison + "\n" + "The garrison of a new city is counted from all its spawners (units still to spawn, units alive, units waiting to respawn), up to this many; its maximum manpower is manpower_per_unit for each.").getInt();
 		marketEnabled = config.get(serverOptions, "market_enabled", marketEnabled, "City markets\nDefault=" + marketEnabled + "\n" + "A faction trader standing in a city of a faction opens the city's market: goods with prices that follow the stock, paid from and to the city's treasury. Goods and prices are in registry/economy/goods.json. Player kingdoms have no market.").getBoolean();
 		marketReplacesTradeLists = config.get(serverOptions, "market_replaces_trade_lists", marketReplacesTradeLists, "Market replaces the old trade lists\nDefault=" + marketReplacesTradeLists + "\n" + "If true, the old fixed trade list of a trader in a city is not offered: the items of it that are not market goods are sold in the market as specials. If false, the market window has a button to the old list.").getBoolean();
+		marketTraderSpecialties = config.get(serverOptions, "market_trader_specialties", marketTraderSpecialties, "Trader specialties\nDefault=" + marketTraderSpecialties + "\n" + "If true, a trader in a city sells only the market goods of its own trade (the goods its old trade list gives: a weaponsmith weapons, a grocer produce), from the city's stock and at the city's prices, whatever the city's culture. A trader whose list gives no market goods is a general merchant. Every trader buys every good. If false, every trader sells every good.").getBoolean();
 		specialPriceMultiplier = config.get(serverOptions, "special_price_multiplier", specialPriceMultiplier, "Price of the specials\nDefault=" + specialPriceMultiplier + "\n" + "The specials (items of a trader's old list that are not market goods) cost their old price times this.", 0.0D, 100.0D).getDouble();
 		marketStandingDiscount = config.get(serverOptions, "market_standing_discount", marketStandingDiscount, "Market discount for standing\nDefault=" + marketStandingDiscount + "\n" + "Share of the buy and sell margins taken off for a player with market_discount_standing standing with the city's faction (less for less standing).", 0.0D, 1.0D).getDouble();
 		marketDiscountStanding = config.get(serverOptions, "market_discount_standing", marketDiscountStanding, "Standing for the full market discount\nDefault=" + marketDiscountStanding).getInt();
