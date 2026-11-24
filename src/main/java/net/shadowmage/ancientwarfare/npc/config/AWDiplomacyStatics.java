@@ -21,6 +21,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 	public static double kingdomTributeRatio = 0.5;
 	public static double cityTaxPerManpower = 0.05;
 	public static int cityTaxMaxDays = 14;
+	public static int cityStartingTaxDays = 7;
 	// recruits and veterans (on probation, see Recruits)
 	public static boolean recruitingEnabled = true;
 	public static int recruitCost = 1;
@@ -226,6 +227,7 @@ public class AWDiplomacyStatics extends ModConfiguration {
 		serviceWageCoin = config.get(serverOptions, "service_wage_coin", serviceWageCoin, "Wage coin\nDefault=" + serviceWageCoin + "\n" + "The Ancient Warfare coin wages are paid in: copper (Copper Owl), silver (Silver Stag), gold (Gold Dragon) or ancient.").getString();
 		cityTaxPerManpower = config.get(serverOptions, "city_tax_per_manpower", cityTaxPerManpower, "City taxes\nDefault=" + cityTaxPerManpower + "\n" + "Coins (see service_wage_coin) a city collects every Minecraft day for each point of its own maximum manpower (at least 1 a day), while it is not under attack. The owner of a kingdom collects them at the governors of its cities.", 0.0D, 100.0D).getDouble();
 		cityTaxMaxDays = config.get(serverOptions, "city_tax_max_days", cityTaxMaxDays, "City treasury limit\nDefault=" + cityTaxMaxDays + "\n" + "A city keeps at most this many days of taxes; a plundered or conquered city loses them.", 1, 1000).getInt();
+		cityStartingTaxDays = config.get(serverOptions, "city_starting_tax_days", cityStartingTaxDays, "Starting treasury\nDefault=" + cityStartingTaxDays + "\n" + "A newly founded faction city starts with this many days of taxes in its treasury (at most city_tax_max_days), so its market can pay for what players sell from the first day. Cities of player kingdoms and conquered cities start with nothing. 0 = every city starts with nothing.", 0, 1000).getInt();
 		recruitingEnabled = config.get(serverOptions, "recruiting_enabled", recruitingEnabled, "Recruits and veterans\nDefault=" + recruitingEnabled + "\n" + "The owner of a kingdom recruits soldiers at the governors of its cities (coins and manpower of the city) and trains the ones that gained levels into better equipped tiers.").getBoolean();
 		recruitCost = config.get(serverOptions, "recruit_cost", recruitCost, "Recruit cost\nDefault=" + recruitCost + "\n" + "Coins (see service_wage_coin) for each recruit; each recruit also costs 1 manpower of the city.", 0, 10000).getInt();
 		recruitMaxPerOrder = config.get(serverOptions, "recruit_max_per_order", recruitMaxPerOrder, "Recruits per order\nDefault=" + recruitMaxPerOrder + "\n" + "Most recruits hired at once.", 1, 64).getInt();

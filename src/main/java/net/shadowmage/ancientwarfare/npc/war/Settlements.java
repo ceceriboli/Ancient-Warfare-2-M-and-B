@@ -593,6 +593,7 @@ public class Settlements {
 		int manpower = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(garrison.size() * AWDiplomacyStatics.manpowerPerUnit));
 		settlement.setManpower(manpower);
 		settlement.setMaxManpower(manpower);
+		giveStartingTreasury(settlement);
 		// the structure may still be spawning, or being built (a town): its garrison is counted again from its spawners for a few minutes
 		settlement.setGarrisonRecountUntil(world.getTotalWorldTime() + GARRISON_RECOUNT_TICKS);
 		data.add(settlement);
@@ -927,6 +928,7 @@ public class Settlements {
 		int manpower = Math.max(AWDiplomacyStatics.manpowerMin, (int) Math.ceil(spawn.garrison * AWDiplomacyStatics.manpowerPerUnit));
 		settlement.setManpower(manpower);
 		settlement.setMaxManpower(manpower);
+		giveStartingTreasury(settlement);
 		settlement.setGarrisonRecountUntil(world.getTotalWorldTime() + GARRISON_RECOUNT_TICKS);
 		data.add(settlement);
 		if (spawn.needsLeader) {
@@ -1166,6 +1168,14 @@ public class Settlements {
 	 */
 	public static int getDailyTax(Settlement settlement) {
 		return Math.max(1, (int) Math.round(settlement.getBaseMaxManpower() * AWDiplomacyStatics.cityTaxPerManpower));
+	}
+
+	/**
+	 * A new faction city starts with city_starting_tax_days days of taxes (at most city_tax_max_days), so its market can pay at once.
+	 * Not the cities of player kingdoms, whose owner collects the treasury, nor conquered cities, whose winners took it.
+	 */
+	private static void giveStartingTreasury(Settlement settlement) {
+		settlement.setTreasury(getDailyTax(settlement) * Math.min(AWDiplomacyStatics.cityStartingTaxDays, AWDiplomacyStatics.cityTaxMaxDays));
 	}
 
 	/**
